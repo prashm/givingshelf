@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo "Building React app..."
+
+# Create the assets directory if it doesn't exist
+mkdir -p app/assets/javascripts
+
+# Build the React app using webpack
+npx webpack
+
+# Copy the built files to Rails assets
+cp public/packs/js/main.js app/assets/javascripts/application.js
+cp public/packs/css/application.css app/assets/stylesheets/
+
+echo "React app built and copied to Rails assets!"
+echo "Restart your Rails server to see changes."

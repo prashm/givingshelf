@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "Building React app..."
+
+# Build the React app using webpack
+npx webpack
+
+echo "React app built successfully!"
+echo "The application.js file is now in app/assets/javascripts/"
+echo "Refresh your browser to see changes."
+
+

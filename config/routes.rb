@@ -1,0 +1,42 @@
+Rails.application.routes.draw do
+  # Handle Chrome devtools requests
+  get '/.well-known/appspecific/com.chrome.devtools.json', to: proc { [404, {}, ['']] }
+  
+  # API routes
+  namespace :api do
+    resources :books, only: [:index, :show, :create, :update, :destroy] do
+      collection do
+        get :search
+      end
+    end
+    
+    resources :users, only: [:show, :update] do
+      collection do
+        get :profile
+        get :my_books
+        get :my_requests
+        get :received_requests
+      end
+    end
+    
+    resources :book_requests, only: [:create, :update, :destroy]
+    
+    # Authentication routes
+    post '/login', to: 'sessions#create'
+    delete '/logout', to: 'sessions#destroy'
+    post '/register', to: 'registrations#create'
+  end
+
+  # Web routes
+  resources :users, only: [:new, :create]
+  
+  # Catch all for React routing - but exclude system paths
+  get '*path', to: 'books#index', constraints: ->(request) do
+    !request.path.start_with?('/.well-known') && 
+    !request.path.start_with?('/api') &&
+    !request.path.start_with?('/assets') &&
+    !request.path.start_with?('/packs')
+  end
+  
+  root 'books#index'
+end
