@@ -1,258 +1,281 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useBooks } from '../../contexts/BookContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { 
-  MagnifyingGlassIcon, 
-  MapPinIcon, 
-  FunnelIcon 
-} from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, FunnelIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
-const BookList = () => {
-  const { currentUser } = useAuth();
-  const { books, searchBooks, loading, error } = useBooks();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [zipCode, setZipCode] = useState(currentUser?.zip_code || '');
-  const [selectedGenre, setSelectedGenre] = useState('');
-  const [selectedCondition, setSelectedCondition] = useState('');
-
-  const genres = [
-    'Fiction', 'Non-Fiction', 'Mystery', 'Romance', 'Science Fiction', 
-    'Fantasy', 'Biography', 'History', 'Self-Help', 'Business', 
-    'Technology', 'Cooking', 'Travel', 'Children', 'Young Adult'
-  ];
-
-  const conditions = ['excellent', 'good', 'fair', 'poor'];
+const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage }) => {
+  const [filteredBooks, setFilteredBooks] = useState([]);
+  const [sortBy, setSortBy] = useState('recent'); // recent, title, author, condition
+  const [conditionFilter, setConditionFilter] = useState('all');
+  const [genreFilter, setGenreFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    handleSearch();
-  }, []);
+    if (books) {
+      let filtered = [...books];
 
-  const handleSearch = () => {
-    const query = searchQuery.trim();
-    const zip = zipCode.trim();
-    searchBooks(query, zip);
-  };
+      // Apply condition filter
+      if (conditionFilter !== 'all') {
+        filtered = filtered.filter(book => book.condition === conditionFilter);
+      }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+      // Apply genre filter
+      if (genreFilter !== 'all') {
+        filtered = filtered.filter(book => book.genre === genreFilter);
+      }
+
+      // Apply search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(book => 
+          book.title.toLowerCase().includes(query) ||
+          book.author.toLowerCase().includes(query) ||
+          book.genre.toLowerCase().includes(query)
+        );
+      }
+
+      // Apply sorting
+      filtered.sort((a, b) => {
+        switch (sortBy) {
+          case 'title':
+            return a.title.localeCompare(b.title);
+          case 'author':
+            return a.author.localeCompare(b.author);
+          case 'condition':
+            const conditionOrder = { excellent: 1, good: 2, fair: 3, poor: 4 };
+            return conditionOrder[a.condition] - conditionOrder[b.condition];
+          case 'recent':
+          default:
+            return new Date(b.created_at) - new Date(a.created_at);
+        }
+      });
+
+      setFilteredBooks(filtered);
     }
-  };
+  }, [books, searchQuery, conditionFilter, genreFilter, sortBy]);
 
-  const filteredBooks = books.filter(book => {
-    if (selectedGenre && book.genre !== selectedGenre) return false;
-    if (selectedCondition && book.condition !== selectedCondition) return false;
-    return true;
-  });
+  const getUniqueGenres = () => {
+    if (!books) return [];
+    const genres = books.map(book => book.genre).filter(Boolean);
+    return [...new Set(genres)];
+  };
 
   const getConditionColor = (condition) => {
     switch (condition) {
-      case 'excellent': return 'bg-green-100 text-green-800';
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'fair': return 'bg-yellow-100 text-yellow-800';
-      case 'poor': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'excellent':
+        return 'bg-green-100 text-green-800';
+      case 'good':
+        return 'bg-blue-100 text-blue-800';
+      case 'fair':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'poor':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Browse Books</h1>
-          <p className="mt-2 text-gray-600">
-            Find great books in your local community
-          </p>
-        </div>
-        {currentUser && (
-          <Link
-            to="/books/add"
-            className="mt-4 md:mt-0 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-          >
-            Donate a Book
-          </Link>
-        )}
-      </div>
+  const handleBookClick = (book) => {
+    handleBookSelect(book);
+  };
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-              Search books
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Search by title or author..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-              />
-              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Search and Filter Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-6">
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="bg-white rounded-lg border border-gray-300 p-2 shadow-sm max-w-4xl mx-auto">
+              <div className="flex">
+                <div className="flex-1 flex items-center px-4">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search for books, authors, or genres..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full outline-none text-gray-900"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="flex items-center px-4 border-l border-gray-200">
+                  <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="ZIP Code"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                    className="w-20 outline-none text-gray-900 text-center"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <button
+                  onClick={handleSearch}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Search
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Zip Code */}
-          <div>
-            <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-2">
-              Zip Code
-            </label>
-            <input
-              type="text"
-              id="zipCode"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="12345"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-            />
-          </div>
+          {/* Filters and Sort */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                <FunnelIcon className="h-4 w-4" />
+                Filters
+              </button>
+              
+              {showFilters && (
+                <div className="flex items-center gap-4">
+                  {/* Condition Filter */}
+                  <select
+                    value={conditionFilter}
+                    onChange={(e) => setConditionFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Conditions</option>
+                    <option value="excellent">Excellent</option>
+                    <option value="good">Good</option>
+                    <option value="fair">Fair</option>
+                    <option value="poor">Poor</option>
+                  </select>
 
-          {/* Search Button */}
-          <div className="flex items-end">
-            <button
-              onClick={handleSearch}
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-        </div>
+                  {/* Genre Filter */}
+                  <select
+                    value={genreFilter}
+                    onChange={(e) => setGenreFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Genres</option>
+                    {getUniqueGenres().map(genre => (
+                      <option key={genre} value={genre}>{genre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
 
-        {/* Filters */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="genre" className="block text-sm font-medium text-gray-700 mb-2">
-              Genre
-            </label>
-            <select
-              id="genre"
-              value={selectedGenre}
-              onChange={(e) => setSelectedGenre(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-            >
-              <option value="">All Genres</option>
-              {genres.map(genre => (
-                <option key={genre} value={genre}>{genre}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="condition" className="block text-sm font-medium text-gray-700 mb-2">
-              Condition
-            </label>
-            <select
-              id="condition"
-              value={selectedCondition}
-              onChange={(e) => setSelectedCondition(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
-            >
-              <option value="">All Conditions</option>
-              {conditions.map(condition => (
-                <option key={condition} value={condition}>
-                  {condition.charAt(0).toUpperCase() + condition.slice(1)}
-                </option>
-              ))}
-            </select>
+            {/* Sort Options */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="recent">Most Recent</option>
+                <option value="title">Title A-Z</option>
+                <option value="author">Author A-Z</option>
+                <option value="condition">Best Condition</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-          {error}
-        </div>
-      )}
-
-      {/* Results */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
+      {/* Results Summary */}
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <p className="text-gray-600">
             {filteredBooks.length} book{filteredBooks.length !== 1 ? 's' : ''} found
-          </h2>
-          {(selectedGenre || selectedCondition) && (
-            <button
-              onClick={() => {
-                setSelectedGenre('');
-                setSelectedCondition('');
-              }}
-              className="text-green-600 hover:text-green-700 text-sm font-medium"
-            >
-              Clear filters
-            </button>
-          )}
+            {searchQuery && ` for "${searchQuery}"`}
+            {zipCode && ` near ${zipCode}`}
+          </p>
+          
+          <button
+            onClick={() => setCurrentPage('donate')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Donate a Book
+          </button>
         </div>
+      </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Searching for books...</p>
+      {/* Books Grid */}
+      <div className="container mx-auto px-4 pb-12">
+        {filteredBooks.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No books found</h3>
+            <p className="text-gray-600 mb-6">
+              {searchQuery 
+                ? `No books match your search for "${searchQuery}"`
+                : 'Try adjusting your filters or search criteria'
+              }
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setConditionFilter('all');
+                  setGenreFilter('all');
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Clear Filters
+              </button>
+              <button
+                onClick={() => setCurrentPage('donate')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Donate a Book
+              </button>
+            </div>
           </div>
-        ) : filteredBooks.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredBooks.map((book) => (
-              <div key={book.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start space-x-4">
+              <div
+                key={book.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer transform hover:-translate-y-1 duration-200"
+                onClick={() => handleBookClick(book)}
+              >
+                {/* Book Cover */}
+                <div className="h-48 bg-gray-100 flex items-center justify-center">
                   {book.cover_image_url ? (
                     <img
                       src={book.cover_image_url}
                       alt={book.title}
-                      className="w-16 h-20 object-cover rounded"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-16 h-20 bg-gray-300 rounded flex items-center justify-center">
-                      <img src="/bsc-icon.png" alt="Book" className="h-8 w-8" />
+                    <div className="text-gray-400 text-center">
+                      <div className="text-4xl mb-2">📖</div>
+                      <div className="text-sm">No Cover</div>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">
-                      {book.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                    <div className="flex items-center text-sm text-gray-500 mb-2">
-                      <MapPinIcon className="h-4 w-4 mr-1" />
-                      {book.owner.location}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getConditionColor(book.condition)}`}>
-                        {book.condition}
-                      </span>
-                      {book.owner.verified && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                  </div>
                 </div>
-                <div className="mt-4 flex justify-between items-center">
-                  <Link
-                    to={`/books/${book.id}`}
-                    className="text-green-600 hover:text-green-700 text-sm font-medium"
-                  >
-                    View Details →
-                  </Link>
-                  {currentUser && book.can_request && (
-                    <span className="text-xs text-gray-500">Available</span>
+
+                {/* Book Info */}
+                <div className="p-4">
+                  <h3 className="font-semibold text-lg mb-2 line-clamp-2 text-gray-900">
+                    {book.title}
+                  </h3>
+                  <p className="text-gray-600 mb-3">by {book.author}</p>
+                  
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-gray-500">{book.genre}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConditionColor(book.condition)}`}>
+                      {book.condition}
+                    </span>
+                  </div>
+
+                  {book.summary && (
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                      {book.summary}
+                    </p>
                   )}
+
+                  <div className="text-xs text-gray-500">
+                    Added {new Date(book.created_at).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            <img src="/bsc-icon.png" alt="No Books Found" className="h-12 w-12 mx-auto mb-4" />
-            <p>No books found matching your criteria.</p>
-            <p className="text-sm mt-2">Try adjusting your search or filters.</p>
           </div>
         )}
       </div>
@@ -260,4 +283,6 @@ const BookList = () => {
   );
 };
 
-export default BookList; 
+export default BookList;
+
+

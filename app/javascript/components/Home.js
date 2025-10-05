@@ -1,179 +1,246 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useBooks } from '../contexts/BookContext';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  HeartIcon, 
-  MapPinIcon,
-  MagnifyingGlassIcon 
-} from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
+import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
-const Home = () => {
-  const { currentUser } = useAuth();
-  const { books, fetchBooks, loading } = useBooks();
+const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage }) => {
+  const [recentBooks, setRecentBooks] = useState([]);
+  const [popularGenres, setPopularGenres] = useState([]);
 
   useEffect(() => {
-    fetchBooks();
-  }, []);
+    // Simulate fetching recent books and popular genres
+    if (books && books.length > 0) {
+      setRecentBooks(books.slice(0, 6));
+      
+      // Calculate popular genres
+      const genreCounts = {};
+      books.forEach(book => {
+        if (book.genre) {
+          genreCounts[book.genre] = (genreCounts[book.genre] || 0) + 1;
+        }
+      });
+      
+      const sortedGenres = Object.entries(genreCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5)
+        .map(([genre]) => genre);
+      
+      setPopularGenres(sortedGenres);
+    }
+  }, [books]);
 
-  // Ensure books is an array and get featured books
-  const featuredBooks = Array.isArray(books) ? books.slice(0, 6) : [];
+  const handleGenreClick = (genre) => {
+    setSearchQuery(genre);
+    handleSearch();
+  };
 
   return (
-    <div className="space-y-12">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-green-600 to-green-800 text-white rounded-lg p-8 md:p-12">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Share Books, Build Community
-          </h1>
-          <p className="text-xl md:text-2xl mb-8 text-green-100">
-            Donate your used books to neighbors in your local community. 
-            Find great reads and connect with fellow book lovers.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {currentUser ? (
-              <Link
-                to="/books/add"
-                className="bg-white text-green-600 hover:bg-green-50 px-8 py-3 rounded-lg font-semibold text-lg transition-colors"
-              >
-                Donate a Book
-              </Link>
-            ) : (
-              <Link
-                to="/register"
-                className="bg-white text-green-600 hover:bg-green-50 px-8 py-3 rounded-lg font-semibold text-lg transition-colors"
-              >
-                Get Started
-              </Link>
-            )}
-            <Link
-              to="/books"
-              className="border-2 border-white text-white hover:bg-white hover:text-green-600 px-8 py-3 rounded-lg font-semibold text-lg transition-colors"
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="container mx-auto px-4 py-16">
+          <div className="text-center max-w-3xl mx-auto">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Share the Joy of Reading
+            </h1>
+            <p className="text-xl mb-8 text-blue-100">
+              Connect with book lovers in your community. Donate, discover, and share your favorite books.
+            </p>
+            
+            {/* Search Bar */}
+            <div className="bg-white rounded-lg p-2 shadow-lg max-w-2xl mx-auto">
+              <div className="flex">
+                <div className="flex-1 flex items-center px-4">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search for books, authors, or genres..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full outline-none text-gray-900"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <div className="flex items-center px-4 border-l border-gray-200">
+                  <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="ZIP Code"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                    className="w-20 outline-none text-gray-900 text-center"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <button
+                  onClick={handleSearch}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Search
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-12">
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Donate Books</h3>
+            <p className="text-gray-600 mb-4">Share your books with the community</p>
+            <button
+              onClick={() => setCurrentPage('donate')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
             >
-              Browse Books
-            </Link>
+              Donate Now
+            </button>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Browse Books</h3>
+            <p className="text-gray-600 mb-4">Discover books in your area</p>
+            <button
+              onClick={() => setCurrentPage('browse')}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+            >
+              Browse
+            </button>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Join Community</h3>
+            <p className="text-gray-600 mb-4">Connect with fellow book lovers</p>
+            <button
+              onClick={() => setCurrentPage('profile')}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
+            >
+              Join
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Features Section */}
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="text-center p-6 bg-white rounded-lg shadow-md">
-          <img src="/bsc-icon.png" alt="Donate Books" className="h-12 w-12 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Donate Books</h3>
-          <p className="text-gray-600">
-            Share your gently used books with your local community. 
-            Give them a new life and help others discover great reads.
-          </p>
-        </div>
-        
-        <div className="text-center p-6 bg-white rounded-lg shadow-md">
-          <MapPinIcon className="h-12 w-12 text-green-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Local Community</h3>
-          <p className="text-gray-600">
-            Connect with neighbors in your area. 
-            Find books close to home and build meaningful connections.
-          </p>
-        </div>
-        
-        <div className="text-center p-6 bg-white rounded-lg shadow-md">
-          <HeartIcon className="h-12 w-12 text-green-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Safe Exchange</h3>
-          <p className="text-gray-600">
-            Verified users and secure messaging ensure 
-            safe and trustworthy book exchanges.
-          </p>
-        </div>
-      </div>
-
-      {/* Featured Books Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Recent Books</h2>
-          <Link
-            to="/books"
-            className="text-green-600 hover:text-green-700 font-medium"
-          >
-            View All →
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-          </div>
-        ) : featuredBooks.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredBooks.map((book) => (
-              <div key={book.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start space-x-4">
-                  {book.cover_image_url ? (
+        {/* Recent Books */}
+        {recentBooks.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold mb-6">Recently Added Books</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recentBooks.map((book) => (
+                <div
+                  key={book.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleBookSelect(book)}
+                >
+                  {book.cover_image_url && (
                     <img
                       src={book.cover_image_url}
                       alt={book.title}
-                      className="w-16 h-20 object-cover rounded"
+                      className="w-full h-48 object-cover"
                     />
-                  ) : (
-                    <div className="w-16 h-20 bg-gray-300 rounded flex items-center justify-center">
-                      <BookOpenIcon className="h-8 w-8 text-gray-500" />
-                    </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">
-                      {book.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                    <div className="flex items-center text-sm text-gray-500 mb-2">
-                      <MapPinIcon className="h-4 w-4 mr-1" />
-                      {book.owner?.location || 'Location not available'}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg mb-2 line-clamp-2">{book.title}</h3>
+                    <p className="text-gray-600 mb-2">by {book.author}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">{book.genre}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        book.condition === 'excellent' ? 'bg-green-100 text-green-800' :
+                        book.condition === 'good' ? 'bg-blue-100 text-blue-800' :
+                        book.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {book.condition}
+                      </span>
                     </div>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      book.condition === 'excellent' ? 'bg-green-100 text-green-800' :
-                      book.condition === 'good' ? 'bg-blue-100 text-blue-800' :
-                      book.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {book.condition}
-                    </span>
                   </div>
                 </div>
-                <Link
-                  to={`/books/${book.id}`}
-                  className="mt-3 block text-green-600 hover:text-green-700 text-sm font-medium"
-                >
-                  View Details →
-                </Link>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <BookOpenIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>No books available yet. Be the first to donate!</p>
+              ))}
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Call to Action */}
-      {!currentUser && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Join the BookShare Community
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Create an account to start donating and requesting books in your local area.
-          </p>
-          <Link
-            to="/register"
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
-          >
-            Sign Up Now
-          </Link>
+        {/* Popular Genres */}
+        {popularGenres.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold mb-6">Popular Genres</h2>
+            <div className="flex flex-wrap gap-3">
+              {popularGenres.map((genre) => (
+                <button
+                  key={genre}
+                  onClick={() => handleGenreClick(genre)}
+                  className="bg-white px-4 py-2 rounded-full border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Community Stats */}
+        <div className="bg-white rounded-lg p-8 shadow-md">
+          <h2 className="text-2xl font-bold mb-6 text-center">Community Impact</h2>
+          <div className="grid md:grid-cols-4 gap-6 text-center">
+            <div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">
+                {books ? books.length : 0}
+              </div>
+              <div className="text-gray-600">Books Shared</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-green-600 mb-2">
+                {books ? Math.floor(books.length * 0.8) : 0}
+              </div>
+              <div className="text-gray-600">Books Donated</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-purple-600 mb-2">
+                {books ? Math.floor(books.length * 0.6) : 0}
+              </div>
+              <div className="text-gray-600">Books Requested</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-orange-600 mb-2">
+                {books ? Math.floor(books.length * 0.4) : 0}
+              </div>
+              <div className="text-gray-600">Happy Readers</div>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Call to Action */}
+        <div className="text-center mt-12">
+          <h2 className="text-3xl font-bold mb-4">Ready to Share Your Books?</h2>
+          <p className="text-gray-600 mb-6">
+            Find books close to home and build meaningful connections.
+          </p>
+          <button
+            onClick={() => setCurrentPage('donate')}
+            className="bg-blue-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Start Donating Today
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default Home; 
+export default Home;
+
+

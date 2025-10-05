@@ -31,6 +31,7 @@
     "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-image-crop": "^11.0.10",
     "react-router-dom": "^7.7.1",
     "style-loader": "^4.0.0",
     "terser-webpack-plugin": "^5.3.14",
