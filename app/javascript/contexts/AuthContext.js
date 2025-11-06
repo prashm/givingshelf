@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../lib/axios';
 
 const AuthContext = createContext();
 
@@ -51,6 +51,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithEmail = async (email) => {
+    try {
+      const response = await axios.post('/api/login', {
+        email: email
+      }, {
+        withCredentials: true
+      });
+      
+      if (response.data.user) {
+        setCurrentUser(response.data.user);
+        return { 
+          success: true, 
+          profileIncomplete: response.data.profile_incomplete || !response.data.user.profile_complete
+        };
+      }
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Login failed');
+    }
+  };
+
   const register = async (userData) => {
     try {
       // Split name into first_name and last_name
@@ -89,16 +109,41 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateProfile = async (userData) => {
+  const updateProfile = async (userData, profilePicture = null) => {
     try {
-      const response = await axios.patch(`/api/users/${currentUser.id}`, {
-        user: userData
-      }, {
-        withCredentials: true
-      });
+      let response;
+      
+      // If profile picture is provided, use FormData
+      if (profilePicture) {
+        const formData = new FormData();
+        
+        // Append user data
+        Object.keys(userData).forEach(key => {
+          if (userData[key] !== null && userData[key] !== undefined) {
+            formData.append(`user[${key}]`, userData[key]);
+          }
+        });
+        
+        // Append profile picture
+        formData.append('user[profile_picture]', profilePicture);
+        
+        response = await axios.patch(`/api/users/${currentUser.id}`, formData, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      } else {
+        // Regular JSON request
+        response = await axios.patch(`/api/users/${currentUser.id}`, {
+          user: userData
+        }, {
+          withCredentials: true
+        });
+      }
       
       setCurrentUser(response.data);
-      return { success: true };
+      return { success: true, user: response.data };
     } catch (error) {
       return { 
         success: false, 
@@ -111,6 +156,7 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     loading,
     login,
+    loginWithEmail,
     register,
     logout,
     updateProfile,

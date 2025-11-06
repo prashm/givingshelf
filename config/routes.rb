@@ -23,6 +23,8 @@ Rails.application.routes.draw do
     
     # Authentication routes
     post '/login', to: 'sessions#create'
+    post '/verify_otp', to: 'sessions#verify_otp'
+    post '/resend_otp', to: 'sessions#resend_otp'
     delete '/logout', to: 'sessions#destroy'
     post '/register', to: 'registrations#create'
   end

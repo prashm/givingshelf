@@ -1,0 +1,17 @@
+{
+  // Format on save for Ruby files
+  "[ruby]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "misogi.ruby-rubocop"
+  },
+  // Run RuboCop on save for auto-fixing
+  "ruby.useLanguageServer": true,
+  "ruby.lint": {
+    "rubocop": {
+      "useBundler": true
+    }
+  },
+  "ruby.format": "rubocop",
+  "ruby.rubocop.useBundler": true
+}
+

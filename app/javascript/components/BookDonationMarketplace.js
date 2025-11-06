@@ -29,6 +29,7 @@ const BookDonationMarketplace = () => {
   const [zipCode, setZipCode] = useState('');
   const [selectedBook, setSelectedBook] = useState(null);
   const [editingBookId, setEditingBookId] = useState(null);
+  const [redirectReason, setRedirectReason] = useState(null);
   
   // Load books on mount
   useEffect(() => {
@@ -97,6 +98,7 @@ const BookDonationMarketplace = () => {
       case 'donate':
         return <AddBook 
           setCurrentPage={setCurrentPage}
+          setRedirectReason={setRedirectReason}
         />;
       case 'editBook':
         return <EditBook 
@@ -131,6 +133,8 @@ const BookDonationMarketplace = () => {
         return <Profile 
           currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
+          redirectReason={redirectReason}
+          clearRedirectReason={() => setRedirectReason(null)}
         />;
       case 'myBooks':
         return <MyBooks 
@@ -158,11 +162,28 @@ const BookDonationMarketplace = () => {
     }
   };
   
+  const { logout } = useAuth();
+
+  const handleLoginSuccess = (profileIncomplete) => {
+    // The AuthContext will handle setting the currentUser
+    // Just check if we need to redirect to profile
+    if (profileIncomplete) {
+      setCurrentPage('profile');
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setCurrentPage('home');
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar 
         currentUser={currentUser} 
-        setCurrentPage={setCurrentPage} 
+        setCurrentPage={setCurrentPage}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
       />
       <main className="flex-grow bg-gray-50">
         {renderPage()}
@@ -203,7 +224,7 @@ const LoginPage = ({ setCurrentPage }) => {
         </p>
         <button
           onClick={() => setCurrentPage('home')}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+          className="w-full bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700"
         >
           Back to Home
         </button>
@@ -223,7 +244,7 @@ const SignupPage = ({ setCurrentPage }) => {
         </p>
         <button
           onClick={() => setCurrentPage('home')}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+          className="w-full bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700"
         >
           Back to Home
         </button>
@@ -243,7 +264,7 @@ const MessagesPage = ({ setCurrentPage, currentUser }) => {
         </p>
         <button
           onClick={() => setCurrentPage('home')}
-          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+          className="bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700"
         >
           Back to Home
         </button>

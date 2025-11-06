@@ -42,6 +42,8 @@ gem "thruster", require: false
 
 gem "tailwindcss-ruby"
 gem "tailwindcss-rails"
+gem "activerecord-session_store"
+gem "rotp"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 

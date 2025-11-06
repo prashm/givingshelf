@@ -110,7 +110,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
                 </div>
                 <button
                   onClick={handleSearch}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+                  className="bg-emerald-600 text-white px-6 py-3 rounded-md hover:bg-emerald-700 transition-colors"
                 >
                   Search
                 </button>
@@ -135,7 +135,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
                   <select
                     value={conditionFilter}
                     onChange={(e) => setConditionFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="all">All Conditions</option>
                     <option value="excellent">Excellent</option>
@@ -148,7 +148,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
                   <select
                     value={genreFilter}
                     onChange={(e) => setGenreFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="all">All Genres</option>
                     {getUniqueGenres().map(genre => (
@@ -165,7 +165,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="recent">Most Recent</option>
                 <option value="title">Title A-Z</option>
@@ -188,7 +188,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
           
           <button
             onClick={() => setCurrentPage('donate')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
           >
             Donate a Book
           </button>
@@ -220,7 +220,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
               </button>
               <button
                 onClick={() => setCurrentPage('donate')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
               >
                 Donate a Book
               </button>

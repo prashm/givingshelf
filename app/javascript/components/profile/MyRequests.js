@@ -152,7 +152,7 @@ const MyRequests = ({ currentUser, setCurrentPage }) => {
           <h2 className="text-3xl font-bold text-gray-900">My Book Requests</h2>
           <button
             onClick={() => setCurrentPage('home')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
           >
             Browse More Books
           </button>
@@ -199,7 +199,7 @@ const MyRequests = ({ currentUser, setCurrentPage }) => {
             {filter === 'all' && (
               <button
                 onClick={() => setCurrentPage('home')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
               >
                 Browse Books
               </button>

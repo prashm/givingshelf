@@ -14,7 +14,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
             <p className="text-gray-600 mb-4">The book you're looking for doesn't exist.</p>
             <button
               onClick={() => setCurrentPage('home')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
             >
               Back to Home
             </button>
@@ -130,7 +130,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                     <button
                       onClick={handleRequestBook}
                       disabled={requestStatus === 'requesting'}
-                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {requestStatus === 'requesting' ? 'Sending Request...' : 'Request This Book'}
                     </button>
@@ -145,7 +145,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
               ) : (
                 <button
                   onClick={() => setCurrentPage('login')}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition-colors"
                 >
                   Log in to Request
                 </button>
@@ -154,7 +154,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
               {onEditBook && book.user_id === currentUser?.id && (
                 <button
                   onClick={() => onEditBook(book.id)}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors mb-3"
+                  className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition-colors mb-3"
                 >
                   Edit This Book
                 </button>

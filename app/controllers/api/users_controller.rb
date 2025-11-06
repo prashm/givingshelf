@@ -49,7 +49,7 @@ class Api::UsersController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:first_name, :last_name, :zip_code, :phone)
+    params.require(:user).permit(:first_name, :last_name, :zip_code, :phone, :profile_picture)
   end
 
   def user_json(user)
@@ -63,6 +63,8 @@ class Api::UsersController < ApplicationController
       zip_code: user.zip_code,
       phone: user.phone,
       verified: user.verified?,
+      profile_complete: user.profile_complete?,
+      profile_picture_url: user.profile_picture.attached? ? rails_blob_url(user.profile_picture) : nil,
       created_at: user.created_at,
       updated_at: user.updated_at
     }

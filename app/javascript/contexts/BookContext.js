@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import axios from 'axios';
+import axios from '../lib/axios';
 
 const BookContext = createContext();
 

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #059669;">BookShare Community</h2>
+      
+      <p>Hello,</p>
+      
+      <p>Your verification code for BookShare Community is:</p>
+      
+      <div style="background-color: #f3f4f6; border: 2px solid #059669; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+        <h1 style="color: #059669; font-size: 32px; letter-spacing: 8px; margin: 0;">
+          <%= @otp_code %>
+        </h1>
+      </div>
+      
+      <p>This code will expire in <%= @expires_in_minutes %> minutes.</p>
+      
+      <p style="color: #6b7280; font-size: 14px;">
+        If you didn't request this code, please ignore this email.
+      </p>
+      
+      <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+        Best regards,<br>
+        The BookShare Community Team
+      </p>
+    </div>
+  </body>
+</html>
+

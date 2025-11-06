@@ -107,7 +107,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
           <h2 className="text-3xl font-bold text-gray-900">My Books</h2>
           <button
             onClick={() => setCurrentPage('donate')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
           >
             Add New Book
           </button>
@@ -154,7 +154,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
             {filter === 'all' && (
               <button
                 onClick={() => setCurrentPage('donate')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
               >
                 Add Your First Book
               </button>

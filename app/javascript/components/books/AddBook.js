@@ -1,12 +1,28 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useBooks } from '../../contexts/BookContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useBookForm } from '../../hooks/useBookForm';
 import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageUpload from '../common/ImageUpload';
 import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
 
-const AddBook = ({ setCurrentPage }) => {
+const AddBook = ({ setCurrentPage, setRedirectReason }) => {
+  const { currentUser } = useAuth();
+  
+  // Check if profile is complete, redirect if not
+  useEffect(() => {
+    if (currentUser && !currentUser.profile_complete) {
+      setRedirectReason('Please complete your profile to donate a book. Your profile must include your name and ZIP code.');
+      setCurrentPage('profile');
+    }
+  }, [currentUser, setCurrentPage, setRedirectReason]);
+  
+  // Don't render if user is not authenticated or profile is incomplete
+  if (!currentUser || !currentUser.profile_complete) {
+    return null;
+  }
+
   const { createBook, loading, error } = useBooks();
   const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useBookForm();
   const {
@@ -126,14 +142,14 @@ const AddBook = ({ setCurrentPage }) => {
               <button
                 type="button"
                 onClick={() => setCurrentPage('home')}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Adding Book...' : 'Add Book'}
               </button>

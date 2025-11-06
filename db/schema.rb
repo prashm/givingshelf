@@ -10,7 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_05_013304) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_03_042844) do
+  create_table "active_record_sessions", id: { type: :string, limit: 128 }, force: :cascade do |t|
+    t.text "data"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["updated_at"], name: "index_active_record_sessions_on_updated_at"
+  end
+
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -69,12 +76,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_05_013304) do
   end
 
   create_table "sessions", force: :cascade do |t|
+    t.string "session_id", null: false
+    t.text "data"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["session_id"], name: "index_sessions_on_session_id", unique: true
+    t.index ["updated_at"], name: "index_sessions_on_updated_at"
+  end
+
+  create_table "user_sessions", force: :cascade do |t|
     t.integer "user_id", null: false
     t.string "ip_address"
     t.string "user_agent"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_sessions_on_user_id"
+    t.index ["user_id"], name: "index_user_sessions_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -87,6 +103,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_05_013304) do
     t.string "zip_code"
     t.string "phone"
     t.boolean "verified"
+    t.string "otp_secret"
+    t.datetime "otp_sent_at"
+    t.integer "otp_attempts", default: 0
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
@@ -95,5 +114,5 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_05_013304) do
   add_foreign_key "book_requests", "books"
   add_foreign_key "book_requests", "users", column: "requester_id"
   add_foreign_key "books", "users"
-  add_foreign_key "sessions", "users"
+  add_foreign_key "user_sessions", "users"
 end

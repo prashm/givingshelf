@@ -72,7 +72,7 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
                 </div>
                 <button
                   onClick={handleSearch}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+                  className="bg-emerald-600 text-white px-6 py-3 rounded-md hover:bg-emerald-700 transition-colors"
                 >
                   Search
                 </button>
@@ -96,7 +96,7 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
             <p className="text-gray-600 mb-4">Share your books with the community</p>
             <button
               onClick={() => setCurrentPage('donate')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
             >
               Donate Now
             </button>
@@ -231,7 +231,7 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
           </p>
           <button
             onClick={() => setCurrentPage('donate')}
-            className="bg-blue-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-blue-700 transition-colors"
+            className="bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-emerald-700 transition-colors"
           >
             Start Donating Today
           </button>
