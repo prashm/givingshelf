@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import axios from '../lib/axios';
 
 const BookContext = createContext();
@@ -16,13 +16,13 @@ export const BookProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchBooks = async (params = {}) => {
+  const fetchBooks = useCallback(async (params = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/books', { 
+      const response = await axios.get('/api/books', {
         params,
-        withCredentials: true 
+        withCredentials: true
       });
       setBooks(response.data);
     } catch (err) {
@@ -30,9 +30,9 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const searchBooks = async (query, zipCode) => {
+  const searchBooks = useCallback(async (query, zipCode) => {
     setLoading(true);
     setError(null);
     try {
@@ -46,9 +46,25 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const createBook = async (bookData) => {
+  const getBook = useCallback(async (id) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`/api/books/${id}`, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to fetch book');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const createBook = useCallback(async (bookData) => {
     setLoading(true);
     setError(null);
     try {
@@ -65,7 +81,7 @@ export const BookProvider = ({ children }) => {
         },
         withCredentials: true
       });
-      
+
       setBooks(prev => [response.data, ...prev]);
       return { success: true, book: response.data };
     } catch (err) {
@@ -75,9 +91,9 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateBook = async (bookId, bookData) => {
+  const updateBook = useCallback(async (bookId, bookData) => {
     setLoading(true);
     setError(null);
     try {
@@ -94,8 +110,8 @@ export const BookProvider = ({ children }) => {
         },
         withCredentials: true
       });
-      
-      setBooks(prev => prev.map(book => 
+
+      setBooks(prev => prev.map(book =>
         book.id === bookId ? response.data : book
       ));
       return { success: true, book: response.data };
@@ -106,16 +122,16 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const deleteBook = async (bookId) => {
+  const deleteBook = useCallback(async (bookId) => {
     setLoading(true);
     setError(null);
     try {
       await axios.delete(`/api/books/${bookId}`, {
         withCredentials: true
       });
-      
+
       setBooks(prev => prev.filter(book => book.id !== bookId));
       return { success: true };
     } catch (err) {
@@ -125,9 +141,9 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const requestBook = async (bookId, message) => {
+  const requestBook = useCallback(async (bookId, message) => {
     setLoading(true);
     setError(null);
     try {
@@ -137,12 +153,12 @@ export const BookProvider = ({ children }) => {
       }, {
         withCredentials: true
       });
-      
+
       // Update the book's can_request status
-      setBooks(prev => prev.map(book => 
+      setBooks(prev => prev.map(book =>
         book.id === bookId ? { ...book, can_request: false } : book
       ));
-      
+
       return { success: true, request: response.data };
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to request book';
@@ -151,19 +167,20 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     books,
     loading,
     error,
     fetchBooks,
     searchBooks,
+    getBook,
     createBook,
     updateBook,
     deleteBook,
     requestBook
-  };
+  }), [books, loading, error, fetchBooks, searchBooks, getBook, createBook, updateBook, deleteBook, requestBook]);
 
   return (
     <BookContext.Provider value={value}>

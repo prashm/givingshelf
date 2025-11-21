@@ -197,9 +197,11 @@
 
 /* Width & Height */
 .w-4 { width: 1rem; }
+.w-8 { width: 2rem; }
 .w-24 { width: 6rem; }
 .w-full { width: 100%; }
 .h-4 { width: 1rem; }
+.h-8 { width: 2rem; }
 .h-24 { height: 6rem; }
 .h-32 { height: 8rem; }
 .h-64 { height: 16rem; }

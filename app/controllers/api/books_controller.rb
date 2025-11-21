@@ -7,6 +7,11 @@ class Api::BooksController < ApplicationController
     render json: @books.map { |book| book_json(book) }
   end
 
+  def my_books
+    @books = Current.user.books.includes(:book_requests).recent
+    render json: @books.map { |book| my_book_json(book) }
+  end
+
   def show
     render json: book_json(@book)
   end
@@ -73,7 +78,7 @@ class Api::BooksController < ApplicationController
       genre: book.genre,
       published_year: book.published_year,
       status: book.status,
-      cover_image_url: book.cover_image.attached? ? rails_blob_url(book.cover_image) : nil,
+      cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       owner: {
         id: book.user.id,
         name: book.user.display_name,
@@ -85,4 +90,18 @@ class Api::BooksController < ApplicationController
       can_request: Current.user ? book.can_be_requested_by?(Current.user) : false
     }
   end
+
+  def my_book_json(book)
+    {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      condition: book.condition,
+      status: book.status,
+      cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
+      created_at: book.created_at,
+      request_count: book.book_requests.count
+    }
+  end
+
 end

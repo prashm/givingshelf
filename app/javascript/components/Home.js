@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
-const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage }) => {
+const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage, onOpenLoginModal }) => {
   const [recentBooks, setRecentBooks] = useState([]);
   const [popularGenres, setPopularGenres] = useState([]);
 
@@ -34,56 +34,66 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Share the Joy of Reading
-            </h1>
-            <p className="text-xl mb-8 text-blue-100">
-              Connect with book lovers in your community. Donate, discover, and share your favorite books.
-            </p>
-            
-            {/* Search Bar */}
-            <div className="bg-white rounded-lg p-2 shadow-lg max-w-2xl mx-auto">
-              <div className="flex">
-                <div className="flex-1 flex items-center px-4">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Search for books, authors, or genres..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full outline-none text-gray-900"
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <div className="flex items-center px-4 border-l border-gray-200">
-                  <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="ZIP Code"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
-                    className="w-20 outline-none text-gray-900 text-center"
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <button
-                  onClick={handleSearch}
-                  className="bg-emerald-600 text-white px-6 py-3 rounded-md hover:bg-emerald-700 transition-colors"
-                >
-                  Search
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
+        {/* Hero Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-3xl font-bold text-center mb-6">
+            Find Books in Your Community
+          </h2>
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-grow">
+              <label className="block text-gray-700 mb-2">
+                Book Title or Author
+              </label>
+              <div className="relative">
+                <input className="w-full border rounded-md p-3 pr-10" 
+                  placeholder="Search by title or author..." 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+                className="lucide lucide-search absolute right-3 top-3 text-gray-400">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.3-4.3"></path>
+                </svg>
+              </div>
+            </div>
+            <div className="md:w-1/4">
+              <label className="block text-gray-700 mb-2">
+                Your ZIP Code
+              </label>
+              <input className="w-full border rounded-md p-3" 
+                placeholder="Enter ZIP code" 
+                type="text" 
+                value={zipCode}
+                onChange={(e) => setZipCode(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+            <div className="md:w-1/6 flex items-end">
+              <button className="w-full bg-emerald-600 text-white py-3 px-4 rounded-md hover:bg-emerald-700" onClick={handleSearch}>
+                Search
+              </button>
+            </div>
+          </div>
+          { !currentUser && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+              <p className="text-center text-blue-800"
+                onClick={() => {
+                  onOpenLoginModal('donate');
+                }}
+              >
+              <strong>Want to donate books?</strong> 
+              <span className="underline cursor-pointer"> Create an account</span> to share your books with the community.
+              </p>
+            </div>
+        )}
+        </div>
+
         {/* Quick Actions */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
@@ -95,7 +105,13 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
             <h3 className="text-xl font-semibold mb-2">Donate Books</h3>
             <p className="text-gray-600 mb-4">Share your books with the community</p>
             <button
-              onClick={() => setCurrentPage('donate')}
+              onClick={() => {
+                if (currentUser) {
+                  setCurrentPage('donate');
+                } else {
+                  onOpenLoginModal('donate');
+                }
+              }}
               className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
             >
               Donate Now
@@ -230,7 +246,13 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
             Find books close to home and build meaningful connections.
           </p>
           <button
-            onClick={() => setCurrentPage('donate')}
+            onClick={() => {
+              if (currentUser) {
+                setCurrentPage('donate');
+              } else {
+                onOpenLoginModal('donate');
+              }
+            }}
             className="bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-emerald-700 transition-colors"
           >
             Start Donating Today

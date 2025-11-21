@@ -350,11 +350,12 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   <img
                     src={profilePicturePreview}
                     alt="Profile"
-                    className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
+                    style={{ maxWidth: 80, maxHeight: 80 }}
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center border-4 border-gray-200">
-                    <UserIcon className="w-12 h-12 text-gray-400" />
+                  <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center border-4 border-gray-200" style={{ maxWidth: 80, maxHeight: 80 }}>
+                    <UserIcon className="w-8 h-8 text-gray-400 max-w-[48px] max-h-[48px]" />
                   </div>
                 )}
                 <button
@@ -363,7 +364,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   className="absolute bottom-0 right-0 bg-emerald-600 text-white rounded-full p-2 hover:bg-emerald-700 transition-colors shadow-lg"
                   title="Change profile picture"
                 >
-                  <CameraIcon className="h-4 w-4" />
+                  <CameraIcon className="h-5 w-5" />
                 </button>
               </div>
               <input
@@ -522,11 +523,12 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                 <img
                   src={profilePicturePreview}
                   alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 mx-auto mb-4"
+                  className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 mx-auto mb-4"
+                  style={{ maxWidth: 80, maxHeight: 80 }}
                 />
               ) : (
-                <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center border-4 border-gray-200">
-                  <UserIcon className="w-12 h-12 text-gray-400" />
+                <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center border-4 border-gray-200" style={{ maxWidth: 80, maxHeight: 80 }}>
+                  <UserIcon className="w-8 h-8 text-gray-400 max-w-[48px] max-h-[48px]" />
                 </div>
               )}
             </div>
@@ -534,7 +536,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
             {/* Profile Information */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <UserIcon className="h-5 w-5 text-gray-400" />
+                <div className="flex-shrink-0">
+                  <UserIcon className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" />
+                </div>
                 <div>
                   <span className="text-sm font-medium text-gray-500">Full Name</span>
                   <p className="text-gray-900">
@@ -546,7 +550,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               </div>
 
               <div className="flex items-center gap-3">
-                <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                <div className="flex-shrink-0">
+                  <EnvelopeIcon className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" />
+                </div>
                 <div>
                   <span className="text-sm font-medium text-gray-500">Email</span>
                   <p className="text-gray-900">{currentUser.email_address || 'Not provided'}</p>
@@ -554,7 +560,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               </div>
 
               <div className="flex items-center gap-3">
-                <PhoneIcon className="h-5 w-5 text-gray-400" />
+                <div className="flex-shrink-0">
+                  <PhoneIcon className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" />
+                </div>
                 <div>
                   <span className="text-sm font-medium text-gray-500">Phone</span>
                   <p className="text-gray-900">{currentUser.phone || 'Not provided'}</p>
@@ -562,7 +570,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               </div>
 
               <div className="flex items-center gap-3">
-                <MapPinIcon className="h-5 w-5 text-gray-400" />
+                <div className="flex-shrink-0">
+                  <MapPinIcon className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" />
+                </div>
                 <div>
                   <span className="text-sm font-medium text-gray-500">ZIP Code</span>
                   <p className="text-gray-900">{currentUser.zip_code || 'Not provided'}</p>
@@ -573,7 +583,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
 
             {/* Quick Actions */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setCurrentPage('myBooks')}

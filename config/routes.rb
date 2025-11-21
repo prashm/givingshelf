@@ -7,13 +7,13 @@ Rails.application.routes.draw do
     resources :books, only: [:index, :show, :create, :update, :destroy] do
       collection do
         get :search
+        get :my_books
       end
     end
     
     resources :users, only: [:show, :update] do
       collection do
         get :profile
-        get :my_books
         get :my_requests
         get :received_requests
       end

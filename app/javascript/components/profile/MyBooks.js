@@ -7,33 +7,23 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
   const [filter, setFilter] = useState('all'); // all, available, requested, donated
 
   useEffect(() => {
-    // TODO: Fetch user's books from API
-    // For now, using mock data
-    const mockBooks = [
-      {
-        id: 1,
-        title: 'The Great Gatsby',
-        author: 'F. Scott Fitzgerald',
-        condition: 'excellent',
-        status: 'available',
-        cover_image_url: null,
-        created_at: '2024-01-15'
-      },
-      {
-        id: 2,
-        title: 'To Kill a Mockingbird',
-        author: 'Harper Lee',
-        condition: 'good',
-        status: 'requested',
-        cover_image_url: null,
-        created_at: '2024-01-10'
+    const fetchBooks = async () => {
+      try {
+        const response = await fetch('/api/books/my_books');
+        if (!response.ok) {
+          throw new Error('Failed to fetch books');
+        }
+        const data = await response.json();
+        setMyBooks(data);
+      } catch (error) {
+        console.error('Error fetching books:', error);
+        // Optionally set an error state here to show to the user
+      } finally {
+        setLoading(false);
       }
-    ];
-    
-    setTimeout(() => {
-      setMyBooks(mockBooks);
-      setLoading(false);
-    }, 1000);
+    };
+
+    fetchBooks();
   }, []);
 
   const handleEditBook = (bookId) => {
@@ -125,11 +115,10 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
               <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  filter === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${filter === tab.key
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 {tab.label}
                 <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs">
@@ -146,7 +135,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
             <div className="text-6xl mb-4">📚</div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No books found</h3>
             <p className="text-gray-500 mb-6">
-              {filter === 'all' 
+              {filter === 'all'
                 ? "You haven't added any books yet."
                 : `You don't have any ${filter} books.`
               }
@@ -187,17 +176,16 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-2 line-clamp-2">{book.title}</h3>
                   <p className="text-gray-600 mb-3">by {book.author}</p>
-                  
+
                   <div className="flex items-center justify-between mb-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      book.condition === 'excellent' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${book.condition === 'excellent' ? 'bg-green-100 text-green-800' :
                       book.condition === 'good' ? 'bg-blue-100 text-blue-800' :
-                      book.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        book.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {book.condition}
                     </span>
-                    
+
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(book.status)}`}>
                       {getStatusText(book.status)}
                     </span>
@@ -216,7 +204,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
                       <EyeIcon className="h-4 w-4" />
                       View
                     </button>
-                    
+
                     <button
                       onClick={() => handleEditBook(book.id)}
                       className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
@@ -224,7 +212,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
                       <PencilIcon className="h-4 w-4" />
                       Edit
                     </button>
-                    
+
                     <button
                       onClick={() => handleDeleteBook(book.id)}
                       className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"

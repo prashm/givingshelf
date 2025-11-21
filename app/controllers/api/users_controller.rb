@@ -27,11 +27,6 @@ class Api::UsersController < ApplicationController
     render json: user_json(Current.user)
   end
 
-  def my_books
-    @books = Current.user.books.includes(:book_requests).recent
-    render json: @books.map { |book| book_json(book) }
-  end
-
   def my_requests
     @requests = Current.user.book_requests.includes(:book, :requester).recent
     render json: @requests.map { |request| request_json(request) }
@@ -64,22 +59,9 @@ class Api::UsersController < ApplicationController
       phone: user.phone,
       verified: user.verified?,
       profile_complete: user.profile_complete?,
-      profile_picture_url: user.profile_picture.attached? ? rails_blob_url(user.profile_picture) : nil,
+      profile_picture_url: user.profile_picture.attached? ? user.profile_picture.attachment.url : nil,
       created_at: user.created_at,
       updated_at: user.updated_at
-    }
-  end
-
-  def book_json(book)
-    {
-      id: book.id,
-      title: book.title,
-      author: book.author,
-      condition: book.condition,
-      status: book.status,
-      cover_image_url: book.cover_image.attached? ? rails_blob_url(book.cover_image) : nil,
-      created_at: book.created_at,
-      request_count: book.book_requests.count
     }
   end
 

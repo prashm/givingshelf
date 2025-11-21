@@ -30,6 +30,8 @@ const BookDonationMarketplace = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [editingBookId, setEditingBookId] = useState(null);
   const [redirectReason, setRedirectReason] = useState(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   
   // Load books on mount
   useEffect(() => {
@@ -57,7 +59,8 @@ const BookDonationMarketplace = () => {
   const handleBookSelect = (book) => {
     setSelectedBook(book);
     if (!currentUser) {
-      setCurrentPage('login');
+      setPendingNavigation('bookDetails');
+      setIsLoginModalOpen(true);
     } else {
       setCurrentPage('bookDetails');
     }
@@ -86,6 +89,7 @@ const BookDonationMarketplace = () => {
           handleBookSelect={handleBookSelect}
           currentUser={currentUser}
           setCurrentPage={setCurrentPage}
+          onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'login':
         return <LoginPage 
@@ -158,6 +162,7 @@ const BookDonationMarketplace = () => {
           handleBookSelect={handleBookSelect}
           currentUser={currentUser}
           setCurrentPage={setCurrentPage}
+          onOpenLoginModal={handleOpenLoginModal}
         />;
     }
   };
@@ -165,11 +170,27 @@ const BookDonationMarketplace = () => {
   const { logout } = useAuth();
 
   const handleLoginSuccess = (profileIncomplete) => {
+    setIsLoginModalOpen(false);
     // The AuthContext will handle setting the currentUser
-    // Just check if we need to redirect to profile
+    // Check if we need to redirect to profile or pending navigation
     if (profileIncomplete) {
       setCurrentPage('profile');
+    } else if (pendingNavigation) {
+      setCurrentPage(pendingNavigation);
+      setPendingNavigation(null);
     }
+  };
+
+  const handleOpenLoginModal = (destinationPage = null) => {
+    if (destinationPage) {
+      setPendingNavigation(destinationPage);
+    }
+    setIsLoginModalOpen(true);
+  };
+
+  const handleCloseLoginModal = () => {
+    setIsLoginModalOpen(false);
+    setPendingNavigation(null);
   };
 
   const handleLogout = async () => {
@@ -184,6 +205,9 @@ const BookDonationMarketplace = () => {
         setCurrentPage={setCurrentPage}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}
+        isLoginModalOpen={isLoginModalOpen}
+        onOpenLoginModal={handleOpenLoginModal}
+        onCloseLoginModal={handleCloseLoginModal}
       />
       <main className="flex-grow bg-gray-50">
         {renderPage()}
@@ -213,45 +237,7 @@ const Footer = () => {
   );
 };
 
-// Simple Login Page Component (placeholder)
-const LoginPage = ({ setCurrentPage }) => {
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-md">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
-        <p className="text-center text-gray-600 mb-4">
-          Login functionality will be implemented here.
-        </p>
-        <button
-          onClick={() => setCurrentPage('home')}
-          className="w-full bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700"
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
-  );
-};
 
-// Simple Signup Page Component (placeholder)
-const SignupPage = ({ setCurrentPage }) => {
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-md">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-center mb-6">Sign Up</h2>
-        <p className="text-center text-gray-600 mb-4">
-          Signup functionality will be implemented here.
-        </p>
-        <button
-          onClick={() => setCurrentPage('home')}
-          className="w-full bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700"
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
-  );
-};
 
 // Simple Messages Page Component (placeholder)
 const MessagesPage = ({ setCurrentPage, currentUser }) => {

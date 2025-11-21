@@ -10,9 +10,16 @@ import BookForm from '../common/BookForm';
 const AddBook = ({ setCurrentPage, setRedirectReason }) => {
   const { currentUser } = useAuth();
   
-  // Check if profile is complete, redirect if not
+  // Check if user is authenticated and profile is complete
   useEffect(() => {
+    if (!currentUser) {
+      // User is not authenticated, redirect to login
+      setCurrentPage('login');
+      return;
+    }
+    
     if (currentUser && !currentUser.profile_complete) {
+      // User is authenticated but profile is incomplete, redirect to profile
       setRedirectReason('Please complete your profile to donate a book. Your profile must include your name and ZIP code.');
       setCurrentPage('profile');
     }
