@@ -2,6 +2,7 @@ class Book < ApplicationRecord
   belongs_to :user
   has_many :book_requests, dependent: :destroy
   has_one_attached :cover_image
+  has_many_attached :user_images
 
   validates :title, presence: true, length: { minimum: 1, maximum: 255 }
   validates :author, presence: true, length: { minimum: 1, maximum: 255 }
@@ -9,30 +10,30 @@ class Book < ApplicationRecord
   validates :summary, presence: true, length: { minimum: 10, maximum: 1000 }
   validates :genre, presence: true, length: { minimum: 1, maximum: 100 }
   validates :published_year, presence: true, numericality: { greater_than: 1800, less_than_or_equal_to: Date.current.year }
-  validates :status, inclusion: { in: %w[available requested donated], default: 'available' }
+  validates :status, inclusion: { in: %w[available requested donated], default: "available" }
   validates :isbn, format: { with: /\A(?:\d{10}|\d{13})\z/, message: "must be 10 or 13 digits" }, allow_blank: true
 
 
-  scope :available, -> { where(status: 'available') }
+  scope :available, -> { where(status: "available") }
   scope :by_genre, ->(genre) { where(genre: genre) }
-  scope :by_author, ->(author) { where('author ILIKE ?', "%#{author}%") }
-  scope :by_title, ->(title) { where('title ILIKE ?', "%#{title}%") }
+  scope :by_author, ->(author) { where("author ILIKE ?", "%#{author}%") }
+  scope :by_title, ->(title) { where("title ILIKE ?", "%#{title}%") }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
 
   def self.search(query, zip_code = nil)
     books = available.joins(:user)
-    
+
     if query.present?
-      books = books.where('books.title ILIKE :query OR books.author ILIKE :query', query: "%#{query}%")
+      books = books.where("books.title ILIKE :query OR books.author ILIKE :query", query: "%#{query}%")
     end
-    
+
     if zip_code.present?
       books = books.where(users: { zip_code: zip_code })
     end
-    
-    books.order('users.zip_code = ? DESC, books.created_at DESC', zip_code)
+
+    books.order("users.zip_code = ? DESC, books.created_at DESC", zip_code)
   end
 
   def cover_image_url
@@ -48,19 +49,19 @@ class Book < ApplicationRecord
   def can_be_requested_by?(user)
     return false unless available?
     return false if user == self.user
-    return false if book_requests.exists?(requester: user, status: ['pending', 'accepted'])
+    return false if book_requests.exists?(requester: user, status: [ "pending", "accepted" ])
     true
   end
 
   def available?
-    status == 'available'
+    status == "available"
   end
 
   def requested?
-    status == 'requested'
+    status == "requested"
   end
 
   def donated?
-    status == 'donated'
+    status == "donated"
   end
 end

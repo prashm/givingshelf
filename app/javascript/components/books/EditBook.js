@@ -10,14 +10,14 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 const EditBook = ({ setCurrentPage, bookId }) => {
   const { currentUser } = useAuth();
-  
+
   // Check if profile is complete, redirect if not
   useEffect(() => {
     if (currentUser && !currentUser.profile_complete) {
       setCurrentPage('profile');
     }
   }, [currentUser, setCurrentPage]);
-  
+
   // Don't render if user is not authenticated or profile is incomplete
   if (!currentUser || !currentUser.profile_complete) {
     return null;
@@ -66,13 +66,19 @@ const EditBook = ({ setCurrentPage, bookId }) => {
             genre: bookData.genre || '',
             published_year: bookData.published_year || new Date().getFullYear(),
             isbn: bookData.isbn || '',
-            cover_image: null
+            isbn: bookData.isbn || '',
+            cover_image: null,
+            user_images: [] // We don't populate file objects for existing images, but we can show them
           });
-          
+
           // Set current cover image if it exists
           if (bookData.cover_image_url) {
             setCurrentCoverImage(bookData.cover_image_url);
           }
+
+          // Note: We might want to display existing user_images separately if needed, 
+          // but for now the form will just allow adding new ones.
+          // To display existing ones, we'd need a separate state or modify BookForm to accept existing images prop.
         }
       } catch (err) {
         console.error('Error fetching book:', err);
@@ -103,7 +109,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
   // Handle book selection from autocomplete
   const handleBookSelect = (book) => {
     console.log('Selected book:', book);
-    
+
     // Update form data with book information
     updateFormData({
       title: book.title,
@@ -125,12 +131,12 @@ const EditBook = ({ setCurrentPage, bookId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     const result = await updateBook(bookId, formData);
     if (result.success) {
-      setCurrentPage('home');
+      window.history.back();
     }
   };
 
@@ -158,10 +164,10 @@ const EditBook = ({ setCurrentPage, bookId }) => {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Book Not Found</h2>
             <p className="text-gray-600 mb-4">The book you're looking for doesn't exist.</p>
             <button
-              onClick={() => setCurrentPage('home')}
+              onClick={() => window.history.back()}
               className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
             >
-              Back to Home
+              Go Back
             </button>
           </div>
         </div>
@@ -174,7 +180,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
       <div className="container mx-auto py-8 px-4 max-w-2xl">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Edit Book</h2>
-          
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
               {error}
@@ -201,13 +207,14 @@ const EditBook = ({ setCurrentPage, bookId }) => {
               currentYear={currentYear}
               yearOptions={yearOptions}
               isEditMode={true}
+              existingUserImages={book?.user_images_urls || []}
             />
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">
               <button
                 type="button"
-                onClick={() => setCurrentPage('home')}
+                onClick={() => window.history.back()}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 Cancel

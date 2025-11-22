@@ -9,7 +9,7 @@ import BookForm from '../common/BookForm';
 
 const AddBook = ({ setCurrentPage, setRedirectReason }) => {
   const { currentUser } = useAuth();
-  
+
   // Check if user is authenticated and profile is complete
   useEffect(() => {
     if (!currentUser) {
@@ -17,14 +17,14 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
       setCurrentPage('login');
       return;
     }
-    
+
     if (currentUser && !currentUser.profile_complete) {
       // User is authenticated but profile is incomplete, redirect to profile
       setRedirectReason('Please complete your profile to donate a book. Your profile must include your name and ZIP code.');
       setCurrentPage('profile');
     }
   }, [currentUser, setCurrentPage, setRedirectReason]);
-  
+
   // Don't render if user is not authenticated or profile is incomplete
   if (!currentUser || !currentUser.profile_complete) {
     return null;
@@ -78,7 +78,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
 
   // Handle book selection from autocomplete
   const handleBookSelect = (book) => {
-    
+
     // Update form data with book information
     updateFormData({
       title: book.title,
@@ -91,17 +91,24 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
       // Don't overwrite condition - let user choose
     });
 
-    // If book has a cover image, we could potentially fetch and set it
-    // For now, we'll let the user upload their own image
+    // If book has a cover image, fetch it and set it as cover_image
     if (book.thumbnail) {
-      console.log('Book cover available:', book.thumbnail);
-      // You could implement cover image fetching here if needed
+      console.log('Fetching book cover:', book.thumbnail);
+      const secureUrl = book.thumbnail.replace('http:', 'https:');
+
+      fetch(secureUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], "cover_image.jpg", { type: "image/jpeg" });
+          updateFormData({ cover_image: file });
+        })
+        .catch(err => console.error('Error fetching cover image:', err));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     const result = await createBook(formData);
@@ -118,7 +125,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
       <div className="container mx-auto py-8 px-4 max-w-2xl">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Add a New Book</h2>
-          
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
               {error}

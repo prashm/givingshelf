@@ -10,20 +10,20 @@ import BookDetail from './books/BookDetail';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
-import { 
-  MagnifyingGlassIcon, 
-  ArrowUpTrayIcon, 
-  UserIcon, 
-  ChatBubbleLeftRightIcon, 
-  MapPinIcon, 
-  ShieldCheckIcon 
+import {
+  MagnifyingGlassIcon,
+  ArrowUpTrayIcon,
+  UserIcon,
+  ChatBubbleLeftRightIcon,
+  MapPinIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 
 // Main App Component
 const BookDonationMarketplace = () => {
   const { currentUser } = useAuth();
   const { books, fetchBooks, loading } = useBooks();
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, _setPageState] = useState('home');
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zipCode, setZipCode] = useState('');
@@ -32,11 +32,39 @@ const BookDonationMarketplace = () => {
   const [redirectReason, setRedirectReason] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
-  
+
   // Load books on mount
   useEffect(() => {
     fetchBooks();
   }, []);
+
+  // Handle browser history navigation
+  useEffect(() => {
+    // Set initial state
+    window.history.replaceState({ page: 'home' }, '', window.location.pathname);
+
+    const handlePopState = (event) => {
+      const state = event.state;
+      if (state && state.page) {
+        _setPageState(state.page);
+
+        // Restore specific states if present
+        if (state.selectedBook) setSelectedBook(state.selectedBook);
+        if (state.editingBookId) setEditingBookId(state.editingBookId);
+      } else {
+        _setPageState('home');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Navigation wrapper to sync with history
+  const setCurrentPage = (page, extraState = {}) => {
+    _setPageState(page);
+    window.history.pushState({ page, ...extraState }, '', window.location.pathname);
+  };
 
   // Update search results when books change
   useEffect(() => {
@@ -44,43 +72,43 @@ const BookDonationMarketplace = () => {
       setSearchResults(books);
     }
   }, [books]);
-  
+
   const handleSearch = () => {
     // Filter books based on search query (title or author)
     const query = searchQuery.toLowerCase();
-    const results = Array.isArray(books) ? books.filter(book => 
-      book.title.toLowerCase().includes(query) || 
+    const results = Array.isArray(books) ? books.filter(book =>
+      book.title.toLowerCase().includes(query) ||
       book.author.toLowerCase().includes(query)
     ) : [];
-    
+
     setSearchResults(results);
   };
-  
+
   const handleBookSelect = (book) => {
     setSelectedBook(book);
     if (!currentUser) {
       setPendingNavigation('bookDetails');
       setIsLoginModalOpen(true);
     } else {
-      setCurrentPage('bookDetails');
+      setCurrentPage('bookDetails', { selectedBook: book });
     }
   };
-  
+
   const handleEditBook = (bookId) => {
     setEditingBookId(bookId);
-    setCurrentPage('editBook');
+    setCurrentPage('editBook', { editingBookId: bookId });
   };
-  
+
   const handleDonateBook = (bookData) => {
     // This will be handled by the BookContext
     setCurrentPage('home');
   };
-  
+
   const renderPage = () => {
-    switch(currentPage) {
+    switch (currentPage) {
       case 'home':
-        return <Home 
-          books={searchResults} 
+        return <Home
+          books={searchResults}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           zipCode={zipCode}
@@ -92,32 +120,32 @@ const BookDonationMarketplace = () => {
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'login':
-        return <LoginPage 
+        return <LoginPage
           setCurrentPage={setCurrentPage}
         />;
       case 'signup':
-        return <SignupPage 
+        return <SignupPage
           setCurrentPage={setCurrentPage}
         />;
       case 'donate':
-        return <AddBook 
+        return <AddBook
           setCurrentPage={setCurrentPage}
           setRedirectReason={setRedirectReason}
         />;
       case 'editBook':
-        return <EditBook 
+        return <EditBook
           setCurrentPage={setCurrentPage}
           bookId={editingBookId}
         />;
       case 'bookDetails':
-        return <BookDetail 
-          book={selectedBook} 
+        return <BookDetail
+          book={selectedBook}
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onEditBook={handleEditBook}
         />;
       case 'browse':
-        return <BookList 
+        return <BookList
           books={searchResults}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -129,31 +157,31 @@ const BookDonationMarketplace = () => {
           setCurrentPage={setCurrentPage}
         />;
       case 'messages':
-        return <MessagesPage 
+        return <MessagesPage
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
         />;
       case 'profile':
-        return <Profile 
-          currentUser={currentUser} 
+        return <Profile
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
           redirectReason={redirectReason}
           clearRedirectReason={() => setRedirectReason(null)}
         />;
       case 'myBooks':
-        return <MyBooks 
-          currentUser={currentUser} 
+        return <MyBooks
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
         />;
       case 'myRequests':
-        return <MyRequests 
-          currentUser={currentUser} 
+        return <MyRequests
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
         />;
       default:
-        return <Home 
-          books={searchResults} 
+        return <Home
+          books={searchResults}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           zipCode={zipCode}
@@ -166,7 +194,7 @@ const BookDonationMarketplace = () => {
         />;
     }
   };
-  
+
   const { logout } = useAuth();
 
   const handleLoginSuccess = (profileIncomplete) => {
@@ -176,7 +204,8 @@ const BookDonationMarketplace = () => {
     if (profileIncomplete) {
       setCurrentPage('profile');
     } else if (pendingNavigation) {
-      setCurrentPage(pendingNavigation);
+      const extraState = pendingNavigation === 'bookDetails' ? { selectedBook } : {};
+      setCurrentPage(pendingNavigation, extraState);
       setPendingNavigation(null);
     }
   };
@@ -200,8 +229,8 @@ const BookDonationMarketplace = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar 
-        currentUser={currentUser} 
+      <Navbar
+        currentUser={currentUser}
         setCurrentPage={setCurrentPage}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}

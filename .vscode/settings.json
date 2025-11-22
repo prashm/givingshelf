@@ -2,7 +2,7 @@
   // Format on save for Ruby files
   "[ruby]": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "misogi.ruby-rubocop"
+    "editor.defaultFormatter": "Shopify.ruby-lsp"
   },
   // Run RuboCop on save for auto-fixing
   "ruby.useLanguageServer": true,

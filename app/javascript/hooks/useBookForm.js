@@ -17,7 +17,7 @@ export const useBookForm = (initialData = {}) => {
 
   const validateForm = useCallback(() => {
     const errors = {};
-    
+
     if (!formData.title.trim()) errors.title = 'Title is required';
     if (!formData.author.trim()) errors.author = 'Author is required';
     if (!formData.summary.trim()) errors.summary = 'Summary is required';
@@ -38,7 +38,7 @@ export const useBookForm = (initialData = {}) => {
 
   const handleInputChange = useCallback((e) => {
     const { name, value, files } = e.target;
-    
+
     if (name === 'cover_image') {
       const file = files[0];
       if (file) {
@@ -48,12 +48,12 @@ export const useBookForm = (initialData = {}) => {
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
-    
+
     // Clear validation error when user starts typing
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: '' }));
     }
-    
+
     return null;
   }, [validationErrors]);
 

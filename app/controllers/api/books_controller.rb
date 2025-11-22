@@ -1,6 +1,6 @@
 class Api::BooksController < ApplicationController
-  before_action :require_authentication, except: [:index, :show, :search]
-  before_action :set_book, only: [:show, :update, :destroy]
+  before_action :require_authentication, except: [ :index, :show, :search ]
+  before_action :set_book, only: [ :show, :update, :destroy ]
 
   def index
     @books = Book.available.includes(:user).recent
@@ -18,7 +18,7 @@ class Api::BooksController < ApplicationController
 
   def create
     @book = Current.user.books.build(book_params)
-    
+
     if @book.save
       render json: book_json(@book), status: :created
     else
@@ -52,7 +52,7 @@ class Api::BooksController < ApplicationController
   def search
     query = params[:query]
     zip_code = params[:zip_code]
-    
+
     @books = Book.search(query, zip_code)
     render json: @books.map { |book| book_json(book) }
   end
@@ -64,7 +64,7 @@ class Api::BooksController < ApplicationController
   end
 
   def book_params
-    params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year, :cover_image)
+    params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year, :cover_image, user_images: [])
   end
 
   def book_json(book)
@@ -79,6 +79,7 @@ class Api::BooksController < ApplicationController
       published_year: book.published_year,
       status: book.status,
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
+      user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.attachment.url } : [],
       owner: {
         id: book.user.id,
         name: book.user.display_name,
@@ -103,5 +104,4 @@ class Api::BooksController < ApplicationController
       request_count: book.book_requests.count
     }
   end
-
 end
