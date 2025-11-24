@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
   const [showContact, setShowContact] = useState(false);
   const [requestStatus, setRequestStatus] = useState('idle'); // idle, requesting, success, error
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   if (!book) {
     return (
@@ -100,11 +102,15 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
             {/* Book Cover */}
             <div className="mb-6">
               {book.cover_image_url ? (
-                <img
-                  src={book.cover_image_url}
-                  alt={book.title}
-                  className="w-full rounded-lg shadow-md"
-                />
+                <div className="mb-6">
+                  <div className="flex justify-center">
+                    <img
+                      src={book.cover_image_url}
+                      alt={book.title}
+                      className="w-16 h-20 sm:w-18 sm:h-24 md:w-20 md:h-28 object-cover rounded border shadow-sm"
+                    />
+                  </div>
+                </div>
               ) : (
                 <div className="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center">
                   <div className="text-center text-gray-400">
@@ -254,6 +260,29 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
               </div>
             </div>
 
+            {/* Additional Photos Carousel */}
+            {book.user_images_urls && book.user_images_urls.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Additional Photos</h3>
+                <div className="relative">
+                  <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+                    {book.user_images_urls.map((url, index) => (
+                      <img
+                        key={index}
+                        src={url}
+                        alt={`Book photo ${index + 1}`}
+                        onClick={() => {
+                          setCurrentImageIndex(index);
+                          setShowImageModal(true);
+                        }}
+                        className="h-32 w-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0 border-2 border-gray-200"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Contact Information (shown after request) */}
             {showContact && book.donor_contact && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -295,6 +324,55 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
           </div>
         </div>
       </div>
+
+      {/* Image Modal/Carousel */}
+      {showImageModal && book.user_images_urls && book.user_images_urls.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowImageModal(false);
+            }}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+          >
+            <XMarkIcon className="h-8 w-8" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentImageIndex(prev => 
+                prev > 0 ? prev - 1 : book.user_images_urls.length - 1
+              );
+            }}
+            className="absolute left-4 text-white hover:text-gray-300 z-10"
+          >
+            <ChevronLeftIcon className="h-10 w-10" />
+          </button>
+          <img
+            src={book.user_images_urls[currentImageIndex]}
+            alt={`Book photo ${currentImageIndex + 1}`}
+            className="max-w-full max-h-[90vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentImageIndex(prev => 
+                prev < book.user_images_urls.length - 1 ? prev + 1 : 0
+              );
+            }}
+            className="absolute right-4 text-white hover:text-gray-300 z-10"
+          >
+            <ChevronRightIcon className="h-10 w-10" />
+          </button>
+          <div className="absolute bottom-4 text-white text-sm bg-black bg-opacity-50 px-3 py-1 rounded">
+            {currentImageIndex + 1} / {book.user_images_urls.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

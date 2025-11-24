@@ -173,6 +173,7 @@ const BookDonationMarketplace = () => {
           currentUser={currentUser}
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
+          onViewBook={handleBookSelect}
         />;
       case 'myRequests':
         return <MyRequests

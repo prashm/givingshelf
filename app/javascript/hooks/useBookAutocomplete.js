@@ -96,6 +96,7 @@ export const useBookAutocomplete = () => {
   // Hide suggestions
   const hideSuggestions = useCallback(() => {
     setShowSuggestions(false);
+    setSuggestions([]);
   }, []);
 
   // Cleanup on unmount

@@ -10,6 +10,7 @@ const BookTitleAutocomplete = ({
   disabled = false 
 }) => {
   const [inputValue, setInputValue] = useState(value || '');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef(null);
   const containerRef = useRef(null);
   
@@ -78,6 +79,18 @@ const BookTitleAutocomplete = ({
     }
   };
 
+  // Calculate dropdown position when suggestions are shown
+  useEffect(() => {
+    if (showSuggestions && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4, // 4px margin (mt-1)
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, [showSuggestions, suggestions]);
+
   // Handle click outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -93,7 +106,7 @@ const BookTitleAutocomplete = ({
   }, [hideSuggestions]);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative" ref={containerRef} style={{ zIndex: 1 }}>
       <div className="relative">
         <input
           ref={inputRef}
@@ -121,8 +134,16 @@ const BookTitleAutocomplete = ({
       </div>
 
       {/* Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-y-auto">
+      {showSuggestions && suggestions.length > 0 && inputValue.length >= 2 && (
+        <div 
+          className="fixed bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-y-auto" 
+          style={{ 
+            zIndex: 9999,
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`
+          }}
+        >
           {suggestions.map((book, index) => (
             <div
               key={book.id}
@@ -142,7 +163,7 @@ const BookTitleAutocomplete = ({
                     }}
                   />
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 ml-4">
                   <h4 className="text-sm font-medium text-gray-900 truncate">
                     {book.title}
                   </h4>
@@ -175,7 +196,15 @@ const BookTitleAutocomplete = ({
 
       {/* No results message */}
       {showSuggestions && suggestions.length === 0 && inputValue.length >= 2 && !loading && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+        <div 
+          className="fixed bg-white border border-gray-300 rounded-md shadow-lg" 
+          style={{ 
+            zIndex: 9999,
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`
+          }}
+        >
           <div className="px-4 py-3 text-sm text-gray-500">
             No books found for "{inputValue}"
           </div>

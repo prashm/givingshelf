@@ -69,8 +69,14 @@ export const BookProvider = ({ children }) => {
     setError(null);
     try {
       const formData = new FormData();
+      
       Object.keys(bookData).forEach(key => {
-        if (bookData[key] !== null && bookData[key] !== undefined) {
+        if (key === 'user_images' && Array.isArray(bookData[key])) {
+          // Append each file separately for multiple attachments
+          bookData[key].forEach((file) => {
+            formData.append(`book[user_images][]`, file);
+          });
+        } else if (bookData[key] !== null && bookData[key] !== undefined) {
           formData.append(`book[${key}]`, bookData[key]);
         }
       });
@@ -98,8 +104,14 @@ export const BookProvider = ({ children }) => {
     setError(null);
     try {
       const formData = new FormData();
+      
       Object.keys(bookData).forEach(key => {
-        if (bookData[key] !== null && bookData[key] !== undefined) {
+        if (key === 'user_images' && Array.isArray(bookData[key])) {
+          // Append each file separately for multiple attachments
+          bookData[key].forEach((file) => {
+            formData.append(`book[user_images][]`, file);
+          });
+        } else if (bookData[key] !== null && bookData[key] !== undefined) {
           formData.append(`book[${key}]`, bookData[key]);
         }
       });

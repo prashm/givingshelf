@@ -10,6 +10,7 @@ export const useBookForm = (initialData = {}) => {
     published_year: new Date().getFullYear(),
     isbn: '',
     cover_image: null,
+    user_images: [],
     ...initialData
   });
 
@@ -45,6 +46,14 @@ export const useBookForm = (initialData = {}) => {
         setFormData(prev => ({ ...prev, [name]: file }));
         return file; // Return file for cropping
       }
+    } else if (name === 'user_images') {
+      // Handle multiple file uploads
+      const newFiles = Array.from(files || []);
+      setFormData(prev => ({
+        ...prev,
+        user_images: [...(prev.user_images || []), ...newFiles]
+      }));
+      return null;
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -71,6 +80,7 @@ export const useBookForm = (initialData = {}) => {
       published_year: new Date().getFullYear(),
       isbn: '',
       cover_image: null,
+      user_images: [],
       ...newData
     });
     setValidationErrors({});

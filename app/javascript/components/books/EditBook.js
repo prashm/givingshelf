@@ -44,9 +44,31 @@ const EditBook = ({ setCurrentPage, bookId }) => {
     setCompletedCrop,
   } = useImageCrop();
 
+  // Separate crop instance for user_images
+  const {
+    imgRef: userImgRef,
+    canvasRef: userCanvasRef,
+    showCropModal: showUserCropModal,
+    originalImage: userOriginalImage,
+    crop: userCrop,
+    completedCrop: userCompletedCrop,
+    onImageLoad: onUserImageLoad,
+    onCropChange: onUserCropChange,
+    onCropComplete: onUserCropComplete,
+    handleCropComplete: handleUserCropComplete,
+    handleUseOriginal: handleUserUseOriginal,
+    openCropModal: openUserCropModal,
+    closeCropModal: closeUserCropModal,
+    setCrop: setUserCrop,
+    setCompletedCrop: setUserCompletedCrop,
+  } = useImageCrop();
+
   const [currentCoverImage, setCurrentCoverImage] = useState(null);
   const [book, setBook] = useState(null);
   const [loadingBook, setLoadingBook] = useState(true);
+  const [croppingImageIndex, setCroppingImageIndex] = useState(null);
+  const [existingUserImages, setExistingUserImages] = useState([]);
+  const [removedExistingImageIndices, setRemovedExistingImageIndices] = useState(new Set());
 
   const isMobile = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -74,11 +96,17 @@ const EditBook = ({ setCurrentPage, bookId }) => {
           // Set current cover image if it exists
           if (bookData.cover_image_url) {
             setCurrentCoverImage(bookData.cover_image_url);
+          } else {
+            setCurrentCoverImage(null);
           }
 
-          // Note: We might want to display existing user_images separately if needed, 
-          // but for now the form will just allow adding new ones.
-          // To display existing ones, we'd need a separate state or modify BookForm to accept existing images prop.
+          // Set existing user images
+          if (bookData.user_images_urls && bookData.user_images_urls.length > 0) {
+            setExistingUserImages(bookData.user_images_urls);
+          } else {
+            setExistingUserImages([]);
+          }
+          setRemovedExistingImageIndices(new Set());
         }
       } catch (err) {
         console.error('Error fetching book:', err);
@@ -104,6 +132,40 @@ const EditBook = ({ setCurrentPage, bookId }) => {
     if (croppedFile) {
       updateFormData({ cover_image: croppedFile });
     }
+  };
+
+  // Handle cropping for user_images
+  const handleUserImageCrop = (file, index) => {
+    setCroppingImageIndex(index);
+    openUserCropModal(file);
+  };
+
+  const handleUserCropCompleteWithProcessing = async () => {
+    const croppedFile = await handleUserCropComplete();
+    if (croppedFile && croppingImageIndex !== null) {
+      const newImages = [...(formData.user_images || [])];
+      newImages[croppingImageIndex] = croppedFile;
+      updateFormData({ user_images: newImages });
+      setCroppingImageIndex(null);
+    }
+  };
+
+  const handleUserUseOriginalWithProcessing = () => {
+    const originalFile = handleUserUseOriginal();
+    if (originalFile && croppingImageIndex !== null) {
+      // Keep the original file, just close the modal
+      setCroppingImageIndex(null);
+    }
+  };
+
+
+  // Handle removing existing image
+  const handleRemoveExistingImage = (index) => {
+    // Add to removed indices set
+    setRemovedExistingImageIndices(prev => new Set([...prev, index]));
+    
+    // Remove from displayed existing images
+    setExistingUserImages(prev => prev.filter((_, i) => i !== index));
   };
 
   // Handle book selection from autocomplete
@@ -188,15 +250,22 @@ const EditBook = ({ setCurrentPage, bookId }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Cover Image Section */}
-            <ImageUpload
-              formData={formData}
-              croppedImage={croppedImage}
-              onInputChange={handleImageInputChange}
-              isMobile={isMobile()}
-              currentCoverImage={currentCoverImage}
-              showCurrentImage={true}
-            />
+            {/* Cover Image Display */}
+            {currentCoverImage && (
+              <div className="mb-6">
+                <div className="flex justify-center">
+                  <img
+                    src={currentCoverImage}
+                    alt="Current book cover"
+                    className="w-16 h-20 sm:w-18 sm:h-24 md:w-20 md:h-28 object-cover rounded border shadow-sm"
+                    onError={(e) => {
+                      console.error('Error loading cover image:', currentCoverImage);
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Book Form Fields */}
             <BookForm
@@ -207,7 +276,10 @@ const EditBook = ({ setCurrentPage, bookId }) => {
               currentYear={currentYear}
               yearOptions={yearOptions}
               isEditMode={true}
-              existingUserImages={book?.user_images_urls || []}
+              existingUserImages={existingUserImages}
+              updateFormData={updateFormData}
+              onCropUserImage={handleUserImageCrop}
+              onRemoveExistingImage={handleRemoveExistingImage}
             />
 
             {/* Submit Button */}
@@ -231,7 +303,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
         </div>
       </div>
 
-      {/* Image Cropping Modal - Rendered outside main container */}
+      {/* Image Cropping Modal for Cover Image - Rendered outside main container */}
       <ImageCropper
         showCropModal={showCropModal}
         originalImage={originalImage}
@@ -245,9 +317,35 @@ const EditBook = ({ setCurrentPage, bookId }) => {
         onClose={closeCropModal}
       />
 
-      {/* Hidden canvas for cropping */}
+      {/* Image Cropping Modal for User Images - Rendered outside main container */}
+      <ImageCropper
+        showCropModal={showUserCropModal}
+        originalImage={userOriginalImage}
+        crop={userCrop}
+        completedCrop={userCompletedCrop}
+        imgRef={userImgRef}
+        onImageLoad={onUserImageLoad}
+        onCropChange={onUserCropChange}
+        onCropComplete={onUserCropComplete}
+        onUseCropped={handleUserCropCompleteWithProcessing}
+        onUseOriginal={handleUserUseOriginalWithProcessing}
+        onClose={() => {
+          closeUserCropModal();
+          setCroppingImageIndex(null);
+        }}
+      />
+
+      {/* Hidden canvas for cropping cover image */}
       <canvas
         ref={canvasRef}
+        style={{
+          display: 'none',
+        }}
+      />
+
+      {/* Hidden canvas for cropping user images */}
+      <canvas
+        ref={userCanvasRef}
         style={{
           display: 'none',
         }}

@@ -17,7 +17,10 @@ class Api::BooksController < ApplicationController
   end
 
   def create
-    @book = Current.user.books.build(book_params)
+    @book = Current.user.books.build(book_params.except(:api_cover_image))
+    
+    # Handle API cover image URL if provided (before save so it can be attached)
+    handle_api_cover_image(@book) if params[:book][:api_cover_image].present? && params[:book][:api_cover_image].is_a?(String)
 
     if @book.save
       render json: book_json(@book), status: :created
@@ -32,7 +35,10 @@ class Api::BooksController < ApplicationController
       return
     end
 
-    if @book.update(book_params)
+    # Handle API cover image URL if provided (before update so it can be attached)
+    handle_api_cover_image(@book) if params[:book][:api_cover_image].present? && params[:book][:api_cover_image].is_a?(String)
+
+    if @book.update(book_params.except(:api_cover_image))
       render json: book_json(@book)
     else
       render json: { errors: @book.errors.full_messages }, status: :unprocessable_entity
@@ -64,7 +70,39 @@ class Api::BooksController < ApplicationController
   end
 
   def book_params
-    params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year, :cover_image, user_images: [])
+    params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year, :cover_image, :api_cover_image, user_images: [])
+  end
+
+  def handle_api_cover_image(book)
+    api_url = params[:book][:api_cover_image]
+    return unless api_url.present?
+    
+    # Only process if it's a string URL, not a File object
+    return unless api_url.is_a?(String) && api_url.match?(/\Ahttps?:\/\//)
+
+    begin
+      # Ensure URL uses HTTPS
+      secure_url = api_url.gsub(/^http:/, 'https:')
+      
+      # Fetch the image from the URL
+      require 'open-uri'
+      downloaded_image = URI.open(secure_url, read_timeout: 10)
+      
+      # Determine content type from response or default to jpeg
+      content_type = downloaded_image.content_type || 'image/jpeg'
+      extension = content_type.split('/').last || 'jpg'
+      filename = "cover_image_#{SecureRandom.hex(8)}.#{extension}"
+      
+      # Attach the downloaded image to the book
+      book.cover_image.attach(
+        io: downloaded_image,
+        filename: filename,
+        content_type: content_type
+      )
+    rescue => e
+      Rails.logger.error("Failed to download cover image from #{api_url}: #{e.message}")
+      # Don't fail the request if image download fails, just log the error
+    end
   end
 
   def book_json(book)
@@ -79,7 +117,7 @@ class Api::BooksController < ApplicationController
       published_year: book.published_year,
       status: book.status,
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
-      user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.attachment.url } : [],
+      user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
       owner: {
         id: book.user.id,
         name: book.user.display_name,

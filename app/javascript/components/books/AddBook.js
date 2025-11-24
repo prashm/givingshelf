@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBooks } from '../../contexts/BookContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookForm } from '../../hooks/useBookForm';
@@ -32,24 +32,27 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
 
   const { createBook, loading, error } = useBooks();
   const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useBookForm();
+
+  // Separate crop instance for user_images
   const {
-    imgRef,
-    canvasRef,
-    showCropModal,
-    originalImage,
-    crop,
-    completedCrop,
-    croppedImage,
-    onImageLoad,
-    onCropChange,
-    onCropComplete,
-    handleCropComplete,
-    handleUseOriginal,
-    openCropModal,
-    closeCropModal,
-    setCrop,
-    setCompletedCrop,
+    imgRef: userImgRef,
+    canvasRef: userCanvasRef,
+    showCropModal: showUserCropModal,
+    originalImage: userOriginalImage,
+    crop: userCrop,
+    completedCrop: userCompletedCrop,
+    onImageLoad: onUserImageLoad,
+    onCropChange: onUserCropChange,
+    onCropComplete: onUserCropComplete,
+    handleCropComplete: handleUserCropComplete,
+    handleUseOriginal: handleUserUseOriginal,
+    openCropModal: openUserCropModal,
+    closeCropModal: closeUserCropModal,
+    setCrop: setUserCrop,
+    setCompletedCrop: setUserCompletedCrop,
   } = useImageCrop();
+
+  const [croppingImageIndex, setCroppingImageIndex] = useState(null);
 
   const isMobile = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -58,21 +61,31 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
   const handleImageInputChange = (e) => {
     const file = handleInputChange(e);
     if (file) {
-      openCropModal(file);
+      updateFormData({ cover_image: file });
     }
   };
 
-  const handleCropCompleteWithProcessing = async () => {
-    const croppedFile = await handleCropComplete();
-    if (croppedFile) {
-      updateFormData({ cover_image: croppedFile });
+  // Handle cropping for user_images
+  const handleUserImageCrop = (file, index) => {
+    setCroppingImageIndex(index);
+    openUserCropModal(file);
+  };
+
+  const handleUserCropCompleteWithProcessing = async () => {
+    const croppedFile = await handleUserCropComplete();
+    if (croppedFile && croppingImageIndex !== null) {
+      const newImages = [...(formData.user_images || [])];
+      newImages[croppingImageIndex] = croppedFile;
+      updateFormData({ user_images: newImages });
+      setCroppingImageIndex(null);
     }
   };
 
-  const handleUseOriginalWithProcessing = () => {
-    const originalFile = handleUseOriginal();
-    if (originalFile) {
-      updateFormData({ cover_image: originalFile });
+  const handleUserUseOriginalWithProcessing = () => {
+    const originalFile = handleUserUseOriginal();
+    if (originalFile && croppingImageIndex !== null) {
+      // Keep the original file, just close the modal
+      setCroppingImageIndex(null);
     }
   };
 
@@ -100,7 +113,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
         .then(res => res.blob())
         .then(blob => {
           const file = new File([blob], "cover_image.jpg", { type: "image/jpeg" });
-          updateFormData({ cover_image: file });
+          updateFormData({ api_cover_image: file });
         })
         .catch(err => console.error('Error fetching cover image:', err));
     }
@@ -141,10 +154,11 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
               onBookSelect={handleBookSelect}
               currentYear={currentYear}
               yearOptions={yearOptions}
+              updateFormData={updateFormData}
+              onCropUserImage={handleUserImageCrop}
               imageUploadSection={
                 <ImageUpload
                   formData={formData}
-                  croppedImage={croppedImage}
                   onInputChange={handleImageInputChange}
                   isMobile={isMobile()}
                 />
@@ -172,24 +186,27 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
         </div>
       </div>
 
-      {/* Image Cropping Modal - Rendered outside main container */}
+      {/* Image Cropping Modal for User Images - Rendered outside main container */}
       <ImageCropper
-        showCropModal={showCropModal}
-        originalImage={originalImage}
-        crop={crop}
-        completedCrop={completedCrop}
-        imgRef={imgRef}
-        onImageLoad={onImageLoad}
-        onCropChange={onCropChange}
-        onCropComplete={onCropComplete}
-        onUseCropped={handleCropCompleteWithProcessing}
-        onUseOriginal={handleUseOriginalWithProcessing}
-        onClose={closeCropModal}
+        showCropModal={showUserCropModal}
+        originalImage={userOriginalImage}
+        crop={userCrop}
+        completedCrop={userCompletedCrop}
+        imgRef={userImgRef}
+        onImageLoad={onUserImageLoad}
+        onCropChange={onUserCropChange}
+        onCropComplete={onUserCropComplete}
+        onUseCropped={handleUserCropCompleteWithProcessing}
+        onUseOriginal={handleUserUseOriginalWithProcessing}
+        onClose={() => {
+          closeUserCropModal();
+          setCroppingImageIndex(null);
+        }}
       />
 
-      {/* Hidden canvas for cropping */}
+      {/* Hidden canvas for cropping user images */}
       <canvas
-        ref={canvasRef}
+        ref={userCanvasRef}
         style={{
           display: 'none',
         }}

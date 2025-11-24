@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { useBooks } from '../../contexts/BookContext';
 
-const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
+const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
   const [myBooks, setMyBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, available, requested, donated
+  const { deleteBook: deleteBookFromAPI, getBook } = useBooks();
+  const [deletingBookId, setDeletingBookId] = useState(null);
+  const [viewingBookId, setViewingBookId] = useState(null);
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -34,16 +38,45 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
     }
   };
 
-  const handleDeleteBook = (bookId) => {
-    if (window.confirm('Are you sure you want to delete this book?')) {
-      // TODO: Delete book from API
-      setMyBooks(prev => prev.filter(book => book.id !== bookId));
+  const handleDeleteBook = async (bookId) => {
+    if (window.confirm('Are you sure you want to delete this book? This action cannot be undone.')) {
+      setDeletingBookId(bookId);
+      try {
+        const result = await deleteBookFromAPI(bookId);
+        if (result.success) {
+          // Remove the book from local state
+          setMyBooks(prev => prev.filter(book => book.id !== bookId));
+        } else {
+          alert(result.error || 'Failed to delete book. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error deleting book:', error);
+        alert('An error occurred while deleting the book. Please try again.');
+      } finally {
+        setDeletingBookId(null);
+      }
     }
   };
 
-  const handleViewBook = (bookId) => {
-    // TODO: Navigate to book detail page
-    console.log('View book:', bookId);
+  const handleViewBook = async (bookId) => {
+    setViewingBookId(bookId);
+    try {
+      const bookData = await getBook(bookId);
+      if (bookData) {
+        if (onViewBook) {
+          // Use callback if provided (to set selectedBook in parent)
+          onViewBook(bookData);
+        }
+        setCurrentPage('bookDetails', { selectedBook: bookData });
+      } else {
+        alert('Failed to load book details. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error fetching book:', error);
+      alert('An error occurred while loading the book. Please try again.');
+    } finally {
+      setViewingBookId(null);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -199,10 +232,17 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleViewBook(book.id)}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                      disabled={viewingBookId === book.id}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <EyeIcon className="h-4 w-4" />
-                      View
+                      {viewingBookId === book.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
+                      ) : (
+                        <>
+                          <EyeIcon className="h-4 w-4" />
+                          View
+                        </>
+                      )}
                     </button>
 
                     <button
@@ -215,9 +255,15 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook }) => {
 
                     <button
                       onClick={() => handleDeleteBook(book.id)}
-                      className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                      disabled={deletingBookId === book.id}
+                      className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete book"
                     >
-                      <TrashIcon className="h-4 w-4" />
+                      {deletingBookId === book.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-700"></div>
+                      ) : (
+                        <TrashIcon className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>
