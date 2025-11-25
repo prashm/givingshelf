@@ -40,8 +40,6 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 # gem "image_processing", "~> 1.2"
 
-gem "tailwindcss-ruby"
-gem "tailwindcss-rails"
 gem "activerecord-session_store"
 gem "rotp"
 gem "aws-sdk-s3", require: false
