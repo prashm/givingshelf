@@ -31,9 +31,16 @@ class Book < ApplicationRecord
 
     if zip_code.present?
       books = books.where(users: { zip_code: zip_code })
+      # Order by matching zip_code first, then by created_at
+      books = books.order(
+        Arel.sql("CASE WHEN users.zip_code = #{ActiveRecord::Base.connection.quote(zip_code)} THEN 0 ELSE 1 END"),
+        created_at: :desc
+      )
+    else
+      books = books.order(created_at: :desc)
     end
 
-    books.order("users.zip_code = ? DESC, books.created_at DESC", zip_code)
+    books
   end
 
   def cover_image_url
