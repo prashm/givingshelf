@@ -94,67 +94,11 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
         )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Donate Books</h3>
-            <p className="text-gray-600 mb-4">Share your books with the community</p>
-            <button
-              onClick={() => {
-                if (currentUser) {
-                  setCurrentPage('donate');
-                } else {
-                  onOpenLoginModal('donate');
-                }
-              }}
-              className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
-            >
-              Donate Now
-            </button>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Browse Books</h3>
-            <p className="text-gray-600 mb-4">Discover books in your area</p>
-            <button
-              onClick={() => setCurrentPage('browse')}
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-            >
-              Browse
-            </button>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-md text-center hover:shadow-lg transition-shadow">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Join Community</h3>
-            <p className="text-gray-600 mb-4">Connect with fellow book lovers</p>
-            <button
-              onClick={() => setCurrentPage('profile')}
-              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
-            >
-              Join
-            </button>
-          </div>
-        </div>
 
         {/* Recent Books */}
         {recentBooks.length > 0 && (
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">Recently Added Books</h2>
+            <h2 className="text-2xl font-bold mb-6">Recently Added Books In Your Community</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recentBooks.map((book) => (
                 <div
@@ -162,13 +106,22 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
                   className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleBookSelect(book)}
                 >
-                  {book.cover_image_url && (
-                    <img
-                      src={book.cover_image_url}
-                      alt={book.title}
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
+                  <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
+                    {book.cover_image_url ? (
+                      <img
+                        src={book.cover_image_url}
+                        alt={book.title}
+                        className="img-box"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-400">
+                        <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        <span className="text-sm">No Cover</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-lg mb-2 line-clamp-2">{book.title}</h3>
                     <p className="text-gray-600 mb-2">by {book.author}</p>
@@ -240,24 +193,22 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
         </div>
 
         {/* Call to Action */}
-        <div className="text-center mt-12">
-          <h2 className="text-3xl font-bold mb-4">Ready to Share Your Books?</h2>
-          <p className="text-gray-600 mb-6">
-            Find books close to home and build meaningful connections.
-          </p>
-          <button
-            onClick={() => {
-              if (currentUser) {
-                setCurrentPage('donate');
-              } else {
-                onOpenLoginModal('donate');
-              }
-            }}
-            className="bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-emerald-700 transition-colors"
-          >
-            Start Donating Today
-          </button>
-        </div>
+        { !currentUser && ( 
+          <div className="text-center mt-12">
+            <h2 className="text-3xl font-bold mb-4">Ready to Share Your Books?</h2>
+            <p className="text-gray-600 mb-6">
+              Find books close to home and build meaningful connections.
+            </p>
+            <button
+              onClick={() => {                
+                  onOpenLoginModal('donate');
+              }}
+              className="bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Start Donating Today
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

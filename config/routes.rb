@@ -21,6 +21,9 @@ Rails.application.routes.draw do
     
     resources :book_requests, only: [:create, :update, :destroy]
     
+    # Location detection
+    get '/location/detect_zip', to: 'location#detect_zip'
+    
     # Authentication routes
     post '/login', to: 'sessions#create'
     post '/verify_otp', to: 'sessions#verify_otp'

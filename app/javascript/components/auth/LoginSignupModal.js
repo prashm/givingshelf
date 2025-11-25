@@ -174,7 +174,7 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
         {/* Title */}
         <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">Sign In</h2>
         <p className="text-gray-600 text-center mb-8">
-          Enter your email, and we'll send a code to your inbox. No need for passwords — like magic!
+          Enter your email, and we'll send a code to your inbox. No need for passwords!
         </p>
 
         {/* Form */}

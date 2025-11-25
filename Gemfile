@@ -45,6 +45,7 @@ gem "tailwindcss-rails"
 gem "activerecord-session_store"
 gem "rotp"
 gem "aws-sdk-s3", require: false
+gem "geocoder"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 

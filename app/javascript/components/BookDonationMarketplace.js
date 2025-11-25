@@ -10,19 +10,20 @@ import BookDetail from './books/BookDetail';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
-import {
-  MagnifyingGlassIcon,
-  ArrowUpTrayIcon,
-  UserIcon,
-  ChatBubbleLeftRightIcon,
-  MapPinIcon,
-  ShieldCheckIcon
+import { 
+  MagnifyingGlassIcon, 
+  ArrowUpTrayIcon, 
+  UserIcon, 
+  ChatBubbleLeftRightIcon, 
+  MapPinIcon, 
+  ShieldCheckIcon 
 } from '@heroicons/react/24/outline';
+import axios from '../lib/axios';
 
 // Main App Component
 const BookDonationMarketplace = () => {
-  const { currentUser } = useAuth();
-  const { books, fetchBooks, loading } = useBooks();
+  const { currentUser, loading: authLoading } = useAuth();
+  const { books, fetchBooks, searchBooks, loading } = useBooks();
   const [currentPage, _setPageState] = useState('home');
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,11 +33,92 @@ const BookDonationMarketplace = () => {
   const [redirectReason, setRedirectReason] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
-
-  // Load books on mount
+  const [zipCodeDetected, setZipCodeDetected] = useState(false);
+  
+  // Detect zip code on mount and when user logs in
   useEffect(() => {
-    fetchBooks();
-  }, []);
+    // Don't run until auth check is complete
+    if (authLoading) return;
+
+    const detectZipCode = async () => {
+      // First, check if user is signed in and has a zip code
+      if (currentUser && currentUser.zip_code) {
+        setZipCode(currentUser.zip_code);
+        setZipCodeDetected(true);
+        // Filter books by zip code
+        searchBooks('', currentUser.zip_code);
+        return;
+      }
+
+      // Only detect from IP if we haven't detected yet and user is not signed in or has no zip
+      if (!zipCodeDetected && (!currentUser || !currentUser.zip_code)) {
+        // Define helper function for IP-based detection
+        const detectZipFromIP = async () => {
+          try {
+            const response = await axios.get('/api/location/detect_zip', {
+              withCredentials: true
+            });
+            
+            if (response.data.zip_code) {
+              setZipCode(response.data.zip_code);
+              setZipCodeDetected(true);
+              // Filter books by detected zip code
+              searchBooks('', response.data.zip_code);
+            } else {
+              // If zip detection fails, just load all books
+              setZipCodeDetected(true); // Mark as detected even if failed, to avoid retrying
+              fetchBooks();
+            }
+          } catch (error) {
+            console.error('Error detecting zip code:', error);
+            // If detection fails, just load all books
+            setZipCodeDetected(true); // Mark as detected even if failed, to avoid retrying
+            fetchBooks(); // Load all books even if zip detection fails
+          }
+        };
+
+        // Try browser geolocation first (works with DevTools simulation)
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const { latitude, longitude } = position.coords;
+              try {
+                // Use coordinates for reverse geocoding
+                const response = await axios.get('/api/location/detect_zip', {
+                  params: { latitude, longitude },
+                  withCredentials: true
+                });
+                
+                if (response.data.zip_code) {
+                  setZipCode(response.data.zip_code);
+                  setZipCodeDetected(true);
+                  searchBooks('', response.data.zip_code);
+                } else {
+                  // Fallback to IP-based detection
+                  detectZipFromIP();
+                }
+              } catch (error) {
+                console.error('Error detecting zip code from coordinates:', error);
+                // Fallback to IP-based detection
+                detectZipFromIP();
+              }
+            },
+            (error) => {
+              console.log('Geolocation not available or denied, falling back to IP:', error);
+              // Fallback to IP-based detection
+              detectZipFromIP();
+            },
+            { timeout: 5000, maximumAge: 600000 } // Cache for 10 minutes
+          );
+        } else {
+          // Browser geolocation not supported, use IP-based detection
+          detectZipFromIP();
+        }
+      }
+    };
+
+    detectZipCode();
+  }, [currentUser, authLoading, zipCodeDetected, searchBooks, fetchBooks]);
 
   // Handle browser history navigation
   useEffect(() => {
@@ -72,18 +154,22 @@ const BookDonationMarketplace = () => {
       setSearchResults(books);
     }
   }, [books]);
-
+  
   const handleSearch = () => {
-    // Filter books based on search query (title or author)
+    // Use searchBooks from context which handles zip code filtering on backend
+    if (zipCode) {
+      searchBooks(searchQuery, zipCode);
+    } else {
+      // If no zip code, filter locally
     const query = searchQuery.toLowerCase();
-    const results = Array.isArray(books) ? books.filter(book =>
-      book.title.toLowerCase().includes(query) ||
+    const results = Array.isArray(books) ? books.filter(book => 
+      book.title.toLowerCase().includes(query) || 
       book.author.toLowerCase().includes(query)
     ) : [];
-
     setSearchResults(results);
+    }
   };
-
+  
   const handleBookSelect = (book) => {
     setSelectedBook(book);
     if (!currentUser) {
@@ -93,22 +179,22 @@ const BookDonationMarketplace = () => {
       setCurrentPage('bookDetails', { selectedBook: book });
     }
   };
-
+  
   const handleEditBook = (bookId) => {
     setEditingBookId(bookId);
     setCurrentPage('editBook', { editingBookId: bookId });
   };
-
+  
   const handleDonateBook = (bookData) => {
     // This will be handled by the BookContext
     setCurrentPage('home');
   };
-
+  
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Home
-          books={searchResults}
+        return <Home 
+          books={searchResults} 
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           zipCode={zipCode}
@@ -120,32 +206,32 @@ const BookDonationMarketplace = () => {
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'login':
-        return <LoginPage
+        return <LoginPage 
           setCurrentPage={setCurrentPage}
         />;
       case 'signup':
-        return <SignupPage
+        return <SignupPage 
           setCurrentPage={setCurrentPage}
         />;
       case 'donate':
-        return <AddBook
+        return <AddBook 
           setCurrentPage={setCurrentPage}
           setRedirectReason={setRedirectReason}
         />;
       case 'editBook':
-        return <EditBook
+        return <EditBook 
           setCurrentPage={setCurrentPage}
           bookId={editingBookId}
         />;
       case 'bookDetails':
-        return <BookDetail
-          book={selectedBook}
+        return <BookDetail 
+          book={selectedBook} 
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onEditBook={handleEditBook}
         />;
       case 'browse':
-        return <BookList
+        return <BookList 
           books={searchResults}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -157,32 +243,32 @@ const BookDonationMarketplace = () => {
           setCurrentPage={setCurrentPage}
         />;
       case 'messages':
-        return <MessagesPage
+        return <MessagesPage 
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
         />;
       case 'profile':
-        return <Profile
-          currentUser={currentUser}
+        return <Profile 
+          currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
           redirectReason={redirectReason}
           clearRedirectReason={() => setRedirectReason(null)}
         />;
       case 'myBooks':
-        return <MyBooks
-          currentUser={currentUser}
+        return <MyBooks 
+          currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
           onViewBook={handleBookSelect}
         />;
       case 'myRequests':
-        return <MyRequests
-          currentUser={currentUser}
+        return <MyRequests 
+          currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
         />;
       default:
-        return <Home
-          books={searchResults}
+        return <Home 
+          books={searchResults} 
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           zipCode={zipCode}
@@ -195,7 +281,7 @@ const BookDonationMarketplace = () => {
         />;
     }
   };
-
+  
   const { logout } = useAuth();
 
   const handleLoginSuccess = (profileIncomplete) => {
@@ -230,8 +316,8 @@ const BookDonationMarketplace = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar
-        currentUser={currentUser}
+      <Navbar 
+        currentUser={currentUser} 
         setCurrentPage={setCurrentPage}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}

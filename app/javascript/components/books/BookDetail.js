@@ -104,11 +104,11 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
               {book.cover_image_url ? (
                 <div className="mb-6">
                   <div className="flex justify-center">
-                    <img
-                      src={book.cover_image_url}
-                      alt={book.title}
+                <img
+                  src={book.cover_image_url}
+                  alt={book.title}
                       className="w-16 h-20 sm:w-18 sm:h-24 md:w-20 md:h-28 object-cover rounded border shadow-sm"
-                    />
+                />
                   </div>
                 </div>
               ) : (
@@ -221,7 +221,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
               <h3 className="text-lg font-semibold text-gray-900 mb-3">About This Book</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
-                  <UserIcon className="h-5 w-5 text-gray-400" />
+                  <UserIcon className="h-4 w-4 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Donor</span>
                     <p className="text-gray-900">{book.donor_name || 'Anonymous'}</p>
@@ -229,7 +229,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <MapPinIcon className="h-5 w-5 text-gray-400" />
+                  <MapPinIcon className="h-4 w-4 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Location</span>
                     <p className="text-gray-900">{book.donor_zip_code || 'Not specified'}</p>
@@ -237,7 +237,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  <CalendarIcon className="h-4 w-4 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Added</span>
                     <p className="text-gray-900">
@@ -251,7 +251,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <BookOpenIcon className="h-5 w-5 text-gray-400" />
+                  <BookOpenIcon className="h-4 w-4 text-gray-400" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Status</span>
                     <p className="text-gray-900 capitalize">{book.status || 'Available'}</p>
