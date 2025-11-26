@@ -1,6 +1,6 @@
 class Api::BooksController < ApplicationController
-  before_action :require_authentication, except: [ :index, :show, :search ]
-  before_action :set_book, only: [ :show, :update, :destroy ]
+  before_action :require_authentication, except: [ :index, :show, :search, :track_view ]
+  before_action :set_book, only: [ :show, :update, :destroy, :track_view ]
 
   def index
     @books = Book.available.includes(:user).recent
@@ -63,6 +63,14 @@ class Api::BooksController < ApplicationController
     render json: @books.map { |book| book_json(book) }
   end
 
+  def track_view
+    # Only increment view count if the viewer is not the book owner
+    if Current.user.nil? || Current.user.id != @book.user_id
+      @book.increment!(:view_count)
+    end
+    render json: { view_count: @book.view_count }
+  end
+
   private
 
   def set_book
@@ -118,6 +126,7 @@ class Api::BooksController < ApplicationController
       status: book.status,
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
+      view_count: book.view_count || 0,
       owner: {
         id: book.user.id,
         name: book.user.display_name,

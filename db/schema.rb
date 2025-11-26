@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_03_042844) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_26_213928) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -75,6 +75,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_03_042844) do
     t.string "genre"
     t.integer "published_year"
     t.string "status", default: "available"
+    t.integer "view_count", default: 0, null: false
     t.index ["user_id"], name: "index_books_on_user_id"
   end
 

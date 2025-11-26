@@ -91,6 +91,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
 
   // Handle book selection from autocomplete
   const handleBookSelect = (book) => {
+    const secureThumbnailUrl = book.thumbnail ? book.thumbnail.replace('http:', 'https:') : null;
 
     // Update form data with book information
     updateFormData({
@@ -100,16 +101,14 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
       published_year: book.publishedDate ? new Date(book.publishedDate).getFullYear() : new Date().getFullYear(),
       isbn: book.isbn || '',
       summary: book.description || '',
-      api_cover_image: book.thumbnail || null, // Store API cover image URL
+      api_cover_image: secureThumbnailUrl, // Store API cover image URL for backend to fetch
       // Don't overwrite condition - let user choose
     });
 
-    // If book has a cover image, fetch it and set it as cover_image
+    // If book has a cover image, fetch it and set it as api_cover_image file for backend
     if (book.thumbnail) {
-      console.log('Fetching book cover:', book.thumbnail);
-      const secureUrl = book.thumbnail.replace('http:', 'https:');
-
-      fetch(secureUrl)
+      console.log('Fetching book cover:', secureThumbnailUrl);
+      fetch(secureThumbnailUrl)
         .then(res => res.blob())
         .then(blob => {
           const file = new File([blob], "cover_image.jpg", { type: "image/jpeg" });

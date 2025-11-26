@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
+import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline';
+import axios from '../../lib/axios';
 
 const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
   const [showContact, setShowContact] = useState(false);
   const [requestStatus, setRequestStatus] = useState('idle'); // idle, requesting, success, error
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [viewCount, setViewCount] = useState(book?.view_count || 0);
+  const [viewTracked, setViewTracked] = useState(false);
 
   if (!book) {
     return (
@@ -25,6 +28,36 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
       </div>
     );
   }
+
+  // Initialize view count from book prop
+  useEffect(() => {
+    if (book) {
+      setViewCount(book.view_count || 0);
+    }
+  }, [book?.id]);
+
+  // Track view when component loads (only if viewer is not the owner)
+  useEffect(() => {
+    if (book && !viewTracked) {
+      const isOwner = book.owner?.id === currentUser?.id;
+      if (!isOwner) {
+        // Track view for non-owners
+        axios.post(`/api/books/${book.id}/track_view`)
+          .then(response => {
+            setViewCount(response.data.view_count);
+            setViewTracked(true);
+          })
+          .catch(error => {
+            console.error('Error tracking view:', error);
+            // Still set as tracked to avoid multiple calls
+            setViewTracked(true);
+          });
+      } else {
+        // If owner, just mark as tracked
+        setViewTracked(true);
+      }
+    }
+  }, [book?.id, currentUser?.id, viewTracked]);
 
   const handleRequestBook = async () => {
     if (!currentUser) {
@@ -123,7 +156,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              {currentUser ? (
+              {book.owner?.id !== currentUser?.id ? (
                 <>
                   {requestStatus === 'success' ? (
                     <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -149,15 +182,15 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                   )}
                 </>
               ) : (
-                <button
-                  onClick={() => setCurrentPage('login')}
-                  className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition-colors"
-                >
-                  Log in to Request
-                </button>
+                <div className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 flex items-center justify-center gap-2">
+                  <EyeIcon className="h-5 w-5 text-gray-600" />
+                  <span className="text-gray-700 font-medium">
+                    {viewCount} {viewCount === 1 ? 'view' : 'views'}
+                  </span>
+                </div>
               )}
 
-              {onEditBook && book.user_id === currentUser?.id && (
+              {onEditBook && book.owner?.id === currentUser?.id && (
                 <button
                   onClick={() => onEditBook(book.id)}
                   className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition-colors mb-3"
@@ -166,12 +199,14 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                 </button>
               )}
               
-              <button
-                onClick={() => setCurrentPage('donate')}
-                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Donate a Similar Book
-              </button>
+              {book.owner?.id !== currentUser?.id && (
+                <button
+                  onClick={() => setCurrentPage('donate')}
+                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Donate a Similar Book
+                </button>
+              )}
             </div>
 
             {/* Book Stats */}

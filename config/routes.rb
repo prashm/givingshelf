@@ -9,6 +9,9 @@ Rails.application.routes.draw do
         get :search
         get :my_books
       end
+      member do
+        post :track_view
+      end
     end
     
     resources :users, only: [:show, :update] do

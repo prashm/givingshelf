@@ -195,7 +195,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
                     <img
                       src={book.cover_image_url}
                       alt={book.title}
-                      className="w-full h-full object-cover"
+                      className="img-box"
                     />
                   ) : (
                     <div className="text-gray-400 text-center">
