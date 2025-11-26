@@ -4,8 +4,8 @@ source "https://rubygems.org"
 gem "rails", "~> 8.0.3"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
-# Use sqlite3 as the database for Active Record
-gem "sqlite3", ">= 2.1"
+# Use PostgreSQL as the database for Active Record
+gem "pg"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
 # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
@@ -44,6 +44,7 @@ gem "activerecord-session_store"
 gem "rotp"
 gem "aws-sdk-s3", require: false
 gem "geocoder"
+gem "openssl"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 
@@ -56,6 +57,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # For development email testing [https://github.com/ryanb/letter_opener]
+  gem "letter_opener"
 end
 
 group :development do
