@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline';
 import axios from '../../lib/axios';
+import { useBooks } from '../../contexts/BookContext';
 
 const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
+  const { getBook } = useBooks();
   const [showContact, setShowContact] = useState(false);
   const [requestStatus, setRequestStatus] = useState('idle'); // idle, requesting, success, error
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -29,19 +31,33 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
     );
   }
 
-  // Initialize view count from book prop
+  // Initialize view count from book prop and reset tracking when book changes
   useEffect(() => {
     if (book) {
       setViewCount(book.view_count || 0);
+      setViewTracked(false); // Reset tracking when book changes
     }
   }, [book?.id]);
 
-  // Track view when component loads (only if viewer is not the owner)
+  // Fetch view count when component loads
   useEffect(() => {
-    if (book && !viewTracked) {
+    if (book) {
       const isOwner = book.owner?.id === currentUser?.id;
-      if (!isOwner) {
-        // Track view for non-owners
+      
+      if (isOwner) {
+        // For owners: Fetch book data to get latest view count (without incrementing)
+        // This ensures they see updated count if others viewed their book
+        getBook(book.id)
+          .then(bookData => {
+            if (bookData && bookData.view_count !== undefined) {
+              setViewCount(bookData.view_count);
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching view count:', error);
+          });
+      } else if (!viewTracked) {
+        // For non-owners: Track view (increment) only once per page load
         axios.post(`/api/books/${book.id}/track_view`)
           .then(response => {
             setViewCount(response.data.view_count);
@@ -49,15 +65,11 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
           })
           .catch(error => {
             console.error('Error tracking view:', error);
-            // Still set as tracked to avoid multiple calls
             setViewTracked(true);
           });
-      } else {
-        // If owner, just mark as tracked
-        setViewTracked(true);
       }
     }
-  }, [book?.id, currentUser?.id, viewTracked]);
+  }, [book?.id, currentUser?.id, viewTracked, getBook]);
 
   const handleRequestBook = async () => {
     if (!currentUser) {
