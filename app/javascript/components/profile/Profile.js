@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageCropper from '../common/ImageCropper';
@@ -18,7 +18,17 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
   const [isSaving, setIsSaving] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
+  const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  // Detect if device is mobile
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (typeof window !== 'undefined' && window.innerWidth < 768);
+  };
 
   // Image cropping hook
   const {
@@ -134,14 +144,50 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         return newErrors;
       });
 
+      // Close menu if open
+      setShowImageSourceMenu(false);
+
       // Open crop modal
       openCropModal(file);
     }
-    // Reset input value so same file can be selected again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  };
+
+  const handleCameraIconClick = () => {
+    if (isMobile()) {
+      setShowImageSourceMenu(!showImageSourceMenu);
+    } else {
+      // On desktop, just open file picker
+      fileInputRef.current?.click();
     }
   };
+
+  const handleTakePhoto = () => {
+    cameraInputRef.current?.click();
+    setShowImageSourceMenu(false);
+  };
+
+  const handleChooseFromGallery = () => {
+    galleryInputRef.current?.click();
+    setShowImageSourceMenu(false);
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target) && 
+          !event.target.closest('button[title="Change profile picture"]')) {
+        setShowImageSourceMenu(false);
+      }
+    };
+
+    if (showImageSourceMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showImageSourceMenu]);
 
   const handleCropCompleteWithProcessing = async () => {
     const croppedFile = await handleCropComplete();
@@ -360,13 +406,59 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                 )}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 bg-emerald-600 text-white rounded-full p-2 hover:bg-emerald-700 transition-colors shadow-lg"
+                  onClick={handleCameraIconClick}
+                  className="absolute bottom-0 right-0 bg-emerald-600 text-white rounded-full p-2 hover:bg-emerald-700 transition-colors shadow-lg z-10"
                   title="Change profile picture"
                 >
                   <CameraIcon className="h-5 w-5" />
                 </button>
+                
+                {/* Mobile Image Source Menu */}
+                {showImageSourceMenu && isMobile() && (
+                  <div 
+                    ref={menuRef}
+                    className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-[180px]"
+                  >
+                    <button
+                      type="button"
+                      onClick={handleTakePhoto}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 rounded-t-lg transition-colors"
+                    >
+                      <CameraIcon className="h-5 w-5 text-gray-700" />
+                      <span className="text-gray-700">Take Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleChooseFromGallery}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 rounded-b-lg transition-colors border-t border-gray-200"
+                    >
+                      <PhotoIcon className="h-5 w-5 text-gray-700" />
+                      <span className="text-gray-700">Choose from Gallery</span>
+                    </button>
+                  </div>
+                )}
               </div>
+              
+              {/* Camera input (with capture attribute) */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageInputChange}
+                className="hidden"
+              />
+              
+              {/* Gallery input (without capture attribute) */}
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageInputChange}
+                className="hidden"
+              />
+              
+              {/* Desktop file input (fallback) */}
               <input
                 ref={fileInputRef}
                 type="file"

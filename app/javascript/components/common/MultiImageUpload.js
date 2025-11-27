@@ -46,12 +46,12 @@ const MultiImageUpload = ({
       <label className="block text-sm font-medium text-gray-700">
         Photos ({allImagesCount}/{maxImages})
       </label>
-      
+
       {/* Existing Images Grid */}
       {existingImages.length > 0 && (
-        <div className="grid grid-cols-6 gap-2">
+        <div>
           {existingImages.map((url, index) => (
-            <div key={`existing-${index}`} className="relative group aspect-square rounded-lg border-2 border-gray-200" style={{ overflow: 'visible' }}>
+            <div key={`existing-${index}`} className="relative group rounded-lg border-2 border-gray-200" style={{ overflow: 'visible' }}>
               <div className="w-full h-full overflow-hidden rounded-lg">
                 <img
                   src={url}
@@ -59,6 +59,13 @@ const MultiImageUpload = ({
                   className="img-box"
                 />
               </div>
+
+              {/* Overlay for better button visibility */}
+              <div
+                className="absolute inset-0 transition-opacity pointer-events-none rounded-lg opacity-0 group-hover:opacity-100"
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}
+              ></div>
+
               {/* Action buttons - Top right corner */}
               <div className="absolute flex gap-1" style={{ top: '4px', right: '4px', zIndex: 100 }}>
                 {onCropExisting && (
@@ -111,9 +118,9 @@ const MultiImageUpload = ({
 
       {/* New Images Grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-6 gap-2">
+        <div>
           {images.map((file, index) => (
-            <div key={index} className="relative group aspect-square rounded-lg border-2 border-emerald-500" style={{ overflow: 'visible' }}>
+            <div key={index} className="relative group rounded-lg border-2 border-emerald-500" style={{ overflow: 'visible' }}>
               <div className="w-full h-full overflow-hidden rounded-lg">
                 <img
                   src={URL.createObjectURL(file)}
@@ -122,8 +129,11 @@ const MultiImageUpload = ({
                 />
               </div>
               {/* Overlay for better button visibility */}
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity pointer-events-none rounded-lg"></div>
-              
+              <div
+                className="absolute inset-0 transition-opacity pointer-events-none rounded-lg opacity-0 group-hover:opacity-100"
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}
+              ></div>
+
               {/* Action buttons - Top right corner */}
               <div className="absolute flex gap-1" style={{ top: '4px', right: '4px', zIndex: 100 }}>
                 {onCropImage ? (
@@ -182,9 +192,8 @@ const MultiImageUpload = ({
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          className={`border-2 border-dashed rounded-lg p-8 mt-4 text-center transition-colors ${
-            isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300'
-          }`}
+          className={`border-2 border-dashed rounded-lg p-8 mt-4 text-center transition-colors ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300'
+            }`}
         >
           <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
           <div className="mt-4">
