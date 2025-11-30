@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { PhotoIcon, XMarkIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import React, { useRef, useState, useEffect } from 'react';
+import { PhotoIcon, XMarkIcon, PencilSquareIcon, CameraIcon } from '@heroicons/react/24/outline';
 
 const MultiImageUpload = ({ 
   images = [], 
@@ -12,7 +12,17 @@ const MultiImageUpload = ({
   maxImages = 10
 }) => {
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+  const menuRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
+
+  // Detect if device is mobile
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (typeof window !== 'undefined' && window.innerWidth < 768);
+  };
 
   const handleFileSelect = (files) => {
     const newFiles = Array.from(files).slice(0, maxImages - images.length - existingImages.length);
@@ -20,6 +30,42 @@ const MultiImageUpload = ({
       onImagesChange([...images, ...newFiles]);
     }
   };
+
+  const handleAddPhotosClick = () => {
+    if (isMobile()) {
+      setShowImageSourceMenu(!showImageSourceMenu);
+    } else {
+      // On desktop, just open file picker
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleTakePhoto = () => {
+    cameraInputRef.current?.click();
+    setShowImageSourceMenu(false);
+  };
+
+  const handleChooseFromGallery = () => {
+    galleryInputRef.current?.click();
+    setShowImageSourceMenu(false);
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowImageSourceMenu(false);
+      }
+    };
+
+    if (showImageSourceMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showImageSourceMenu]);
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -188,29 +234,81 @@ const MultiImageUpload = ({
 
       {/* Add More Button */}
       {canAddMore && (
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`border-2 border-dashed rounded-lg p-8 mt-4 text-center transition-colors ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300'
-            }`}
-        >
-          <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-emerald-600 hover:text-emerald-700 font-medium"
-            >
-              Add Photos
-            </button>
-            <span className="text-gray-600 ml-2"> or drag and drop</span>
+        <div className="relative">
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            className={`border-2 border-dashed rounded-lg p-8 mt-4 text-center transition-colors ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300'
+              }`}
+          >
+            <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleAddPhotosClick}
+                className="text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                Add Photos
+              </button>
+              {!isMobile() && <span className="text-gray-600 ml-2"> or drag and drop</span>}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {maxImages - allImagesCount} more {maxImages - allImagesCount === 1 ? 'photo' : 'photos'} can be added
+            </p>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {maxImages - allImagesCount} more {maxImages - allImagesCount === 1 ? 'photo' : 'photos'} can be added
-          </p>
+
+          {/* Mobile Image Source Menu */}
+          {showImageSourceMenu && isMobile() && (
+            <div 
+              ref={menuRef}
+              className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-[180px]"
+            >
+              <button
+                type="button"
+                onClick={handleTakePhoto}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 rounded-t-lg transition-colors"
+              >
+                <CameraIcon className="h-5 w-5 text-gray-700" />
+                <span className="text-gray-700">Take Photo</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleChooseFromGallery}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 rounded-b-lg transition-colors border-t border-gray-200"
+              >
+                <PhotoIcon className="h-5 w-5 text-gray-700" />
+                <span className="text-gray-700">Choose from Gallery</span>
+              </button>
+            </div>
+          )}
+
+          {/* Hidden inputs */}
           <input
             ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            style={{ display: 'none' }}
+            onChange={(e) => handleFileSelect(e.target.files)}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                handleFileSelect([file]);
+              }
+            }}
+          />
+          <input
+            ref={galleryInputRef}
             type="file"
             multiple
             accept="image/*"
