@@ -3,8 +3,9 @@ import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, Chev
 import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
 
-const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
+const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook }) => {
   const { getBook } = useBooks();
+  const [book, setBook] = useState(initialBook);
   const [showContact, setShowContact] = useState(false);
   const [requestStatus, setRequestStatus] = useState('idle'); // idle, requesting, success, error
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -31,6 +32,11 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
     );
   }
 
+  // Sync state with prop
+  useEffect(() => {
+    setBook(initialBook);
+  }, [initialBook]);
+
   // Initialize view count from book prop and reset tracking when book changes
   useEffect(() => {
     if (book) {
@@ -43,14 +49,17 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
   useEffect(() => {
     if (book) {
       const isOwner = book.owner?.id === currentUser?.id;
-      
+
       if (isOwner) {
         // For owners: Fetch book data to get latest view count (without incrementing)
         // This ensures they see updated count if others viewed their book
         getBook(book.id)
           .then(bookData => {
-            if (bookData && bookData.view_count !== undefined) {
-              setViewCount(bookData.view_count);
+            if (bookData) {
+              setBook(bookData);
+              if (bookData.view_count !== undefined) {
+                setViewCount(bookData.view_count);
+              }
             }
           })
           .catch(error => {
@@ -79,11 +88,11 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
     }
 
     setRequestStatus('requesting');
-    
+
     try {
       // TODO: Make API call to request book
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      
+
       setRequestStatus('success');
       setShowContact(true);
     } catch (error) {
@@ -136,7 +145,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
             </svg>
             Back to search results
           </button>
-          
+
           <h1 className="text-3xl font-bold text-gray-900">{book.title}</h1>
           <p className="text-xl text-gray-600">by {book.author}</p>
         </div>
@@ -149,11 +158,11 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
               {book.cover_image_url ? (
                 <div className="mb-6">
                   <div className="flex justify-center">
-                <img
-                  src={book.cover_image_url}
-                  alt={book.title}
+                    <img
+                      src={book.cover_image_url}
+                      alt={book.title}
                       className="w-16 h-20 sm:w-18 sm:h-24 md:w-20 md:h-28 object-cover rounded border shadow-sm"
-                />
+                    />
                   </div>
                 </div>
               ) : (
@@ -186,7 +195,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                       {requestStatus === 'requesting' ? 'Sending Request...' : 'Request This Book'}
                     </button>
                   )}
-                  
+
                   {requestStatus === 'error' && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">
                       Failed to send request. Please try again.
@@ -210,7 +219,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                   Edit This Book
                 </button>
               )}
-              
+
               {book.owner?.id !== currentUser?.id && (
                 <button
                   onClick={() => setCurrentPage('donate')}
@@ -274,7 +283,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                     <p className="text-gray-900">{book.donor_name || 'Anonymous'}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <MapPinIcon className="h-4 w-4 text-gray-400" />
                   <div>
@@ -282,7 +291,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                     <p className="text-gray-900">{book.donor_zip_code || 'Not specified'}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <CalendarIcon className="h-4 w-4 text-gray-400" />
                   <div>
@@ -296,7 +305,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <BookOpenIcon className="h-4 w-4 text-gray-400" />
                   <div>
@@ -374,7 +383,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
 
       {/* Image Modal/Carousel */}
       {showImageModal && book.user_images_urls && book.user_images_urls.length > 0 && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
           onClick={() => setShowImageModal(false)}
         >
@@ -390,7 +399,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentImageIndex(prev => 
+              setCurrentImageIndex(prev =>
                 prev > 0 ? prev - 1 : book.user_images_urls.length - 1
               );
             }}
@@ -407,7 +416,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setCurrentImageIndex(prev => 
+              setCurrentImageIndex(prev =>
                 prev < book.user_images_urls.length - 1 ? prev + 1 : 0
               );
             }}
