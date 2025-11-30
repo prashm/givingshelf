@@ -172,12 +172,7 @@ const BookDonationMarketplace = () => {
   
   const handleBookSelect = (book) => {
     setSelectedBook(book);
-    if (!currentUser) {
-      setPendingNavigation('bookDetails');
-      setIsLoginModalOpen(true);
-    } else {
-      setCurrentPage('bookDetails', { selectedBook: book });
-    }
+    setCurrentPage('bookDetails', { selectedBook: book });
   };
   
   const handleEditBook = (bookId) => {
@@ -206,12 +201,19 @@ const BookDonationMarketplace = () => {
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'login':
-        return <LoginPage 
-          setCurrentPage={setCurrentPage}
-        />;
       case 'signup':
-        return <SignupPage 
+        // Login/signup is handled via modal (useEffect will open modal and redirect to home)
+        return <Home 
+          books={searchResults} 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          zipCode={zipCode}
+          setZipCode={setZipCode}
+          handleSearch={handleSearch}
+          handleBookSelect={handleBookSelect}
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
+          onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'donate':
         return <AddBook 
@@ -229,6 +231,7 @@ const BookDonationMarketplace = () => {
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onEditBook={handleEditBook}
+          onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'browse':
         return <BookList 
@@ -308,6 +311,15 @@ const BookDonationMarketplace = () => {
     setIsLoginModalOpen(false);
     setPendingNavigation(null);
   };
+
+  // Handle login/signup page navigation - open modal and redirect to home
+  useEffect(() => {
+    if (currentPage === 'login' || currentPage === 'signup') {
+      handleOpenLoginModal();
+      setCurrentPage('home');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   const handleLogout = async () => {
     await logout();

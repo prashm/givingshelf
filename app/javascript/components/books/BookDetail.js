@@ -3,7 +3,7 @@ import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, Chev
 import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
 
-const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook }) => {
+const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal }) => {
   const { getBook } = useBooks();
   const [book, setBook] = useState(initialBook);
   const [showContact, setShowContact] = useState(false);
@@ -80,25 +80,39 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     }
   }, [book?.id, currentUser?.id, viewTracked, getBook]);
 
-  const handleRequestBook = async () => {
+  const requireLogin = (callback, destinationPage = null) => {
     if (!currentUser) {
-      // TODO: Redirect to login
-      setCurrentPage('login');
+      if (onOpenLoginModal) {
+        onOpenLoginModal(destinationPage);
+      } else {
+        setCurrentPage('login');
+      }
       return;
     }
+    callback();
+  };
 
-    setRequestStatus('requesting');
+  const handleRequestBook = async () => {
+    requireLogin(async () => {
+      setRequestStatus('requesting');
 
-    try {
-      // TODO: Make API call to request book
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      try {
+        // TODO: Make API call to request book
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
 
-      setRequestStatus('success');
-      setShowContact(true);
-    } catch (error) {
-      setRequestStatus('error');
-      console.error('Error requesting book:', error);
-    }
+        setRequestStatus('success');
+        setShowContact(true);
+      } catch (error) {
+        setRequestStatus('error');
+        console.error('Error requesting book:', error);
+      }
+    });
+  };
+
+  const handleDonateClick = () => {
+    requireLogin(() => {
+      setCurrentPage('donate');
+    }, 'donate');
   };
 
   const getConditionColor = (condition) => {
@@ -222,7 +236,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
 
               {book.owner?.id !== currentUser?.id && (
                 <button
-                  onClick={() => setCurrentPage('donate')}
+                  onClick={handleDonateClick}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Donate a Similar Book
@@ -370,7 +384,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                   Browse More Books
                 </button>
                 <button
-                  onClick={() => setCurrentPage('donate')}
+                  onClick={handleDonateClick}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                 >
                   Donate a Book
