@@ -38,7 +38,31 @@ class Api::BooksController < ApplicationController
     # Handle API cover image URL if provided (before update so it can be attached)
     handle_api_cover_image(@book) if params[:book][:api_cover_image].present? && params[:book][:api_cover_image].is_a?(String)
 
-    if @book.update(book_params.except(:api_cover_image))
+    # Handle user_images separately to merge with existing instead of replacing
+    update_params = book_params.except(:api_cover_image, :user_images, :remove_user_image_indices)
+    new_user_images = params[:book][:user_images]
+    
+    # Handle removed existing images
+    if params[:book][:remove_user_image_indices].present?
+      indices_to_remove = params[:book][:remove_user_image_indices].map(&:to_i)
+      existing_images = @book.user_images.to_a
+      # Remove in reverse order to maintain correct indices
+      indices_to_remove.sort.reverse.each do |index|
+        if existing_images[index]
+          existing_images[index].purge
+        end
+      end
+    end
+
+    # Add new images if any were uploaded (merge with existing)
+    if new_user_images.present?
+      Array(new_user_images).each do |image|
+        @book.user_images.attach(image) if image.present?
+      end
+    end
+
+    # Update other book attributes (excluding user_images handling which is done above)
+    if @book.update(update_params)
       render json: book_json(@book)
     else
       render json: { errors: @book.errors.full_messages }, status: :unprocessable_entity

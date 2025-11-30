@@ -68,6 +68,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
   const [loadingBook, setLoadingBook] = useState(true);
   const [croppingImageIndex, setCroppingImageIndex] = useState(null);
   const [existingUserImages, setExistingUserImages] = useState([]);
+  const [originalUserImages, setOriginalUserImages] = useState([]); // Keep original array for index reference
   const [removedExistingImageIndices, setRemovedExistingImageIndices] = useState(new Set());
 
   const isMobile = () => {
@@ -103,8 +104,10 @@ const EditBook = ({ setCurrentPage, bookId }) => {
           // Set existing user images
           if (bookData.user_images_urls && bookData.user_images_urls.length > 0) {
             setExistingUserImages(bookData.user_images_urls);
+            setOriginalUserImages(bookData.user_images_urls); // Keep original for index reference
           } else {
             setExistingUserImages([]);
+            setOriginalUserImages([]);
           }
           setRemovedExistingImageIndices(new Set());
         }
@@ -160,12 +163,18 @@ const EditBook = ({ setCurrentPage, bookId }) => {
 
 
   // Handle removing existing image
-  const handleRemoveExistingImage = (index) => {
-    // Add to removed indices set
-    setRemovedExistingImageIndices(prev => new Set([...prev, index]));
+  const handleRemoveExistingImage = (displayIndex) => {
+    // Find the original index in the original array
+    const imageUrl = existingUserImages[displayIndex];
+    const originalIndex = originalUserImages.findIndex(url => url === imageUrl);
+    
+    if (originalIndex !== -1) {
+      // Add the original index to removed indices set
+      setRemovedExistingImageIndices(prev => new Set([...prev, originalIndex]));
+    }
     
     // Remove from displayed existing images
-    setExistingUserImages(prev => prev.filter((_, i) => i !== index));
+    setExistingUserImages(prev => prev.filter((_, i) => i !== displayIndex));
   };
 
   // Handle book selection from autocomplete
@@ -196,7 +205,13 @@ const EditBook = ({ setCurrentPage, bookId }) => {
 
     if (!validateForm()) return;
 
-    const result = await updateBook(bookId, formData);
+    // Prepare data for update - include removed image indices
+    const updateData = {
+      ...formData,
+      remove_user_image_indices: Array.from(removedExistingImageIndices)
+    };
+
+    const result = await updateBook(bookId, updateData);
     if (result.success) {
       window.history.back();
     }

@@ -111,6 +111,11 @@ export const BookProvider = ({ children }) => {
           bookData[key].forEach((file) => {
             formData.append(`book[user_images][]`, file);
           });
+        } else if (key === 'remove_user_image_indices' && Array.isArray(bookData[key])) {
+          // Append removed image indices
+          bookData[key].forEach((index) => {
+            formData.append(`book[remove_user_image_indices][]`, index);
+          });
         } else if (bookData[key] !== null && bookData[key] !== undefined) {
           formData.append(`book[${key}]`, bookData[key]);
         }
