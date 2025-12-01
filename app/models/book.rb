@@ -22,26 +22,6 @@ class Book < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
 
-  def self.search(query, zip_code = nil)
-    books = available.joins(:user)
-
-    if query.present?
-      books = books.where("books.title ILIKE :query OR books.author ILIKE :query", query: "%#{query}%")
-    end
-
-    if zip_code.present?
-      books = books.where(users: { zip_code: zip_code })
-      # Order by matching zip_code first, then by created_at
-      books = books.order(
-        Arel.sql("CASE WHEN users.zip_code = #{ActiveRecord::Base.connection.quote(zip_code)} THEN 0 ELSE 1 END"),
-        created_at: :desc
-      )
-    else
-      books = books.order(created_at: :desc)
-    end
-
-    books
-  end
 
   def cover_image_url
     cover_image.attached? ? cover_image : nil
@@ -54,6 +34,7 @@ class Book < ApplicationRecord
   end
 
   def can_be_requested_by?(user)
+    return false if user.nil?
     return false unless available?
     return false if user == self.user
     return false if book_requests.exists?(requester: user, status: [ "pending", "accepted" ])
@@ -70,5 +51,9 @@ class Book < ApplicationRecord
 
   def donated?
     status == "donated"
+  end
+
+  def owner?(current_user)
+    current_user.present? && owner == current_user
   end
 end

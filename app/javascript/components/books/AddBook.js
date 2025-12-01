@@ -101,21 +101,10 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
       published_year: book.publishedDate ? new Date(book.publishedDate).getFullYear() : new Date().getFullYear(),
       isbn: book.isbn || '',
       summary: book.description || '',
-      api_cover_image: secureThumbnailUrl, // Store API cover image URL for backend to fetch
+      cover_image: secureThumbnailUrl, // Set for display in BookForm
       // Don't overwrite condition - let user choose
     });
 
-    // If book has a cover image, fetch it and set it as api_cover_image file for backend
-    if (book.thumbnail) {
-      console.log('Fetching book cover:', secureThumbnailUrl);
-      fetch(secureThumbnailUrl)
-        .then(res => res.blob())
-        .then(blob => {
-          const file = new File([blob], "cover_image.jpg", { type: "image/jpeg" });
-          updateFormData({ api_cover_image: file });
-        })
-        .catch(err => console.error('Error fetching cover image:', err));
-    }
   };
 
   const handleSubmit = async (e) => {

@@ -180,6 +180,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
   // Handle book selection from autocomplete
   const handleBookSelect = (book) => {
     console.log('Selected book:', book);
+    const secureThumbnailUrl = book.thumbnail ? book.thumbnail.replace('http:', 'https:') : null;
 
     // Update form data with book information
     updateFormData({
@@ -189,6 +190,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
       published_year: book.publishedDate ? new Date(book.publishedDate).getFullYear() : new Date().getFullYear(),
       isbn: book.isbn || '',
       summary: book.description || '',
+      cover_image: secureThumbnailUrl, // Set for display in BookForm
       // Don't overwrite condition - let user choose
     });
 
