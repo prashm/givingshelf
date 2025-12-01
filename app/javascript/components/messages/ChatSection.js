@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchChatMessages } from '../../lib/bookRequestsApi';
 import { createSubscription } from '../../lib/actionCable';
+import { linkifyText } from '../../lib/textUtils';
 
 const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
   const [messages, setMessages] = useState([]);
@@ -11,10 +12,13 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const chatSubscriptionRef = useRef(null);
   const presenceSubscriptionRef = useRef(null);
   const backupHeartbeatIntervalRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const typingIndicatorTimeoutRef = useRef(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -47,6 +51,24 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
             received: (data) => {
               if (data.type === 'message' && data.message) {
                 setMessages(prev => [...prev, data.message]);
+              } else if (data.type === 'typing' && data.user_id === otherUser?.id) {
+                // Handle typing indicator from other user
+                if (data.is_typing) {
+                  setIsOtherUserTyping(true);
+                  // Clear existing timeout
+                  if (typingIndicatorTimeoutRef.current) {
+                    clearTimeout(typingIndicatorTimeoutRef.current);
+                  }
+                  // Auto-hide after 3 seconds if no new typing event
+                  typingIndicatorTimeoutRef.current = setTimeout(() => {
+                    setIsOtherUserTyping(false);
+                  }, 3000);
+                } else {
+                  setIsOtherUserTyping(false);
+                  if (typingIndicatorTimeoutRef.current) {
+                    clearTimeout(typingIndicatorTimeoutRef.current);
+                  }
+                }
               } else if (data.type === 'error') {
                 setError(data.message);
               }
@@ -109,8 +131,14 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
         presenceSubscriptionRef.current.unsubscribe();
       }
       stopBackupHeartbeat();
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (typingIndicatorTimeoutRef.current) {
+        clearTimeout(typingIndicatorTimeoutRef.current);
+      }
     };
-  }, [bookRequestId, currentUser]);
+  }, [bookRequestId, currentUser, otherUser]);
 
   // Backup heartbeat mechanism - only runs if ActionCable subscription fails
   const startBackupHeartbeat = () => {
@@ -142,6 +170,47 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
     }
   };
 
+  const handleTyping = () => {
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Send typing event after 300ms debounce
+    typingTimeoutRef.current = setTimeout(() => {
+      if (chatSubscriptionRef.current && isSubscribed) {
+        try {
+          chatSubscriptionRef.current.send({
+            action: 'typing',
+            is_typing: true
+          });
+        } catch (err) {
+          console.warn('Failed to send typing event:', err);
+        }
+      }
+    }, 300);
+  };
+
+  const handleStopTyping = () => {
+    // Clear typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    // Send stop typing event
+    if (chatSubscriptionRef.current && isSubscribed) {
+      try {
+        chatSubscriptionRef.current.send({
+          action: 'typing',
+          is_typing: false
+        });
+      } catch (err) {
+        console.warn('Failed to send stop typing event:', err);
+      }
+    }
+  };
+
   const handleSendMessage = async () => {
     const trimmedMessage = newMessage.trim();
     if (!trimmedMessage || trimmedMessage.length > 1000 || sending) {
@@ -151,6 +220,9 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
     try {
       setSending(true);
       setError(null);
+
+      // Stop typing indicator before sending
+      handleStopTyping();
 
       // Send message via ActionCable
       chatSubscriptionRef.current?.send({
@@ -243,7 +315,7 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
                       {isOwnMessage ? 'You' : message.user_name}
                     </div>
                     <div className="text-sm whitespace-pre-wrap break-words">
-                      {message.content}
+                      {linkifyText(message.content)}
                     </div>
                     <div className="text-xs mt-1 opacity-75">
                       {new Date(message.created_at).toLocaleTimeString([], {
@@ -260,12 +332,29 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Typing Indicator */}
+      {isOtherUserTyping && otherUser && (
+        <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
+          <p className="text-sm italic text-gray-500">
+            {otherUser.name} is typing...
+          </p>
+        </div>
+      )}
+
       {/* Message Input */}
       <div className="p-4 border-t border-gray-200">
         <div className="flex gap-2">
           <textarea
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              if (e.target.value.trim()) {
+                handleTyping();
+              } else {
+                handleStopTyping();
+              }
+            }}
+            onBlur={handleStopTyping}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             rows={3}

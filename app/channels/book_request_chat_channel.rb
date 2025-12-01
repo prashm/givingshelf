@@ -52,6 +52,28 @@ class BookRequestChatChannel < ApplicationCable::Channel
     handle_message_notification(message)
   end
 
+  def typing(data)
+    @book_request = BookRequest.find(params[:book_request_id])
+    
+    unless can_access_chat?
+      transmit({ type: 'error', message: 'Not authorized' })
+      return
+    end
+
+    is_typing = data['is_typing'] != false # Default to true if not specified
+
+    # Broadcast typing status to all subscribers
+    ActionCable.server.broadcast(
+      "book_request_#{params[:book_request_id]}",
+      {
+        type: 'typing',
+        user_id: current_user.id,
+        user_name: current_user.display_name,
+        is_typing: is_typing
+      }
+    )
+  end
+
   private
 
   def can_access_chat?
