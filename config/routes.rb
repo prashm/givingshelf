@@ -23,7 +23,11 @@ Rails.application.routes.draw do
       end
     end
     
-    resources :book_requests, only: [:index, :show, :create, :update, :destroy]
+    resources :book_requests, only: [:index, :show, :create, :update, :destroy] do
+      member do
+        get :messages
+      end
+    end
     
     # Location detection
     get '/location/detect_zip', to: 'location#detect_zip'

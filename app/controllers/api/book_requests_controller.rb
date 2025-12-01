@@ -1,6 +1,6 @@
 class Api::BookRequestsController < ApplicationController
   before_action :require_authentication
-  before_action :set_book_request, only: [:show, :update, :destroy]
+  before_action :set_book_request, only: [:show, :update, :destroy, :messages]
 
   def index
     book_requests = book_request_service.requests_for_user(Current.user, params[:type])
@@ -39,6 +39,34 @@ class Api::BookRequestsController < ApplicationController
     else
       render json: { errors: book_request_service.errors }, status: :unprocessable_entity
     end
+  end
+
+  def messages
+    unless @book_request.requester == Current.user || @book_request.owner == Current.user
+      render json: { error: "Not authorized" }, status: :forbidden
+      return
+    end
+
+    # Fetch most recent 50 messages, ordered by created_at desc (newest first)
+    # Then reverse for display (oldest first)
+    messages = @book_request.messages
+      .includes(:user)
+      .recent
+      .limit(50)
+      .to_a
+      .reverse
+
+    render json: {
+      messages: messages.map { |msg|
+        {
+          id: msg.id,
+          content: msg.content,
+          user_id: msg.user.id,
+          user_name: msg.user.display_name,
+          created_at: msg.created_at.iso8601
+        }
+      }
+    }
   end
 
   private

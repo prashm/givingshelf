@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_01_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_01_202341) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -82,6 +82,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_120000) do
     t.index ["user_id"], name: "index_books_on_user_id"
   end
 
+  create_table "messages", force: :cascade do |t|
+    t.bigint "book_request_id", null: false
+    t.bigint "user_id", null: false
+    t.text "content"
+    t.datetime "read_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["book_request_id", "created_at"], name: "index_messages_on_book_request_id_and_created_at"
+    t.index ["book_request_id"], name: "index_messages_on_book_request_id"
+    t.index ["user_id"], name: "index_messages_on_user_id"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.string "session_id", null: false
     t.text "data"
@@ -122,5 +134,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_120000) do
   add_foreign_key "book_requests", "users", column: "owner_id"
   add_foreign_key "book_requests", "users", column: "requester_id"
   add_foreign_key "books", "users"
+  add_foreign_key "messages", "book_requests"
+  add_foreign_key "messages", "users"
   add_foreign_key "user_sessions", "users"
 end

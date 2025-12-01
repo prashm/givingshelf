@@ -2,6 +2,7 @@ class BookRequest < ApplicationRecord
   belongs_to :requester, class_name: "User"
   belongs_to :book
   belongs_to :owner, class_name: "User"
+  has_many :messages, dependent: :destroy
 
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
   validates :status, inclusion: { in: %w[pending accepted declined completed], default: "pending" }

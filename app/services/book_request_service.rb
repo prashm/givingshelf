@@ -29,11 +29,9 @@ class BookRequestService
     @book_request = nil
   end
 
-  def update_request(book_owner, action_type)
+  def update_request(current_user, action_type)
     # Only the book owner can update the request status
-    if self.book_request.book.user != book_owner
-      raise "Not authorized"
-    end
+    raise "Not authorized" unless self.book_request.book.owner?(current_user)
 
     case action_type
     when 'accept'

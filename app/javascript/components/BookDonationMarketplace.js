@@ -269,6 +269,7 @@ const BookDonationMarketplace = () => {
           <BookRequestDetail
             bookRequestId={selectedBookRequestId}
             setCurrentPage={setCurrentPage}
+            currentUser={currentUser}
           />
         );
       case 'profile':

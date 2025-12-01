@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { fetchBookRequestDetails } from '../../lib/bookRequestsApi';
+import ChatSection from './ChatSection';
 
-const BookRequestDetail = ({ bookRequestId, setCurrentPage }) => {
+const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -125,6 +126,19 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage }) => {
           </div>
         </section>
       </div>
+
+      {/* Chat Section */}
+      {currentUser && (
+        <ChatSection
+          bookRequestId={bookRequestId}
+          currentUser={currentUser}
+          otherUser={
+            currentUser.id === request.requester.id
+              ? request.book.owner
+              : request.requester
+          }
+        />
+      )}
     </div>
   );
 };

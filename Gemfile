@@ -45,6 +45,7 @@ gem "rotp"
 gem "aws-sdk-s3", require: false
 gem "geocoder"
 gem "openssl"
+gem "redis", "~> 5.0"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 

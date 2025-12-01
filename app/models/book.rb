@@ -54,6 +54,6 @@ class Book < ApplicationRecord
   end
 
   def owner?(current_user)
-    current_user.present? && owner == current_user
+    current_user.present? && user == current_user
   end
 end

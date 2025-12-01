@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>New Message About Your Book Request</h2>
+    <p>Hello <%= @recipient.display_name %>,</p>
+    
+    <p><%= @sender.display_name %> sent you a new message about the book request for "<%= @book.title %>" by <%= @book.author %>.</p>
+    
+    <h3>Message Preview:</h3>
+    <p><%= @message.content.truncate(100) %></p>
+    
+    <p><strong>View the full message and continue the conversation:</strong></p>
+    <p>
+      <a href="<%= "#{Rails.application.config.action_mailer.default_url_options[:host]}/book_request_details?id=#{@book_request.id}" %>" 
+         style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+        View Book Request Details
+      </a>
+    </p>
+    
+    <p>Thank you,<br>BookShare Community</p>
+  </body>
+</html>
+

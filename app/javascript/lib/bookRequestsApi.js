@@ -15,4 +15,10 @@ export const fetchBookRequestDetails = async (id) => {
   return response.data;
 };
 
+export const fetchChatMessages = async (bookRequestId) => {
+  const response = await axios.get(`/api/book_requests/${bookRequestId}/messages`, {
+    withCredentials: true,
+  });
+  return response.data.messages || [];
+};
 
