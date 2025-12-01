@@ -1,0 +1,26 @@
+# app/views/book_request_mailer/new_request_notification.html.erb
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>New Book Request</h2>
+    <p>Hello <%= @book.user.display_name %>,</p>
+    
+    <p><%= @requester.display_name %> has requested your book "<%= @book.title %>" by <%= @book.author %>.</p>
+    
+    <h3>Request Message:</h3>
+    <p><%= @book_request.message %></p>
+    
+    <h3>Requester Details:</h3>
+    <ul>
+      <li>Name: <%= @requester.display_name %></li>
+      <li>Location: <%= @requester.location %></li>
+    </ul>
+    
+    <p>Please log in to your BookShare Community account to view and respond to this request.</p>
+    
+    <p>Thank you,<br>BookShare Community</p>
+  </body>
+</html>

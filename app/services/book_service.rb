@@ -131,6 +131,7 @@ class BookService
         location: book.user.location,
         verified: book.user.verified?
       },
+      request_count: book.book_requests.count,
       created_at: book.created_at,
       updated_at: book.updated_at,
       can_request: book.can_be_requested_by?(requester)

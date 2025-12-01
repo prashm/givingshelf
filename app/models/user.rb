@@ -5,7 +5,8 @@ class User < ApplicationRecord
   has_one_attached :profile_picture
   has_many :sessions, class_name: 'Session', foreign_key: 'user_id', dependent: :destroy
   has_many :books, dependent: :destroy
-  has_many :book_requests, class_name: 'BookRequest', foreign_key: 'requester_id', dependent: :destroy
+  has_many :book_requests, class_name: "BookRequest", foreign_key: "requester_id", dependent: :destroy
+  has_many :received_book_requests, class_name: "BookRequest", foreign_key: "owner_id", dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   normalizes :first_name, :last_name, with: ->(name) { name.strip.titleize }

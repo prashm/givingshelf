@@ -4,7 +4,7 @@ import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
 
 const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal }) => {
-  const { getBook } = useBooks();
+  const { getBook, requestBook } = useBooks();
   const [book, setBook] = useState(initialBook);
   const [showContact, setShowContact] = useState(false);
   const [requestStatus, setRequestStatus] = useState('idle'); // idle, requesting, success, error
@@ -12,6 +12,10 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
   const [showImageModal, setShowImageModal] = useState(false);
   const [viewCount, setViewCount] = useState(book?.view_count || 0);
   const [viewTracked, setViewTracked] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestError, setRequestError] = useState('');
+  const [userRequest, setUserRequest] = useState(null);
 
   if (!book) {
     return (
@@ -80,6 +84,24 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     }
   }, [book?.id, currentUser?.id, viewTracked, getBook]);
 
+  // Fetch current user's request for this book (if any)
+  useEffect(() => {
+    if (!book || !currentUser) return;
+
+    axios
+      .get(`/api/books/${book.id}/user_request`)
+      .then(response => {
+        if (response.data.has_requested) {
+          setUserRequest(response.data.request);
+        } else {
+          setUserRequest(null);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching user request:', error);
+      });
+  }, [book?.id, currentUser?.id]);
+
   const requireLogin = (callback, destinationPage = null) => {
     if (!currentUser) {
       if (onOpenLoginModal) {
@@ -92,21 +114,43 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     callback();
   };
 
-  const handleRequestBook = async () => {
-    requireLogin(async () => {
-      setRequestStatus('requesting');
-
-      try {
-        // TODO: Make API call to request book
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-
-        setRequestStatus('success');
-        setShowContact(true);
-      } catch (error) {
-        setRequestStatus('error');
-        console.error('Error requesting book:', error);
-      }
+  const openRequestModal = () => {
+    requireLogin(() => {
+      setRequestMessage('');
+      setRequestError('');
+      setShowRequestModal(true);
     });
+  };
+
+  const handleSubmitRequest = async (event) => {
+    event.preventDefault();
+    const message = requestMessage.trim();
+
+    if (!message) {
+      setRequestError('Please enter a message for the donor.');
+      return;
+    }
+
+    setRequestError('');
+    setRequestStatus('requesting');
+
+    try {
+      const result = await requestBook(book.id, message);
+
+      if (result.success) {
+        const request = result.request;
+        setUserRequest(request);
+        setRequestStatus('success');
+        setShowRequestModal(false);
+      } else {
+        setRequestStatus('error');
+        setRequestError(result.error || 'Failed to send request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error requesting book:', error);
+      setRequestStatus('error');
+      setRequestError('Failed to send request. Please try again.');
+    }
   };
 
   const handleDonateClick = () => {
@@ -193,16 +237,28 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
             <div className="space-y-3">
               {book.owner?.id !== currentUser?.id ? (
                 <>
-                  {requestStatus === 'success' ? (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="text-green-800 text-center">
-                        <div className="text-lg font-medium mb-2">Request Sent!</div>
-                        <p className="text-sm">The donor will contact you soon.</p>
-                      </div>
-                    </div>
+                  {userRequest ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage('bookRequestDetails', {
+                          bookRequestId: userRequest.id
+                        })
+                      }
+                      className="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
+                    >
+                      Requested on{' '}
+                      {new Date(userRequest.created_at).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </button>
                   ) : (
                     <button
-                      onClick={handleRequestBook}
+                      onClick={openRequestModal}
                       disabled={requestStatus === 'requesting'}
                       className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -217,11 +273,20 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                   )}
                 </>
               ) : (
-                <div className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 flex items-center justify-center gap-2">
-                  <EyeIcon className="h-5 w-5 text-gray-600" />
-                  <span className="text-gray-700 font-medium">
-                    {viewCount} {viewCount === 1 ? 'view' : 'views'}
-                  </span>
+                <div className="space-y-2">
+                  <div className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 flex items-center justify-center gap-2">
+                    <EyeIcon className="h-5 w-5 text-gray-600" />
+                    <span className="text-gray-700 font-medium">
+                      {viewCount} {viewCount === 1 ? 'view' : 'views'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage('messages')}
+                    className="w-full bg-white border border-gray-300 rounded-lg py-2 px-4 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Total Requests: {book.request_count ?? 0}
+                  </button>
                 </div>
               )}
 
@@ -394,6 +459,60 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
           </div>
         </div>
       </div>
+
+      {/* Request Modal */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative">
+            <button
+              type="button"
+              onClick={() => setShowRequestModal(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Request this book</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Add a short message to the donor explaining why you&apos;d like this book or how you plan to pick it up.
+            </p>
+            <form onSubmit={handleSubmitRequest} className="space-y-4">
+              <div>
+                <label htmlFor="request-message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Message to donor
+                </label>
+                <textarea
+                  id="request-message"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  rows={4}
+                  value={requestMessage}
+                  onChange={(e) => setRequestMessage(e.target.value)}
+                  disabled={requestStatus === 'requesting'}
+                />
+                {requestError && (
+                  <p className="mt-1 text-sm text-red-600">{requestError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRequestModal(false)}
+                  className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  disabled={requestStatus === 'requesting'}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={requestStatus === 'requesting'}
+                >
+                  {requestStatus === 'requesting' ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Image Modal/Carousel */}
       {showImageModal && book.user_images_urls && book.user_images_urls.length > 0 && (

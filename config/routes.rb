@@ -11,6 +11,7 @@ Rails.application.routes.draw do
       end
       member do
         post :track_view
+        get :user_request
       end
     end
     
@@ -22,7 +23,7 @@ Rails.application.routes.draw do
       end
     end
     
-    resources :book_requests, only: [:create, :update, :destroy]
+    resources :book_requests, only: [:index, :show, :create, :update, :destroy]
     
     # Location detection
     get '/location/detect_zip', to: 'location#detect_zip'

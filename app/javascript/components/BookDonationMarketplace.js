@@ -7,6 +7,8 @@ import AddBook from './books/AddBook';
 import EditBook from './books/EditBook';
 import BookList from './books/BookList';
 import BookDetail from './books/BookDetail';
+import BookRequestDetail from './messages/BookRequestDetail';
+import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
@@ -30,6 +32,7 @@ const BookDonationMarketplace = () => {
   const [zipCode, setZipCode] = useState('');
   const [selectedBook, setSelectedBook] = useState(null);
   const [editingBookId, setEditingBookId] = useState(null);
+  const [selectedBookRequestId, setSelectedBookRequestId] = useState(null);
   const [redirectReason, setRedirectReason] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
@@ -133,6 +136,7 @@ const BookDonationMarketplace = () => {
         // Restore specific states if present
         if (state.selectedBook) setSelectedBook(state.selectedBook);
         if (state.editingBookId) setEditingBookId(state.editingBookId);
+        if (state.bookRequestId) setSelectedBookRequestId(state.bookRequestId);
       } else {
         _setPageState('home');
       }
@@ -144,6 +148,16 @@ const BookDonationMarketplace = () => {
 
   // Navigation wrapper to sync with history
   const setCurrentPage = (page, extraState = {}) => {
+    if (extraState.selectedBook) {
+      setSelectedBook(extraState.selectedBook);
+    }
+    if (extraState.editingBookId) {
+      setEditingBookId(extraState.editingBookId);
+    }
+    if (extraState.bookRequestId) {
+      setSelectedBookRequestId(extraState.bookRequestId);
+    }
+
     _setPageState(page);
     window.history.pushState({ page, ...extraState }, '', window.location.pathname);
   };
@@ -250,6 +264,13 @@ const BookDonationMarketplace = () => {
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
         />;
+      case 'bookRequestDetails':
+        return (
+          <BookRequestDetail
+            bookRequestId={selectedBookRequestId}
+            setCurrentPage={setCurrentPage}
+          />
+        );
       case 'profile':
         return <Profile 
           currentUser={currentUser} 
@@ -362,28 +383,6 @@ const Footer = () => {
         </div>
       </div>
     </footer>
-  );
-};
-
-
-
-// Simple Messages Page Component (placeholder)
-const MessagesPage = ({ setCurrentPage, currentUser }) => {
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold mb-6">Messages</h2>
-        <p className="text-center text-gray-600 mb-4">
-          Messaging functionality will be implemented here.
-        </p>
-        <button
-          onClick={() => setCurrentPage('home')}
-          className="bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700"
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
   );
 };
 
