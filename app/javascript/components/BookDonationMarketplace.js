@@ -12,6 +12,7 @@ import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
+import WelcomeModal from './WelcomeModal';
 import { 
   MagnifyingGlassIcon, 
   ArrowUpTrayIcon, 
@@ -37,6 +38,7 @@ const BookDonationMarketplace = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [zipCodeDetected, setZipCodeDetected] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   
   // Detect zip code on mount and when user logs in
   useEffect(() => {
@@ -343,6 +345,19 @@ const BookDonationMarketplace = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
+  // Check if user is a first-time visitor and show welcome modal
+  useEffect(() => {
+    if (!localStorage.getItem('bookshare_welcome_seen')) {
+      setIsWelcomeModalOpen(true);
+    }
+  }, []);
+
+  // Handle closing welcome modal and mark as seen
+  const handleCloseWelcomeModal = () => {
+    setIsWelcomeModalOpen(false);
+    localStorage.setItem('bookshare_welcome_seen', 'true');
+  };
+
   const handleLogout = async () => {
     await logout();
     setCurrentPage('home');
@@ -363,6 +378,10 @@ const BookDonationMarketplace = () => {
         {renderPage()}
       </main>
       <Footer />
+      <WelcomeModal 
+        isOpen={isWelcomeModalOpen}
+        onClose={handleCloseWelcomeModal}
+      />
     </div>
   );
 };
