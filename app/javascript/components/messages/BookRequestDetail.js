@@ -9,6 +9,7 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [hasMarkedAsViewed, setHasMarkedAsViewed] = useState(false);
 
   useEffect(() => {
     if (!bookRequestId) {
@@ -31,7 +32,33 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
     };
 
     loadDetails();
+    setHasMarkedAsViewed(false); // Reset when bookRequestId changes
   }, [bookRequestId]);
+
+  // Mark request as viewed when owner views a pending request
+  useEffect(() => {
+    if (!request || !currentUser || updatingStatus || hasMarkedAsViewed) return;
+    
+    const isOwner = currentUser.id === request?.book?.owner?.id;
+    const isPending = request?.status_display === 'Pending';
+    
+    if (isOwner && isPending) {
+      setHasMarkedAsViewed(true);
+      const markAsViewed = async () => {
+        setUpdatingStatus(true);
+        try {
+          const updatedRequest = await updateBookRequestStatus(bookRequestId, 'mark_as_viewed');
+          setRequest(updatedRequest);
+        } catch (err) {
+          // Silently fail - don't show error for auto-marking as viewed
+          console.error('Failed to mark request as viewed:', err);
+        } finally {
+          setUpdatingStatus(false);
+        }
+      };
+      markAsViewed();
+    }
+  }, [request, currentUser, updatingStatus, hasMarkedAsViewed, bookRequestId]);
 
   const handleStatusUpdate = async (actionType) => {
     if (updatingStatus) return;
@@ -81,8 +108,8 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
       Icon: CheckCircleIcon,
       IconSolid: CheckCircleIconSolid,
       title: 'Mark as Completed',
-      additionalDisabled: currentStatusDisplay === 'Pending' || currentStatusDisplay === 'Declined',
-      description: 'Mark the transaction as completed (only available for accepted requests)'
+      additionalDisabled: currentStatusDisplay !== 'Accepted',
+      description: 'This action will mark the book as "donated" (only available for accepted requests)'
     }
   ];
 
@@ -171,6 +198,9 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
             <div>
               <p className="text-lg font-medium text-gray-900">{request.book.title}</p>
               <p className="text-sm text-gray-600">by {request.book.author}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Status: <span className="font-medium capitalize">{request.book.status_display}</span>
+              </p>
               <button
                 type="button"
                 onClick={() =>

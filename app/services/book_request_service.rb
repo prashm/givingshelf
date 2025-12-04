@@ -40,6 +40,8 @@ class BookRequestService
       self.book_request.decline!
     when "complete"
       self.book_request.complete!
+    when "mark_as_viewed"
+      self.book_request.mark_as_in_review!
     else
       raise "Invalid action"
     end
@@ -106,6 +108,8 @@ class BookRequestService
       "Accepted"
     when BookRequest::DECLINED_STATUS
       "Declined"
+    when BookRequest::IN_REVIEW_STATUS
+      "In Review"
     else
       "Pending"
     end
