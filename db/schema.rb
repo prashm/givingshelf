@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_01_202341) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_04_053041) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,7 +52,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_202341) do
   create_table "book_requests", force: :cascade do |t|
     t.integer "requester_id", null: false
     t.integer "book_id", null: false
-    t.string "status"
+    t.integer "status", default: 0, null: false
     t.text "message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -61,6 +61,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_202341) do
     t.index ["book_id"], name: "index_book_requests_on_book_id"
     t.index ["owner_id"], name: "index_book_requests_on_owner_id"
     t.index ["requester_id"], name: "index_book_requests_on_requester_id"
+    t.index ["status"], name: "index_book_requests_on_status"
   end
 
   create_table "books", force: :cascade do |t|
@@ -77,8 +78,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_01_202341) do
     t.string "isbn"
     t.string "genre"
     t.integer "published_year"
-    t.string "status", default: "available"
+    t.integer "status", default: 0, null: false
     t.integer "view_count", default: 0, null: false
+    t.index ["status"], name: "index_books_on_status"
     t.index ["user_id"], name: "index_books_on_user_id"
   end
 

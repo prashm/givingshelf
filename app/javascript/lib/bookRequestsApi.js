@@ -22,3 +22,12 @@ export const fetchChatMessages = async (bookRequestId) => {
   return response.data.messages || [];
 };
 
+export const updateBookRequestStatus = async (bookRequestId, actionType) => {
+  const response = await axios.patch(`/api/book_requests/${bookRequestId}`, {
+    action_type: actionType
+  }, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+

@@ -1,4 +1,4 @@
-require 'open-uri'
+require "open-uri"
 
 class BookService
   attr_accessor :book
@@ -73,7 +73,7 @@ class BookService
 
   def remove_book(current_user)
     # Only the owner can delete their book
-    raise "Not authorized" unless self.book.owner?(current_user)   
+    raise "Not authorized" unless self.book.owner?(current_user)
 
     self.book.destroy
     true
@@ -121,7 +121,7 @@ class BookService
       isbn: book.isbn,
       genre: book.genre,
       published_year: book.published_year,
-      status: book.status,
+      status: display_status(book.status),
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
       view_count: book.view_count || 0,
@@ -143,19 +143,19 @@ class BookService
   def handle_api_cover_image(api_url)
     # Only process if it's a string URL, not a File object
     return false if api_url.blank? || !api_url.is_a?(String) || !api_url.match?(/\Ahttps?:\/\//)
- 
+
     begin
       # Ensure URL uses HTTPS
-      secure_url = api_url.gsub(/^http:/, 'https:')
-      
+      secure_url = api_url.gsub(/^http:/, "https:")
+
       # Fetch the image from the URL
       downloaded_image = URI.open(secure_url, read_timeout: 10)
-      
+
       # Determine content type from response or default to jpeg
-      content_type = downloaded_image.content_type || 'image/jpeg'
-      extension = content_type.split('/').last || 'jpg'
+      content_type = downloaded_image.content_type || "image/jpeg"
+      extension = content_type.split("/").last || "jpg"
       filename = "cover_image_#{SecureRandom.hex(8)}.#{extension}"
-      
+
       # Attach the downloaded image to the book
       self.book.cover_image.attach(
         io: downloaded_image,
@@ -167,5 +167,16 @@ class BookService
       false
     end
     true
+  end
+
+  def display_status(status)
+    case status
+    when Book::REQUESTED_STATUS
+      "Requested"
+    when Book::DONATED_STATUS
+      "Donated"
+    else
+      "Available"
+    end
   end
 end

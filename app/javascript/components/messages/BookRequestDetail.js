@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { fetchBookRequestDetails } from '../../lib/bookRequestsApi';
+import { fetchBookRequestDetails, updateBookRequestStatus } from '../../lib/bookRequestsApi';
+import { CheckIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CheckIcon as CheckIconSolid, XMarkIcon as XMarkIconSolid, CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import ChatSection from './ChatSection';
 
 const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (!bookRequestId) {
@@ -29,6 +32,91 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
 
     loadDetails();
   }, [bookRequestId]);
+
+  const handleStatusUpdate = async (actionType) => {
+    if (updatingStatus) return;
+    
+    setUpdatingStatus(true);
+    try {
+      const updatedRequest = await updateBookRequestStatus(bookRequestId, actionType);
+      setRequest(updatedRequest);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update status. Please try again.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const isOwner = currentUser && request?.book?.owner?.id === currentUser.id;
+  const currentStatusDisplay = request?.status_display;
+
+  const statusButtons = [
+    {
+      action: 'accept',
+      label: 'Accept',
+      statusMatch: 'Accepted',
+      activeColor: 'bg-emerald-600',
+      Icon: CheckIcon,
+      IconSolid: CheckIconSolid,
+      title: 'Accept Request',
+      additionalDisabled: currentStatusDisplay === 'Accepted',
+      description: 'Approve this request and mark the book as requested'
+    },
+    {
+      action: 'decline',
+      label: 'Decline',
+      statusMatch: 'Declined',
+      activeColor: 'bg-red-600',
+      Icon: XMarkIcon,
+      IconSolid: XMarkIconSolid,
+      title: 'Decline Request',
+      additionalDisabled: false,
+      description: 'Reject this request'
+    },
+    {
+      action: 'complete',
+      label: 'Complete',
+      statusMatch: 'Completed',
+      activeColor: 'bg-blue-600',
+      Icon: CheckCircleIcon,
+      IconSolid: CheckCircleIconSolid,
+      title: 'Mark as Completed',
+      additionalDisabled: currentStatusDisplay === 'Pending' || currentStatusDisplay === 'Declined',
+      description: 'Mark the transaction as completed (only available for accepted requests)'
+    }
+  ];
+
+  const renderStatusButton = (buttonConfig) => {
+    const isActive = currentStatusDisplay === buttonConfig.statusMatch;
+    const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
+    const tooltip = !request.can_update_status 
+      ? 'Another request for this book is already accepted'
+      : isActive && buttonConfig.action === 'accept'
+      ? 'This request is already accepted'
+      : buttonConfig.title;
+
+    return (
+      <button
+        key={buttonConfig.action}
+        type="button"
+        onClick={() => handleStatusUpdate(buttonConfig.action)}
+        disabled={isDisabled}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+          isActive
+            ? `${buttonConfig.activeColor} text-white shadow-md`
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        } disabled:opacity-50 disabled:cursor-not-allowed`}
+        title={tooltip}
+      >
+        {isActive ? (
+          <buttonConfig.IconSolid className="w-4 h-4" />
+        ) : (
+          <buttonConfig.Icon className="w-4 h-4" />
+        )}
+        <span>{buttonConfig.label}</span>
+      </button>
+    );
+  };
 
   if (loading) {
     return (
@@ -117,12 +205,29 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
 
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
           <div>
-            <p className="font-medium text-gray-500">Status</p>
-            <p className="capitalize">{request.status}</p>
-          </div>
-          <div>
             <p className="font-medium text-gray-500">Requested at</p>
             <p>{createdAt}</p>
+          </div>
+          <div>
+            {isOwner ? (
+              <div className="space-y-3">
+                <div className="flex gap-2 flex-wrap">
+                  {statusButtons.map(renderStatusButton)}
+                </div>
+                <div className="text-xs text-gray-500 space-y-1">
+                  {statusButtons.map(btn => (
+                    <p key={btn.action}>
+                      • <strong>{btn.label}:</strong> {btn.description}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="font-medium text-gray-500">Status</p>
+                <p className="capitalize">{request.status_display || 'Pending'}</p>
+              </>
+            )}
           </div>
         </section>
       </div>

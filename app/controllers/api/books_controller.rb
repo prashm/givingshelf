@@ -58,7 +58,7 @@ class Api::BooksController < ApplicationController
       return
     end
     
-    request = @book.book_requests.find_by(requester: Current.user, status: ['pending', 'accepted'])
+    request = @book.book_requests.find_by(requester: Current.user, status: [BookRequest::PENDING_STATUS, BookRequest::ACCEPTED_STATUS])
     
     if request
       render json: {

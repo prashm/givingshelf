@@ -10,13 +10,13 @@ class BookRequestService
 
   def create_request(requester, book_id, message)
     book = Book.find(book_id)
-    
+
     unless book.can_be_requested_by?(requester)
       raise "Cannot request this book"
     end
 
     p @book_request = requester.book_requests.build(book: book, message: message)
-    
+
     if @book_request.save
       notify_book_owner
     else
@@ -34,11 +34,11 @@ class BookRequestService
     raise "Not authorized" unless self.book_request.book.owner?(current_user)
 
     case action_type
-    when 'accept'
+    when "accept"
       self.book_request.accept!
-    when 'decline'
+    when "decline"
       self.book_request.decline!
-    when 'complete'
+    when "complete"
       self.book_request.complete!
     else
       raise "Invalid action"
@@ -65,12 +65,12 @@ class BookRequestService
   def requests_for_user(user, type)
     book_requests = []
     case type
-    when 'received'
+    when "received"
       # Requests received for user's books
       book_requests = BookRequest.for_book_owner(user)
         .includes(:book, :requester)
         .order(created_at: :desc)
-    when 'sent'
+    when "sent"
       # Requests sent by user
       book_requests = user.book_requests
         .includes(:book)
@@ -83,10 +83,12 @@ class BookRequestService
     {
       id: request.id,
       status: request.status,
+      status_display: display_status(request.status),
       message: request.message,
       created_at: request.created_at,
       updated_at: request.updated_at,
       book: BookService.new.book_json(request.book),
+      can_update_status: request.can_update_status?,
       requester: {
         id: request.requester.id,
         name: request.requester.display_name,
@@ -95,7 +97,20 @@ class BookRequestService
       }
     }
   end
-  
+
+  def display_status(status)
+    case status
+    when BookRequest::COMPLETED_STATUS
+      "Completed"
+    when BookRequest::ACCEPTED_STATUS
+      "Accepted"
+    when BookRequest::DECLINED_STATUS
+      "Declined"
+    else
+      "Pending"
+    end
+  end
+
   private
 
   def notify_book_owner
