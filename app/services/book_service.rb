@@ -111,6 +111,23 @@ class BookService
     self.book.view_count
   end
 
+  def self.community_stats(zip_code: nil)
+    base_books = Book.joins(:user)
+    base_requests = BookRequest.joins(book: :user)
+
+    if zip_code.present?
+      base_books = base_books.where(users: { zip_code: zip_code })
+      base_requests = base_requests.where(users: { zip_code: zip_code })
+    end
+
+    {
+      books_shared: base_books.where.not(status: Book::DONATED_STATUS).count,
+      books_donated: base_books.where(status: Book::DONATED_STATUS).count,
+      books_requested: base_requests.count,
+      happy_readers: base_requests.completed.distinct.count(:requester_id)
+    }
+  end
+
   def book_json(book, requester = nil)
     {
       id: book.id,

@@ -19,7 +19,7 @@ class Book < ApplicationRecord
   validates :isbn, format: { with: /\A(?:\d{10}|\d{13})\z/, message: "must be 10 or 13 digits" }, allow_blank: true
 
 
-  scope :available, -> { where(status: AVAILABLE_STATUS) }
+  scope :available, -> { where.not(status: DONATED_STATUS) }
   scope :by_genre, ->(genre) { where(genre: genre) }
   scope :by_author, ->(author) { where("author ILIKE ?", "%#{author}%") }
   scope :by_title, ->(title) { where("title ILIKE ?", "%#{title}%") }

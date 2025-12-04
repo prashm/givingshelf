@@ -8,6 +8,7 @@ Rails.application.routes.draw do
       collection do
         get :search
         get :my_books
+        get :stats
       end
       member do
         post :track_view

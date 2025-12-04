@@ -1,5 +1,5 @@
 class Api::BooksController < ApplicationController
-  before_action :require_authentication, except: [ :index, :show, :search, :track_view ]
+  before_action :require_authentication, except: [ :index, :show, :search, :track_view, :stats ]
   before_action :set_book, only: [ :show, :update, :destroy, :track_view ]
 
   def index
@@ -73,6 +73,11 @@ class Api::BooksController < ApplicationController
     else
       render json: { has_requested: false }
     end
+  end
+
+  def stats
+    stats = BookService.community_stats(zip_code: params[:zip_code])
+    render json: stats
   end
 
   private

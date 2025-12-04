@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { fetchCommunityStats } from '../lib/booksApi';
 
 const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage, onOpenLoginModal }) => {
   const [recentBooks, setRecentBooks] = useState([]);
   const [popularGenres, setPopularGenres] = useState([]);
+  const [communityStats, setCommunityStats] = useState({
+    books_shared: 0,
+    books_donated: 0,
+    books_requested: 0,
+    happy_readers: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     // Simulate fetching recent books and popular genres
@@ -26,6 +34,23 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
       setPopularGenres(sortedGenres);
     }
   }, [books]);
+
+  useEffect(() => {
+    const loadCommunityStats = async () => {
+      setStatsLoading(true);
+      try {
+        const stats = await fetchCommunityStats(zipCode);
+        setCommunityStats(stats);
+      } catch (error) {
+        console.error('Failed to load community stats:', error);
+        // Keep default values on error
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    loadCommunityStats();
+  }, [zipCode]);
 
   const handleGenreClick = (genre) => {
     setSearchQuery(genre);
@@ -164,31 +189,33 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
         {/* Community Stats */}
         <div className="bg-white rounded-lg p-8 shadow-md">
           <h2 className="text-2xl font-bold mb-6 text-center">Community Impact</h2>
-          <div className="grid md:grid-cols-4 gap-6 text-center">
+          <div className={`grid gap-6 text-center ${communityStats.happy_readers > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
             <div>
               <div className="text-3xl font-bold text-blue-600 mb-2">
-                {books ? books.length : 0}
+                {statsLoading ? '...' : communityStats.books_shared}
               </div>
               <div className="text-gray-600">Books Shared</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-green-600 mb-2">
-                {books ? Math.floor(books.length * 0.8) : 0}
+                {statsLoading ? '...' : communityStats.books_donated}
               </div>
               <div className="text-gray-600">Books Donated</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-purple-600 mb-2">
-                {books ? Math.floor(books.length * 0.6) : 0}
+                {statsLoading ? '...' : communityStats.books_requested}
               </div>
               <div className="text-gray-600">Books Requested</div>
             </div>
-            <div>
-              <div className="text-3xl font-bold text-orange-600 mb-2">
-                {books ? Math.floor(books.length * 0.4) : 0}
+            {(!statsLoading && communityStats.happy_readers > 0) && (
+              <div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">
+                  {communityStats.happy_readers}
+                </div>
+                <div className="text-gray-600">Happy Readers</div>
               </div>
-              <div className="text-gray-600">Happy Readers</div>
-            </div>
+            )}
           </div>
         </div>
 
