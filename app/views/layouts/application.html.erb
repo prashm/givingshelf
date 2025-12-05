@@ -6,6 +6,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="description" content="Share and discover books in your local community. Donate used books and find great reads from neighbors.">
+    <% if ENV['SENTRY_DSN_FRONTEND'].present? %>
+      <meta name="sentry-dsn" content="<%= ENV['SENTRY_DSN_FRONTEND'] %>">
+      <meta name="sentry-environment" content="<%= Rails.env %>">
+      <% if ENV['SENTRY_RELEASE'].present? %>
+        <meta name="sentry-release" content="<%= ENV['SENTRY_RELEASE'] %>">
+      <% end %>
+    <% end %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 

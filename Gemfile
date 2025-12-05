@@ -46,6 +46,8 @@ gem "aws-sdk-s3", require: false
 gem "geocoder"
 gem "openssl"
 gem "redis", "~> 5.0"
+gem "sentry-ruby"
+gem "sentry-rails"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 
