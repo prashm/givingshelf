@@ -23,6 +23,7 @@ class BookRequest < ApplicationRecord
   scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_book_owner, ->(user) { where(owner: user) }
+  scope :recent, -> { order(created_at: :desc) }
 
   before_validation :set_default_status, on: :create
   before_validation :set_owner, on: :create

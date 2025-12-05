@@ -32,7 +32,7 @@ class User < ApplicationRecord
   end
 
   def display_name
-    verified? ? full_name : "#{first_name} #{last_name[0]}."
+    full_name.presence || email_address.split("@").first
   end
 
   def location

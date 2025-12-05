@@ -15,7 +15,7 @@ class BookRequestService
       raise "Cannot request this book"
     end
 
-    p @book_request = requester.book_requests.build(book: book, message: message)
+    @book_request = requester.book_requests.build(book: book, message: message)
 
     if @book_request.save
       notify_book_owner
