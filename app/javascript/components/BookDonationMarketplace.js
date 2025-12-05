@@ -22,6 +22,7 @@ import {
   ShieldCheckIcon 
 } from '@heroicons/react/24/outline';
 import axios from '../lib/axios';
+import { COMPANY, VERSION } from '../lib/version';
 
 // Main App Component
 const BookDonationMarketplace = () => {
@@ -388,6 +389,12 @@ const BookDonationMarketplace = () => {
 
 // Simple Footer Component
 const Footer = () => {
+  const currentYear = new Date().getFullYear();
+  const startYear = 2025;
+  const copyrightYear = currentYear === startYear 
+    ? `${startYear}` 
+    : `${startYear} - ${currentYear}`;
+
   return (
     <footer className="bg-gray-800 text-white py-8">
       <div className="container mx-auto px-4 text-center">
@@ -399,7 +406,10 @@ const Footer = () => {
           Connecting book lovers through the joy of sharing literature.
         </p>
         <div className="text-sm text-gray-400">
-          © 2024 BookShare Community. All rights reserved.
+          © {copyrightYear} {COMPANY}. All rights reserved.
+        </div>
+        <div className="text-xs text-gray-500 mt-2">
+          Version {VERSION}
         </div>
       </div>
     </footer>
