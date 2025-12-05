@@ -1,11 +1,11 @@
 class BooksController < ApplicationController
-  allow_unauthenticated_access only: [:index]
-  
+  allow_unauthenticated_access only: [ :index ]
+
   def index
     respond_to do |format|
       format.html do
         # For HTML requests, render the React app
-        render 'index'
+        render "index"
       end
       format.json do
         # For JSON requests, return a simple response or redirect to API

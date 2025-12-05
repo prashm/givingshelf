@@ -1,13 +1,15 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  requester: one
+  requester: two
   book: one
-  status: MyString
-  message: MyText
+  owner: one
+  status: 0
+  message: "I would love to read this book! Please consider my request."
 
 two:
-  requester: two
+  requester: one
   book: two
-  status: MyString
-  message: MyText
+  owner: two
+  status: 0
+  message: "This looks like an interesting read. I'm very interested in borrowing it."

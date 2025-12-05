@@ -1,13 +1,21 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  title: MyString
-  author: MyString
-  details: MyText
-  meta: MyText
+  user: one
+  title: "The Great Gatsby"
+  author: "F. Scott Fitzgerald"
+  condition: "excellent"
+  summary: "A classic American novel about the Jazz Age and the decline of the American Dream."
+  genre: "Fiction"
+  published_year: 1925
+  status: 0
 
 two:
-  title: MyString
-  author: MyString
-  details: MyText
-  meta: MyText
+  user: two
+  title: "To Kill a Mockingbird"
+  author: "Harper Lee"
+  condition: "good"
+  summary: "A gripping tale of racial injustice and childhood innocence in the American South."
+  genre: "Fiction"
+  published_year: 1960
+  status: 0

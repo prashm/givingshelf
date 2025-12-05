@@ -31,9 +31,9 @@ module Authentication
 
     def request_authentication
       session[:return_to_after_authenticating] = request.url
-      
+
       # Handle API requests differently
-      if request.format.json? || controller_path.start_with?('api/')
+      if request.format.json? || controller_path.start_with?("api/")
         render json: { error: "Authentication required" }, status: :unauthorized
       else
         redirect_to new_session_path

@@ -1,6 +1,6 @@
 class Api::UsersController < ApplicationController
   before_action :require_authentication
-  before_action :set_user, only: [:show, :update]
+  before_action :set_user, only: [ :show, :update ]
 
   def show
     if @user == Current.user || Current.user.verified?

@@ -1,26 +1,26 @@
-require 'set'
+require "set"
 
 class BookRequestPresenceChannel < ApplicationCable::Channel
-  REDIS_KEY_PREFIX = 'book_request_presence'
+  REDIS_KEY_PREFIX = "book_request_presence"
   PRESENCE_TTL = 300 # 5 minutes - users are considered inactive after this
-  
+
   # Fallback in-memory store for development when Redis is unavailable
   @@fallback_active_users = {} # book_request_id => Set of user_ids
   @@redis_available = nil
 
   def subscribed
     @book_request = BookRequest.find(params[:book_request_id])
-    
+
     unless can_access_chat?
       reject
       return
     end
-    
+
     stream_from "book_request_presence_#{params[:book_request_id]}"
-    
+
     # Track this user as active in Redis
     track_user_active
-    
+
     # Broadcast that this user is now active
     broadcast_presence_update
   end
@@ -28,7 +28,7 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
   def unsubscribed
     # Remove this user from active tracking in Redis
     untrack_user_active
-    
+
     # Broadcast that this user is no longer active
     broadcast_presence_update
   end
@@ -89,13 +89,13 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
       # Fallback to in-memory store
       (@@fallback_active_users[@book_request.id] || Set.new).to_a
     end
-    
+
     active_users = User.where(id: active_user_ids)
-    
+
     ActionCable.server.broadcast(
       "book_request_presence_#{params[:book_request_id]}",
       {
-        type: 'presence',
+        type: "presence",
         users: active_users.map { |user| { id: user.id, name: user.display_name } }
       }
     )
@@ -129,7 +129,7 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
 
   def self.redis_available?
     return @@redis_available unless @@redis_available.nil?
-    
+
     # Test Redis connection
     begin
       redis_url = get_redis_url
@@ -141,7 +141,7 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
       Rails.logger.warn "Redis check failed: #{e.message}. Using in-memory fallback."
       @@redis_available = false
     end
-    
+
     @@redis_available
   end
 
@@ -168,4 +168,3 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
     self.class.get_redis_url
   end
 end
-

@@ -6,11 +6,10 @@ class MessageMailer < ApplicationMailer
     @book = @book_request.book
     @sender = message.user
     @recipient = recipient
-    
+
     mail(
       to: @recipient.email_address,
       subject: "New message about your book request: #{@book.title}"
     )
   end
 end
-

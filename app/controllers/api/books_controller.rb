@@ -52,14 +52,14 @@ class Api::BooksController < ApplicationController
 
   def user_request
     @book = Book.find(params[:id])
-    
+
     unless Current.user
       render json: { has_requested: false }
       return
     end
-    
-    request = @book.book_requests.find_by(requester: Current.user, status: [BookRequest::PENDING_STATUS, BookRequest::ACCEPTED_STATUS])
-    
+
+    request = @book.book_requests.find_by(requester: Current.user, status: [ BookRequest::PENDING_STATUS, BookRequest::ACCEPTED_STATUS ])
+
     if request
       render json: {
         has_requested: true,
@@ -91,7 +91,7 @@ class Api::BooksController < ApplicationController
   end
 
   def book_params
-    params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year, 
+    params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year,
     :cover_image, :api_cover_image, user_images: [], remove_user_image_indices: [])
   end
 

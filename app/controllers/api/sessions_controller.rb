@@ -1,5 +1,5 @@
 class Api::SessionsController < ApplicationController
-  skip_before_action :require_authentication, only: [:create, :verify_otp, :resend_otp]
+  skip_before_action :require_authentication, only: [ :create, :verify_otp, :resend_otp ]
 
   def create
     email = sanitize_email(params[:email])
@@ -8,7 +8,7 @@ class Api::SessionsController < ApplicationController
     if user
       # Existing user - send OTP
       user.send_otp!
-      message = user_service.new_user ? 'User created. ' : ''
+      message = user_service.new_user ? "User created. " : ""
       message << "Verification code sent to the email #{user.email_address}."
       logger.info message
       render json: {
@@ -21,9 +21,9 @@ class Api::SessionsController < ApplicationController
       message = "Failed to fetch or create user with email #{email}."
       message << " Error: #{user_service.errors.to_sentence}"
       logger.info message
-        render json: { 
+        render json: {
           error: "Failed to fetch or create user with email #{email}",
-          errors: user_service.errors 
+          errors: user_service.errors
         }, status: :unprocessable_entity
     end
   end
@@ -36,10 +36,10 @@ class Api::SessionsController < ApplicationController
       render json: { error: user_service.errors.to_sentence }, status: :unprocessable_entity
       return
     end
-    
+
     user = user_service.user
 
-    if verified  
+    if verified
       # OTP verified - create session
       start_new_session_for(user)
       render json: {
@@ -47,23 +47,23 @@ class Api::SessionsController < ApplicationController
         message: "Logged in successfully"
       }
     else
-      render json: { 
+      render json: {
         error: "Invalid verification code",
-        attempts_remaining: [3 - user.otp_attempts, 0].max
+        attempts_remaining: [ 3 - user.otp_attempts, 0 ].max
       }, status: :unauthorized
     end
   end
 
   def resend_otp
     email = sanitize_email(params[:email])
-    
+
     unless email.present?
       render json: { error: "Email is required" }, status: :unprocessable_entity
       return
     end
 
     user = User.find_by(email_address: email)
-    
+
     unless user
       render json: { error: "User not found" }, status: :not_found
       return
@@ -71,9 +71,9 @@ class Api::SessionsController < ApplicationController
 
     unless user.can_resend_otp?
       seconds_remaining = 20 - (Time.current - user.otp_sent_at).to_i
-      render json: { 
+      render json: {
         error: "Please wait before requesting a new code",
-        seconds_remaining: [seconds_remaining, 0].max
+        seconds_remaining: [ seconds_remaining, 0 ].max
       }, status: :too_many_requests
       return
     end
@@ -115,6 +115,4 @@ class Api::SessionsController < ApplicationController
       updated_at: user.updated_at
     }
   end
-
-
-end 
+end

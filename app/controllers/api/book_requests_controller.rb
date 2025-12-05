@@ -1,12 +1,12 @@
 class Api::BookRequestsController < ApplicationController
   before_action :require_authentication
-  before_action :set_book_request, only: [:show, :update, :destroy, :messages]
+  before_action :set_book_request, only: [ :show, :update, :destroy, :messages ]
 
   def index
     book_requests = book_request_service.requests_for_user(Current.user, params[:type])
     render json: book_requests.map { |req| book_request_service.request_json(req) }
   end
-  
+
   def show
     unless @book_request.requester == Current.user || @book_request.book.owner?(Current.user)
       render json: { error: "Not authorized" }, status: :forbidden

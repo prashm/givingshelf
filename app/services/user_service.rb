@@ -15,7 +15,7 @@ class UserService
 
     user = User.find_by(email_address: email)
     self.user = user
-    
+
     unless user
       new_user = true
       # New user - create user
@@ -38,12 +38,11 @@ class UserService
   end
 
   def verify_otp(email, otp_code)
-    
     raise "Email and OTP code are required" if email.blank? || otp_code.blank?
 
     user = User.find_by(email_address: email)
     self.user = user
-    
+
     @errors << "User not found" unless user
 
     raise "OTP code has expired. Please request a new one." if user.otp_expired?
@@ -51,7 +50,6 @@ class UserService
     user.verify_otp(otp_code)
   rescue => e
     @errors << e.message
-    return nil
+    nil
   end
-
 end

@@ -12,7 +12,7 @@ class BookRequest < ApplicationRecord
   has_many :messages, dependent: :destroy
 
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
-  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS ], default: PENDING_STATUS }
+  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :book_id, message: "has already requested this book" }
   validate :requester_cannot_request_own_book
   validate :book_must_be_available, on: :create
@@ -24,6 +24,7 @@ class BookRequest < ApplicationRecord
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_book_owner, ->(user) { where(owner: user) }
 
+  before_validation :set_default_status, on: :create
   before_validation :set_owner, on: :create
 
   after_update :notify_status_change
@@ -74,6 +75,10 @@ class BookRequest < ApplicationRecord
   end
 
   private
+
+  def set_default_status
+    self.status ||= PENDING_STATUS
+  end
 
   def set_owner
     self.owner ||= book.user if book.present?

@@ -3,7 +3,7 @@ class Api::RegistrationsController < ApplicationController
 
   def create
     user = User.new(user_params)
-    
+
     if user.save
       start_new_session_for(user)
       render json: {
@@ -11,9 +11,9 @@ class Api::RegistrationsController < ApplicationController
         message: "Account created successfully"
       }, status: :created
     else
-      render json: { 
+      render json: {
         error: "Registration failed",
-        errors: user.errors.full_messages 
+        errors: user.errors.full_messages
       }, status: :unprocessable_entity
     end
   end
@@ -39,4 +39,4 @@ class Api::RegistrationsController < ApplicationController
       updated_at: user.updated_at
     }
   end
-end 
+end

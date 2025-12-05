@@ -5,7 +5,7 @@ class CreateActiveRecordSessions < ActiveRecord::Migration[8.0]
       t.text :data
       t.timestamps
     end
-    
+
     add_index :active_record_sessions, :updated_at
   end
 end

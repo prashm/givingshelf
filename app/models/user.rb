@@ -1,9 +1,9 @@
-require 'rotp'
+require "rotp"
 
 class User < ApplicationRecord
   has_secure_password
   has_one_attached :profile_picture
-  has_many :sessions, class_name: 'Session', foreign_key: 'user_id', dependent: :destroy
+  has_many :sessions, class_name: "Session", foreign_key: "user_id", dependent: :destroy
   has_many :books, dependent: :destroy
   has_many :book_requests, class_name: "BookRequest", foreign_key: "requester_id", dependent: :destroy
   has_many :received_book_requests, class_name: "BookRequest", foreign_key: "owner_id", dependent: :destroy
@@ -12,7 +12,7 @@ class User < ApplicationRecord
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   normalizes :first_name, :last_name, with: ->(name) { name.strip.titleize }
   normalizes :zip_code, with: ->(zip) { zip.strip }
-  
+
   # OTP Configuration
   OTP_EXPIRY_MINUTES = 5
   OTP_DRIFT = 30 # seconds of drift tolerance for TOTP
@@ -40,8 +40,8 @@ class User < ApplicationRecord
   end
 
   def profile_complete?
-    first_name.present? && 
-    last_name.present? && 
+    first_name.present? &&
+    last_name.present? &&
     zip_code.present?
     # Phone is optional
   end
@@ -55,7 +55,7 @@ class User < ApplicationRecord
 
   def current_otp
     return nil unless otp_secret.present?
-    totp = ROTP::TOTP.new(otp_secret, issuer: 'BookShare Community')
+    totp = ROTP::TOTP.new(otp_secret, issuer: "BookShare Community")
     totp.now
   end
 
@@ -73,14 +73,14 @@ class User < ApplicationRecord
   def verify_otp(provided_otp)
     return false unless otp_secret.present?
     return false unless otp_sent_at.present?
-    
+
     # Check if OTP has expired (5 minutes)
     if otp_sent_at < OTP_EXPIRY_MINUTES.minutes.ago
       return false
     end
-    
-    totp = ROTP::TOTP.new(otp_secret, issuer: 'BookShare Community')
-    
+
+    totp = ROTP::TOTP.new(otp_secret, issuer: "BookShare Community")
+
     # Verify with drift tolerance
     if totp.verify(provided_otp.to_s, drift_behind: OTP_DRIFT, drift_ahead: OTP_DRIFT)
       # Reset OTP fields after successful verification and mark as verified
@@ -89,11 +89,11 @@ class User < ApplicationRecord
         otp_attempts: 0,
         verified: true
       )
-      return true
+      true
     else
       # Increment attempts on failure
       increment!(:otp_attempts)
-      return false
+      false
     end
   end
 
