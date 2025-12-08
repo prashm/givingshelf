@@ -47,10 +47,10 @@ jobs:
             docker compose -f docker-compose.production.yml up -d --remove-orphans
             
             # run migrations
-            docker compose -f docker-compose.production.yml run --rm web bundle exec rails db:migrate
+            docker compose -f docker-compose.production.yml exec web bundle exec rails db:migrate
             
             # precompile assets if necessary  
-            docker compose -f docker-compose.production.yml run --rm web bundle exec rails assets:precompile
+            docker compose -f docker-compose.production.yml exec web bundle exec rails assets:precompile
 
             # restart bookshare service
             sudo systemctl restart bookshare.service
