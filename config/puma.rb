@@ -24,8 +24,17 @@
 # Any libraries that use a connection pool or another resource pool should
 # be configured to provide at least as many connections as the number of
 # threads. This includes Active Record's `pool` parameter in `database.yml`.
+
+environment ENV.fetch("RAILS_ENV", "production")
+
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
+
+workers ENV.fetch("WEB_CONCURRENCY", 1)
+
+# Preload for Faster boot, Lower memory per worker
+# Better for small EC2 instances
+preload_app!
 
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
@@ -42,3 +51,8 @@ plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
 pidfile ENV["PIDFILE"] if ENV["PIDFILE"]
+
+# Graceful Shutdown for Docker: This prevents dropped connections during deploys.
+on_worker_shutdown do
+  ActiveRecord::Base.connection_pool.disconnect!
+end

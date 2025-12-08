@@ -14,59 +14,75 @@ FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 # Rails app lives here
 WORKDIR /rails
 
-# Install base packages
+# System dependencies (Postgres, Redis, Image Processing)
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 libvips sqlite3 && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+    apt-get install --no-install-recommends -y \
+    curl \
+    libjemalloc2 \
+    libvips \
+    libpq-dev \
+    redis-tools \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set production environment
-ENV RAILS_ENV="production" \
-    BUNDLE_DEPLOYMENT="1" \
-    BUNDLE_PATH="/usr/local/bundle" \
-    BUNDLE_WITHOUT="development"
+# Rails production defaults
+ENV RAILS_ENV=production \
+    BUNDLE_DEPLOYMENT=1 \
+    BUNDLE_PATH=/usr/local/bundle \
+    BUNDLE_WITHOUT=development:test
 
-# Throw-away build stage to reduce size of final image
+# -------------------
+# BUILD STAGE
+# -------------------
 FROM base AS build
 
-# Install packages needed to build gems
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    git \
+    libyaml-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install application gems
+# Install Ruby gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
-    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
+    rm -rf ~/.bundle \
+    "${BUNDLE_PATH}"/ruby/*/cache \
+    "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
 
-# Copy application code
+# Copy app code
 COPY . .
 
-# Precompile bootsnap code for faster boot times
+# Install JS deps + build React/Tailwind
+RUN npm install && npm run build
+
+# Precompile bootsnap
 RUN bundle exec bootsnap precompile app/ lib/
 
-# Precompiling assets for production without requiring secret RAILS_MASTER_KEY
-RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+# Precompile rails assets
+RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile
 
-
-
-
-# Final stage for app image
+# -------------------
+# FINAL RUNTIME IMAGE
+# -------------------
 FROM base
 
-# Copy built artifacts: gems, application
 COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /rails /rails
 
-# Run and own only the runtime files as a non-root user for security
+# Non-root user
 RUN groupadd --system --gid 1000 rails && \
     useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
     chown -R rails:rails db log storage tmp
 USER 1000:1000
 
-# Entrypoint prepares the database.
-ENTRYPOINT ["/rails/bin/docker-entrypoint"]
+# Rails logging to stdout
+ENV RAILS_LOG_TO_STDOUT=true
 
-# Start server via Thruster by default, this can be overwritten at runtime
-EXPOSE 80
-CMD ["./bin/thrust", "./bin/rails", "server"]
+# Default Rails port (Nginx will proxy)
+EXPOSE 3000
+
+# Proper Rails server start (NO thruster)
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]
