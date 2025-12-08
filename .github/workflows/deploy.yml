@@ -62,8 +62,8 @@ jobs:
             done
             echo "Database is ready!"
             
-            # run migrations
-            docker compose -f docker-compose.production.yml exec web bundle exec rails db:migrate
+            # prepare database (creates if needed, then runs migrations)
+            docker compose -f docker-compose.production.yml exec web bundle exec rails db:prepare
             
             # precompile assets if necessary  
             docker compose -f docker-compose.production.yml exec web bundle exec rails assets:precompile
