@@ -17,8 +17,9 @@ services:
       REDIS_URL: redis://redis:6379/0
     depends_on:
       - redis
+      - db
     restart: unless-stopped
-    command: bundle exec rails server -b 0.0.0.0 -p 3000
+    command: bundle exec puma -C config/puma.rb
     expose:
       - "3000"
     volumes:
@@ -39,8 +40,26 @@ services:
     depends_on:
       - redis
       - web
+      - db
     restart: unless-stopped
     command: bundle exec rake jobs:work
+    networks:
+      - bookshare
+  # ------------------------
+  # POSTGRES DATABASE
+  # ------------------------
+  db:
+    image: postgres:15
+    container_name: bookshare-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bookshare
 
   # ------------------------
   # REDIS (CHAT + JOBS)
@@ -52,6 +71,8 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    networks:
+      - bookshare
 
   # ------------------------
   # NGINX REVERSE PROXY
@@ -70,7 +91,8 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certbot:/etc/letsencrypt
       - ./nginx/www:/var/www/certbot
-
+    networks:
+      - bookshare
 # ------------------------
 # PERSISTENT VOLUMES
 # ------------------------
@@ -78,3 +100,8 @@ volumes:
   redis_data:
   rails_storage:
   rails_logs:
+  postgres_data:
+
+networks:
+  bookshare:
+    driver: bridge
