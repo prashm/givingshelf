@@ -30,11 +30,13 @@ jobs:
 
       - name: Deploy
         run: |
-          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts ubuntu@44.250.51.11 << 'EOF'
+          ssh -i ~/.ssh/id_rsa \
+              -o StrictHostKeyChecking=no \
+              ubuntu@44.250.51.11 << 'EOF'
             cd /home/ubuntu/bookshare
             git pull origin main
             docker compose build
             docker compose up -d
             sudo systemctl restart bookshare
           EOF
-
+  
