@@ -14,8 +14,10 @@ services:
       RAILS_ENV: production
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
     restart: unless-stopped
     command: bundle exec puma -C config/puma.rb
     expose:
@@ -23,6 +25,8 @@ services:
     volumes:
       - rails_storage:/rails/storage
       - rails_logs:/rails/log
+    networks:
+      - bookshare
 
   # ------------------------
   # DELAYED JOB WORKER
@@ -36,9 +40,12 @@ services:
       RAILS_ENV: production
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - redis
-      - web
-      - db
+      redis:
+        condition: service_started
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
     restart: unless-stopped
     command: bundle exec rake jobs:work
     networks:
@@ -58,6 +65,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - bookshare
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # ------------------------
   # REDIS (CHAT + JOBS)
@@ -79,7 +91,8 @@ services:
     image: nginx:stable-alpine
     container_name: bookshare-nginx
     depends_on:
-      - web
+      web:
+        condition: service_started
     ports:
       - "80:80"
       - "443:443"

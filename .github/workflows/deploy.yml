@@ -46,6 +46,22 @@ jobs:
             docker compose -f docker-compose.production.yml build web worker
             docker compose -f docker-compose.production.yml up -d --remove-orphans
             
+            # wait for database to be ready
+            echo "Waiting for database to be ready..."
+            timeout=60
+            counter=0
+            while [ "$(docker inspect -f '{{.State.Health.Status}}' bookshare-postgres 2>/dev/null)" != "healthy" ]; do
+              if [ $counter -ge $timeout ]; then
+                echo "Database failed to become ready within $timeout seconds"
+                docker compose -f docker-compose.production.yml ps
+                exit 1
+              fi
+              echo "Waiting for database... ($counter/$timeout)"
+              sleep 2
+              counter=$((counter + 2))
+            done
+            echo "Database is ready!"
+            
             # run migrations
             docker compose -f docker-compose.production.yml exec web bundle exec rails db:migrate
             
