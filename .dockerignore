@@ -49,3 +49,7 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Ignore certbot certificates and account data (created at runtime, used as volumes only)
+/deploy/nginx/certbot
+/deploy/nginx/www
