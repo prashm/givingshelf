@@ -36,9 +36,6 @@ workers ENV.fetch("WEB_CONCURRENCY", 1)
 # Better for small EC2 instances
 preload_app!
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
-
 # Bind to all interfaces (0.0.0.0) instead of just localhost
 bind "tcp://0.0.0.0:#{ENV.fetch("PORT", 3000)}"
 
