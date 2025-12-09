@@ -103,6 +103,21 @@ services:
       - ./deploy/nginx/www:/var/www/certbot
     networks:
       - bookshare
+
+  # ------------------------
+  # CERTBOT (SSL CERTIFICATES)
+  # ------------------------
+  certbot:
+    image: certbot/certbot
+    container_name: bookshare-certbot
+    volumes:
+      - ./deploy/nginx/certbot:/etc/letsencrypt
+      - ./deploy/nginx/www:/var/www/certbot
+    networks:
+      - bookshare
+    # This service runs on-demand, not as a persistent service
+    profiles:
+      - certbot
 # ------------------------
 # PERSISTENT VOLUMES
 # ------------------------
