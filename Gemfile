@@ -48,6 +48,7 @@ gem "openssl"
 gem "redis", "~> 5.0"
 gem "sentry-ruby"
 gem "sentry-rails"
+gem "jwt"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 

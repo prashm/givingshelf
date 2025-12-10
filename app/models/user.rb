@@ -12,6 +12,7 @@ class User < ApplicationRecord
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   normalizes :first_name, :last_name, with: ->(name) { name.strip.titleize }
   normalizes :zip_code, with: ->(zip) { zip.strip }
+  normalizes :street_address, :city, :state, with: ->(value) { value.present? ? value.strip : nil }
 
   # OTP Configuration
   OTP_EXPIRY_MINUTES = 5
@@ -26,6 +27,23 @@ class User < ApplicationRecord
 
   scope :verified, -> { where(verified: true) }
   scope :by_zip_code, ->(zip_code) { where(zip_code: zip_code) }
+
+  after_update :recalculate_trust_score, if: :saved_change_to_profile_fields?
+
+  def saved_change_to_profile_fields?
+    saved_change_to_first_name? ||
+    saved_change_to_last_name? ||
+    saved_change_to_zip_code? ||
+    saved_change_to_phone? ||
+    saved_change_to_street_address? ||
+    saved_change_to_city? ||
+    saved_change_to_state? ||
+    saved_change_to_address_verified?
+  end
+
+  def recalculate_trust_score
+    calculate_trust_score!
+  end
 
   def full_name
     "#{first_name} #{last_name}"
@@ -43,7 +61,30 @@ class User < ApplicationRecord
     first_name.present? &&
     last_name.present? &&
     zip_code.present?
-    # Phone is optional
+    # Phone and address fields are optional
+  end
+
+  def calculate_trust_score!
+    score = 0
+
+    # Basic profile fields (60 points total)
+    score += 5 if first_name.present?
+    score += 5 if last_name.present?
+    score += 10 if zip_code.present?
+    score += 10 if phone.present?
+    score += 10 if profile_picture.attached?
+
+    # Address fields (30 points total)
+    score += 10 if street_address.present?
+    score += 10 if city.present?
+    score += 10 if state.present?
+
+    # Address verification bonus (10 points)
+    score += 10 if address_verified?
+
+    # Cap at 100
+    self.trust_score = [ score, 100 ].min
+    save!
   end
 
   # OTP Methods
@@ -106,8 +147,6 @@ class User < ApplicationRecord
     return true unless otp_sent_at.present?
     otp_sent_at < 20.seconds.ago
   end
-
-  private
 
   def profile_completion_required?
     # Only require profile fields when they're being set (not during initial email-only registration)

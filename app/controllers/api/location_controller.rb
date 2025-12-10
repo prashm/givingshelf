@@ -1,6 +1,5 @@
 class Api::LocationController < ApplicationController
-  skip_before_action :verify_authenticity_token
-  allow_unauthenticated_access
+  before_action :require_authentication, only: [ :mapbox_token ]
 
   def detect_zip
     # If coordinates are provided (from browser geolocation), use reverse geocoding
@@ -49,6 +48,28 @@ class Api::LocationController < ApplicationController
       Rails.logger.error e.backtrace.join("\n")
       render json: { zip_code: nil, error: "Failed to detect location" }
     end
+  end
+
+  def mapbox_token
+    mapbox_token = Rails.application.credentials.mapbox&.access_token || ENV["MAPBOX_ACCESS_TOKEN"]
+
+    unless mapbox_token.present?
+      render json: { error: "Mapbox token not configured" }, status: :service_unavailable
+      return
+    end
+
+    # Create a JWT token that expires in 1 hour
+    payload = {
+      mapbox_token: mapbox_token,
+      exp: 1.hour.from_now.to_i,
+      iat: Time.current.to_i
+    }
+
+    # Use Rails secret key base for signing (or a separate secret)
+    secret = Rails.application.secret_key_base
+    token = JWT.encode(payload, secret, "HS256")
+
+    render json: { token: token }
   end
 
   private

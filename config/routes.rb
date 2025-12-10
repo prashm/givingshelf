@@ -30,8 +30,12 @@ Rails.application.routes.draw do
       end
     end
 
-    # Location detection
-    get "/location/detect_zip", to: "location#detect_zip"
+    resources :location, only: [] do
+      collection do
+        get :detect_zip
+        get :mapbox_token
+      end
+    end
 
     # Authentication routes
     post "/login", to: "sessions#create"

@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, PhotoIcon, CheckCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageCropper from '../common/ImageCropper';
+import AddressAutocomplete from '../common/AddressAutocomplete';
+import axios from '../../lib/axios';
 
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
-  const { updateProfile } = useAuth();
+  const { updateProfile, checkAuthStatus } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
     phone: '',
+    street_address: '',
+    city: '',
+    state: '',
     zip_code: ''
   });
   const [errors, setErrors] = useState({});
@@ -82,6 +87,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         last_name: currentUser.last_name || '',
         email: currentUser.email_address || '',
         phone: formattedPhone,
+        street_address: currentUser.street_address || '',
+        city: currentUser.city || '',
+        state: currentUser.state || '',
         zip_code: currentUser.zip_code || ''
       });
 
@@ -121,6 +129,28 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
     }
     
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
+  };
+
+  const handleAddressSelect = (address) => {
+    setFormData(prev => ({
+      ...prev,
+      street_address: address.street_address || address.full_address || prev.street_address,
+      city: address.city || prev.city,
+      state: address.state || prev.state,
+      zip_code: address.zip_code || prev.zip_code
+    }));
+  };
+
+  const getTrustScoreColor = (score) => {
+    if (score >= 70) return 'bg-green-100 text-green-800 border-green-300';
+    if (score >= 40) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-red-100 text-red-800 border-red-300';
+  };
+
+  const getTrustScoreIconColor = (score) => {
+    if (score >= 70) return 'text-green-600';
+    if (score >= 40) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   const handleImageInputChange = (e) => {
@@ -264,7 +294,10 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         zip_code: formData.zip_code.trim(),
-        phone: phoneDigits || null // Send null if empty
+        phone: phoneDigits || null, // Send null if empty
+        street_address: formData.street_address.trim() || null,
+        city: formData.city.trim() || null,
+        state: formData.state.trim() || null
       };
 
       // If profile picture was removed (null and no preview), send empty string to remove it
@@ -287,6 +320,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         } else if (result.user && !result.user.profile_picture_url) {
           setProfilePicturePreview(null);
         }
+        
+        // Note: currentUser is automatically updated by updateProfile in AuthContext
+        // The Profile component will re-render when currentUser prop changes
         
         setIsEditing(false);
         setErrors({});
@@ -317,6 +353,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         last_name: currentUser.last_name || '',
         email: currentUser.email_address || '',
         phone: formattedPhone,
+        street_address: currentUser.street_address || '',
+        city: currentUser.city || '',
+        state: currentUser.state || '',
         zip_code: currentUser.zip_code || ''
       });
       // Reset profile picture preview
@@ -351,7 +390,23 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
     <div className="container mx-auto py-8 px-4 max-w-2xl">
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-bold text-gray-900">My Profile</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-3xl font-bold text-gray-900">My Profile</h2>
+            {!isEditing && currentUser.trust_score !== undefined && (
+              <div 
+                className="relative group"
+                title={`Trust Score: ${currentUser.trust_score || 0}/100`}
+              >
+                <ShieldCheckIcon 
+                  className={`h-8 w-8 ${getTrustScoreIconColor(currentUser.trust_score || 0)}`}
+                />
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                  Trust Score: {currentUser.trust_score || 0}/100
+                </div>
+              </div>
+            )}
+          </div>
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
@@ -568,6 +623,75 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               <p className="mt-1 text-xs text-gray-500">Optional - US format only</p>
             </div>
 
+            {/* Street Address */}
+            <div>
+              <label htmlFor="street_address" className="block text-sm font-medium text-gray-700 mb-2">
+                Street Address
+              </label>
+              <AddressAutocomplete
+                value={formData.street_address}
+                onChange={(value) => {
+                  setFormData(prev => ({ ...prev, street_address: value }));
+                }}
+                onAddressSelect={handleAddressSelect}
+                zipCode={formData.zip_code}
+                placeholder="Start typing your street address..."
+                disabled={isSaving}
+                error={!!errors.street_address}
+              />
+              {errors.street_address && (
+                <p className="mt-1 text-sm text-red-600">{errors.street_address}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Optional</p>
+            </div>
+
+            {/* City */}
+            <div>
+              <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                City
+              </label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                autoComplete="address-level2"
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                  errors.city ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter your city"
+              />
+              {errors.city && (
+                <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Optional</p>
+            </div>
+
+            {/* State */}
+            <div>
+              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+                State
+              </label>
+              <input
+                type="text"
+                id="state"
+                name="state"
+                value={formData.state}
+                onChange={handleInputChange}
+                autoComplete="address-level1"
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                  errors.state ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter your state (e.g., CA)"
+                maxLength={2}
+              />
+              {errors.state && (
+                <p className="mt-1 text-sm text-red-600">{errors.state}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Optional - 2-letter state code</p>
+            </div>
+
             {/* ZIP Code */}
             <div>
               <label htmlFor="zip_code" className="block text-sm font-medium text-gray-700 mb-2">
@@ -579,6 +703,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                 name="zip_code"
                 value={formData.zip_code}
                 onChange={handleInputChange}
+                autoComplete="postal-code"
                 className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
                   errors.zip_code ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -657,9 +782,36 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-500">Phone</span>
-                  <p className="text-gray-900">{currentUser.phone || 'Not provided'}</p>
+                  <p className="text-gray-900">
+                    {currentUser.phone ? formatPhoneNumber(currentUser.phone) : 'Not provided'}
+                  </p>
                 </div>
               </div>
+
+              {(currentUser.street_address || currentUser.city || currentUser.state) && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <MapPinIcon className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-500">Address</span>
+                    <p className="text-gray-900">
+                      {[
+                        currentUser.street_address,
+                        currentUser.city,
+                        currentUser.state,
+                        currentUser.zip_code
+                      ].filter(Boolean).join(', ') || 'Not provided'}
+                    </p>
+                    {currentUser.address_verified && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        <CheckCircleIcon className="h-3 w-3" />
+                        Verified
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0">
@@ -670,7 +822,6 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   <p className="text-gray-900">{currentUser.zip_code || 'Not provided'}</p>
                 </div>
               </div>
-
             </div>
 
             {/* Quick Actions */}

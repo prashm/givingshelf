@@ -17,7 +17,6 @@ class UserService
     self.user = user
 
     unless user
-      new_user = true
       # New user - create user
       password = SecureRandom.hex(16) # Temporary password for passwordless flow
       user = User.new(
@@ -30,7 +29,7 @@ class UserService
       user.save!(validate: false)
     end
 
-    p user
+    user
   rescue => e
     # Perhaps user email already exists?
     @errors << e.message
@@ -51,5 +50,24 @@ class UserService
   rescue => e
     @errors << e.message
     nil
+  end
+
+  def update_user(user_params)
+    user_params = user_params.with_indifferent_access
+    # Verify address if address fields are provided
+    if user_params[:street_address].present? && user_params[:city].present? && user_params[:state].present?
+      address_params = {
+        street_address: user_params[:street_address],
+        city: user_params[:city],
+        state: user_params[:state],
+        zip_code: user_params[:zip_code] || self.user.zip_code
+      }
+      user_params[:address_verified] = AddressVerificationService.new.verify(address_params, address_params[:zip_code])
+    end
+    user.update!(user_params)
+    true
+  rescue => e
+    @errors << e.message
+    false
   end
 end

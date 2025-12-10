@@ -16,10 +16,11 @@ class Api::UsersController < ApplicationController
       return
     end
 
-    if @user.update(user_params)
-      render json: user_json(@user)
+    user_service = UserService.new(Current.user)
+    if user_service.update_user(user_params.to_h)
+      render json: user_json(@user.reload)
     else
-      render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: user_service.errors }, status: :unprocessable_entity
     end
   end
 
@@ -44,7 +45,7 @@ class Api::UsersController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:first_name, :last_name, :zip_code, :phone, :profile_picture)
+    params.require(:user).permit(:first_name, :last_name, :zip_code, :phone, :profile_picture, :street_address, :city, :state, :address_verified)
   end
 
   def user_json(user)
@@ -57,6 +58,11 @@ class Api::UsersController < ApplicationController
       display_name: user.display_name,
       zip_code: user.zip_code,
       phone: user.phone,
+      street_address: user.street_address,
+      city: user.city,
+      state: user.state,
+      address_verified: user.address_verified?,
+      trust_score: user.trust_score || 0,
       verified: user.verified?,
       profile_complete: user.profile_complete?,
       profile_picture_url: user.profile_picture.attached? ? user.profile_picture.attachment.url : nil,
