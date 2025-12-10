@@ -147,7 +147,8 @@ class BookService
         id: book.user.id,
         name: book.user.display_name,
         location: book.user.location,
-        verified: book.user.verified?
+        verified: book.user.verified?,
+        trust_score: book.user.trust_score || 0
       },
       request_count: book.book_requests.count,
       created_at: book.created_at,

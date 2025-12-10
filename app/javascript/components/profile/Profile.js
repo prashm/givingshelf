@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, PhotoIcon, CheckCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, PhotoIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageCropper from '../common/ImageCropper';
 import AddressAutocomplete from '../common/AddressAutocomplete';
+import VerificationBadge from '../common/VerificationBadge';
 import axios from '../../lib/axios';
 
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
@@ -147,11 +148,6 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
     return 'bg-red-100 text-red-800 border-red-300';
   };
 
-  const getTrustScoreIconColor = (score) => {
-    if (score >= 70) return 'text-green-600';
-    if (score >= 40) return 'text-yellow-600';
-    return 'text-red-600';
-  };
 
   const handleImageInputChange = (e) => {
     const file = e.target.files?.[0];
@@ -392,19 +388,12 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h2 className="text-3xl font-bold text-gray-900">My Profile</h2>
-            {!isEditing && currentUser.trust_score !== undefined && (
-              <div 
-                className="relative group"
-                title={`Trust Score: ${currentUser.trust_score || 0}/100`}
-              >
-                <ShieldCheckIcon 
-                  className={`h-8 w-8 ${getTrustScoreIconColor(currentUser.trust_score || 0)}`}
-                />
-                {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                  Trust Score: {currentUser.trust_score || 0}/100
-                </div>
-              </div>
+            {!isEditing && (
+              <VerificationBadge 
+                trustScore={currentUser.trust_score}
+                size="lg"
+                verified={currentUser.verified}
+              />
             )}
           </div>
           {!isEditing && (

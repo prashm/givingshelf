@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline';
 import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
+import VerificationBadge from '../common/VerificationBadge';
 
 const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal }) => {
   const { getBook, requestBook } = useBooks();
@@ -16,6 +17,8 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
   const [requestMessage, setRequestMessage] = useState('');
   const [requestError, setRequestError] = useState('');
   const [userRequest, setUserRequest] = useState(null);
+  const [mapboxToken, setMapboxToken] = useState(null);
+  const [mapImageUrl, setMapImageUrl] = useState(null);
 
   if (!book) {
     return (
@@ -101,6 +104,67 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
         console.error('Error fetching user request:', error);
       });
   }, [book?.id, currentUser?.id]);
+
+  // Fetch Mapbox token and generate map image
+  useEffect(() => {
+    const fetchMapboxToken = async () => {
+      try {
+        const response = await axios.get('/api/location/mapbox_token', {
+          withCredentials: true
+        });
+        
+        const token = response.data.token;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        
+        if (payload.exp && payload.exp < Date.now() / 1000) {
+          setMapboxToken(null);
+        } else {
+          setMapboxToken(payload.mapbox_token);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Mapbox token:', error);
+        setMapboxToken(null);
+      }
+    };
+
+    fetchMapboxToken();
+  }, []);
+
+  // Generate map image URL when zip code and token are available
+  useEffect(() => {
+    if (!mapboxToken || !book?.owner?.location) {
+      setMapImageUrl(null);
+      return;
+    }
+
+    const zipCode = book.owner.location;
+    
+    // Geocode the zip code to get coordinates, then create a static map
+    const geocodeZipCode = async () => {
+      try {
+        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(zipCode)}.json?country=us&types=postcode&access_token=${mapboxToken}`;
+        const response = await fetch(geocodeUrl);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          // Create static map image URL
+          // Using a simpler format without overlay first to ensure it works
+          // Format: https://api.mapbox.com/styles/v1/{style_id}/static/{lon},{lat},{zoom}/{width}x{height}{@2x}?access_token={token}
+          const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${lng},${lat},11/300x200@2x?access_token=${mapboxToken}`;
+          setMapImageUrl(mapUrl);
+        } else {
+          console.warn('No geocoding results for zip code:', zipCode);
+          setMapImageUrl(null);
+        }
+      } catch (error) {
+        console.error('Error geocoding zip code:', error);
+        setMapImageUrl(null);
+      }
+    };
+
+    geocodeZipCode();
+  }, [mapboxToken, book?.owner?.location]);
 
   const requireLogin = (callback, destinationPage = null) => {
     if (!currentUser) {
@@ -354,42 +418,80 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
             {/* Additional Details */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">About This Book</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3">
-                  <UserIcon className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Donor</span>
-                    <p className="text-gray-900">{book.donor_name || 'Anonymous'}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column - Donor, Added, Status */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <UserIcon className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Donor</span>
+                      {currentUser && book.owner ? (
+                        <p className="text-gray-900 flex items-center gap-2">
+                          {book.owner.name || 'Anonymous'}
+                          <VerificationBadge 
+                            trustScore={book.owner.trust_score}
+                            size="md"
+                            verified={book.owner.verified}
+                          />
+                        </p>
+                      ) : (
+                        <p className="text-gray-900">Anonymous</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <CalendarIcon className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Added</span>
+                      <p className="text-gray-900">
+                        {new Date(book.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <BookOpenIcon className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Status</span>
+                      <p className="text-gray-900">{book.status_display || 'Available'}</p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <MapPinIcon className="h-4 w-4 text-gray-400" />
-                  <div>
+                {/* Right Column - Location with Map */}
+                <div className="flex items-start gap-3">
+                  <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
+                  <div className="flex-1">
                     <span className="text-sm font-medium text-gray-500">Location</span>
-                    <p className="text-gray-900">{book.donor_zip_code || 'Not specified'}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <CalendarIcon className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Added</span>
-                    <p className="text-gray-900">
-                      {new Date(book.created_at).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <BookOpenIcon className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Status</span>
-                    <p className="text-gray-900 capitalize">{book.status || 'Available'}</p>
+                    {book.owner?.location ? (
+                      <div>
+                        <p className="text-gray-900 mb-2">{book.owner.location}</p>
+                        {mapImageUrl ? (
+                          <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                            <img 
+                              src={mapImageUrl} 
+                              alt={`Map of ${book.owner.location}`}
+                              className="w-full h-40 object-cover"
+                              onError={(e) => {
+                                console.error('Failed to load map image');
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : mapboxToken ? (
+                          <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 h-40 flex items-center justify-center">
+                            <p className="text-sm text-gray-500">Loading map...</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-gray-900">Not specified</p>
+                    )}
                   </div>
                 </div>
               </div>
