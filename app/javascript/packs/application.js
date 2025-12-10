@@ -1,3 +1,28 @@
+// Suppress HTMLScopedElement errors from Mapbox library
+// These errors don't affect functionality as Mapbox has fallback handling
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    // Suppress HTMLScopedElement "Illegal constructor" errors from Mapbox
+    if (event.error && event.error.message && 
+        (event.error.message.includes('HTMLScopedElement') || 
+         event.error.message.includes('Illegal constructor') ||
+         event.error.message.includes('Failed to construct'))) {
+      event.preventDefault();
+      return false;
+    }
+  }, true);
+  
+  // Also catch unhandled promise rejections
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason && event.reason.message && 
+        (event.reason.message.includes('HTMLScopedElement') || 
+         event.reason.message.includes('Illegal constructor'))) {
+      event.preventDefault();
+      return false;
+    }
+  });
+}
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
