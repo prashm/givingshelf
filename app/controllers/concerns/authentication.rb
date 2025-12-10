@@ -44,8 +44,15 @@ module Authentication
       session.delete(:return_to_after_authenticating) || root_url
     end
 
-    def start_new_session_for(user)
-      user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
+    def start_new_session_for(user, device_fingerprint: nil, suspicious_activity: false)
+      session_params = {
+        user_agent: request.user_agent,
+        ip_address: request.remote_ip,
+        suspicious_activity: suspicious_activity
+      }
+      session_params[:device_fingerprint] = device_fingerprint if device_fingerprint.present?
+
+      user.sessions.create!(session_params).tap do |session|
         Current.session = session
         cookies.signed.permanent[:session_id] = { value: session.id, httponly: true, same_site: :lax }
       end

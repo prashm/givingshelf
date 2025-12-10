@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import axios from '../../lib/axios';
 import OtpVerification from './OtpVerification';
+import TurnstileWidget from './TurnstileWidget';
+import generateDeviceFingerprint from '../../lib/deviceFingerprint';
 
 const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
@@ -10,6 +12,16 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState(null);
+  const turnstileRef = useRef(null);
+  
+  // Get Turnstile site key from meta tag
+  const getTurnstileSiteKey = () => {
+    if (typeof document === 'undefined') return null;
+    const meta = document.querySelector('meta[name="turnstile-site-key"]');
+    return meta ? meta.getAttribute('content') : null;
+  };
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -22,6 +34,18 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  // Generate device fingerprint when modal opens
+  useEffect(() => {
+    if (isOpen && !deviceFingerprint) {
+      generateDeviceFingerprint().then(result => {
+        setDeviceFingerprint(result.hash);
+      }).catch(err => {
+        console.error('Failed to generate device fingerprint:', err);
+        // Continue without fingerprint if generation fails
+      });
+    }
+  }, [isOpen, deviceFingerprint]);
 
   const validateEmail = (emailValue) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,6 +65,24 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
     setError('');
   };
 
+  const handleCaptchaSuccess = (token) => {
+    setCaptchaToken(token);
+    setError('');
+  };
+
+  const handleCaptchaError = (error) => {
+    console.error('CAPTCHA error:', error);
+    setError('CAPTCHA verification failed. Please try again.');
+    setCaptchaToken(null);
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null);
+    if (turnstileRef.current) {
+      turnstileRef.current.reset();
+    }
+  };
+
   const handleContinue = async (e) => {
     e.preventDefault();
     
@@ -50,17 +92,48 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
       return;
     }
 
+    // Only require CAPTCHA if site key is present and not in development (localhost)
+    const siteKey = getTurnstileSiteKey();
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const requiresCaptcha = siteKey && !isLocalhost;
+
+    if (requiresCaptcha && !captchaToken) {
+      setError('Please complete the security verification.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await axios.post('/api/login', {
-        email: email.trim()
-      }, {
+      // Ensure device fingerprint is ready
+      let fingerprint = deviceFingerprint;
+      if (!fingerprint) {
+        const result = await generateDeviceFingerprint();
+        fingerprint = result.hash;
+        setDeviceFingerprint(fingerprint);
+      }
+
+      const requestData = {
+        email: email.trim(),
+        device_fingerprint: fingerprint
+      };
+
+      // Include CAPTCHA token if available
+      if (captchaToken) {
+        requestData.captcha_token = captchaToken;
+      }
+
+      const response = await axios.post('/api/login', requestData, {
         withCredentials: true
       });
 
       if (response.data.requires_otp) {
+        // Reset CAPTCHA for next attempt
+        if (turnstileRef.current) {
+          turnstileRef.current.reset();
+        }
+        setCaptchaToken(null);
         // Show OTP verification page
         setShowOtpVerification(true);
       } else if (response.data.user) {
@@ -69,7 +142,36 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
         onClose();
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'An error occurred. Please try again.');
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 429) {
+          // Rate limit error
+          errorMessage = data?.error || 'Too many attempts. Please wait a moment and try again.';
+        } else if (status === 400) {
+          // Bad request (e.g., missing CAPTCHA)
+          errorMessage = data?.error || 'Please complete the security verification.';
+        } else if (status === 422 || status === 401) {
+          // Validation or authentication errors
+          errorMessage = data?.error || 'Invalid credentials. Please try again.';
+        } else {
+          // Other errors
+          errorMessage = data?.error || err.message || errorMessage;
+        }
+      } else {
+        errorMessage = err.message || errorMessage;
+      }
+      
+      setError(errorMessage);
+      
+      // Reset CAPTCHA on error (except rate limit errors)
+      if (turnstileRef.current && err.response?.status !== 429) {
+        turnstileRef.current.reset();
+      }
+      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +194,10 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
       setError('');
       setEmail('');
       setEmailError('');
+      setCaptchaToken(null);
+      if (turnstileRef.current) {
+        turnstileRef.current.reset();
+      }
     }
   }, [isOpen]);
 
@@ -208,10 +314,23 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
+          {/* CAPTCHA Widget - Only show if site key is present and not localhost */}
+          {getTurnstileSiteKey() && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+            <div className="flex justify-center py-2">
+              <TurnstileWidget
+                ref={turnstileRef}
+                siteKey={getTurnstileSiteKey()}
+                onSuccess={handleCaptchaSuccess}
+                onError={handleCaptchaError}
+                onExpire={handleCaptchaExpire}
+              />
+            </div>
+          )}
+
           {/* Continue Button */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || ((getTurnstileSiteKey() && (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) && !captchaToken)}
             className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-5 hover:bg-emerald-700"
             style={{ marginTop: '1.25rem', backgroundColor: '#059669' }}
           >

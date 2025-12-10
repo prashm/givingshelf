@@ -13,6 +13,9 @@
         <meta name="sentry-release" content="<%= ENV['SENTRY_RELEASE'] %>">
       <% end %>
     <% end %>
+    <% if ENV['CLOUDFLARE_TURNSTILE_SITE_KEY'].present? && (Rails.env.production? || Rails.env.staging?) %>
+      <meta name="turnstile-site-key" content="<%= ENV['CLOUDFLARE_TURNSTILE_SITE_KEY'] %>">
+    <% end %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 

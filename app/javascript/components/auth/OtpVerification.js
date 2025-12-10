@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from '../../lib/axios';
+import generateDeviceFingerprint from '../../lib/deviceFingerprint';
 
 const OtpVerification = ({ email, onBack, onSuccess }) => {
   const { checkAuthStatus } = useAuth();
@@ -12,7 +13,19 @@ const OtpVerification = ({ email, onBack, onSuccess }) => {
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpExpiry, setOtpExpiry] = useState(5 * 60); // 5 minutes in seconds
+  const [deviceFingerprint, setDeviceFingerprint] = useState(null);
   const inputRefs = useRef([]);
+
+  // Generate device fingerprint on mount
+  useEffect(() => {
+    if (!deviceFingerprint) {
+      generateDeviceFingerprint().then(result => {
+        setDeviceFingerprint(result.hash);
+      }).catch(err => {
+        console.error('Failed to generate device fingerprint:', err);
+      });
+    }
+  }, [deviceFingerprint]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -116,9 +129,18 @@ const OtpVerification = ({ email, onBack, onSuccess }) => {
     setError('');
 
     try {
+      // Ensure device fingerprint is ready
+      let fingerprint = deviceFingerprint;
+      if (!fingerprint) {
+        const result = await generateDeviceFingerprint();
+        fingerprint = result.hash;
+        setDeviceFingerprint(fingerprint);
+      }
+
       const response = await axios.post('/api/verify_otp', {
         email: email,
-        otp_code: otp
+        otp_code: otp,
+        device_fingerprint: fingerprint
       }, {
         withCredentials: true
       });
@@ -130,7 +152,28 @@ const OtpVerification = ({ email, onBack, onSuccess }) => {
         onSuccess(profileIncomplete);
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Invalid verification code. Please try again.';
+      let errorMessage = 'Invalid verification code. Please try again.';
+      
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 429) {
+          // Rate limit error
+          errorMessage = data?.error || 'Too many verification attempts. Please wait a moment and try again.';
+        } else if (status === 401) {
+          // Invalid code or unauthorized
+          errorMessage = data?.error || 'Invalid verification code. Please try again.';
+          if (data?.attempts_remaining !== undefined) {
+            errorMessage += ` (${data.attempts_remaining} attempt${data.attempts_remaining !== 1 ? 's' : ''} remaining)`;
+          }
+        } else {
+          errorMessage = data?.error || errorMessage;
+        }
+      } else {
+        errorMessage = err.message || errorMessage;
+      }
+      
       setError(errorMessage);
       
       // Clear OTP on error
@@ -150,8 +193,17 @@ const OtpVerification = ({ email, onBack, onSuccess }) => {
     setError('');
 
     try {
+      // Ensure device fingerprint is ready
+      let fingerprint = deviceFingerprint;
+      if (!fingerprint) {
+        const result = await generateDeviceFingerprint();
+        fingerprint = result.hash;
+        setDeviceFingerprint(fingerprint);
+      }
+
       const response = await axios.post('/api/resend_otp', {
-        email: email
+        email: email,
+        device_fingerprint: fingerprint
       }, {
         withCredentials: true
       });
@@ -165,13 +217,31 @@ const OtpVerification = ({ email, onBack, onSuccess }) => {
         setError(''); // Clear any errors
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to resend code. Please try again.';
-      setError(errorMessage);
+      let errorMessage = 'Failed to resend code. Please try again.';
       
-      // Set cooldown if provided
-      if (err.response?.data?.seconds_remaining) {
-        setResendCooldown(err.response.data.seconds_remaining);
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 429) {
+          // Rate limit error
+          errorMessage = data?.error || 'Too many resend requests. Please wait a moment and try again.';
+        } else if (status === 429 || data?.seconds_remaining) {
+          // Cooldown period
+          errorMessage = data?.error || 'Please wait before requesting a new code.';
+        } else {
+          errorMessage = data?.error || errorMessage;
+        }
+        
+        // Set cooldown if provided
+        if (data?.seconds_remaining) {
+          setResendCooldown(data.seconds_remaining);
+        }
+      } else {
+        errorMessage = err.message || errorMessage;
       }
+      
+      setError(errorMessage);
     } finally {
       setIsResending(false);
     }

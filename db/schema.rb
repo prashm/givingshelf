@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_09_194825) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_10_122338) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -111,6 +111,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_09_194825) do
     t.string "user_agent"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "device_fingerprint"
+    t.boolean "suspicious_activity", default: false, null: false
+    t.index ["device_fingerprint"], name: "index_user_sessions_on_device_fingerprint"
+    t.index ["suspicious_activity"], name: "index_user_sessions_on_suspicious_activity"
     t.index ["user_id"], name: "index_user_sessions_on_user_id"
   end
 
