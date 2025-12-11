@@ -1,3 +1,5 @@
+require "jwt"
+
 class Api::LocationController < ApplicationController
   before_action :require_authentication, only: [ :mapbox_token ]
 

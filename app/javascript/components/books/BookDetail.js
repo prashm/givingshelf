@@ -19,6 +19,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
   const [userRequest, setUserRequest] = useState(null);
   const [mapboxToken, setMapboxToken] = useState(null);
   const [mapImageUrl, setMapImageUrl] = useState(null);
+  const [pickupMapImageUrl, setPickupMapImageUrl] = useState(null);
 
   if (!book) {
     return (
@@ -165,6 +166,40 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
 
     geocodeZipCode();
   }, [mapboxToken, book?.owner?.location]);
+
+  // Generate map image URL for pickup address when address and token are available
+  useEffect(() => {
+    if (!mapboxToken || !book?.pickup_address) {
+      setPickupMapImageUrl(null);
+      return;
+    }
+
+    const address = book.pickup_address;
+    
+    // Geocode the address to get coordinates, then create a static map
+    const geocodeAddress = async () => {
+      try {
+        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?country=us&access_token=${mapboxToken}`;
+        const response = await fetch(geocodeUrl);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          // Create static map image URL
+          const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${lng},${lat},14/300x200@2x?access_token=${mapboxToken}`;
+          setPickupMapImageUrl(mapUrl);
+        } else {
+          console.warn('No geocoding results for address:', address);
+          setPickupMapImageUrl(null);
+        }
+      } catch (error) {
+        console.error('Error geocoding address:', error);
+        setPickupMapImageUrl(null);
+      }
+    };
+
+    geocodeAddress();
+  }, [mapboxToken, book?.pickup_address]);
 
   const requireLogin = (callback, destinationPage = null) => {
     if (!currentUser) {
@@ -425,7 +460,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                     <UserIcon className="h-4 w-4 text-gray-400" />
                     <div>
                       <span className="text-sm font-medium text-gray-500">Donor</span>
-                      {currentUser && book.owner ? (
+                      {currentUser ? (
                         <p className="text-gray-900 flex items-center gap-2">
                           {book.owner.name || 'Anonymous'}
                           <VerificationBadge 
@@ -435,7 +470,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                           />
                         </p>
                       ) : (
-                        <p className="text-gray-900">Anonymous</p>
+                        <p className="text-gray-900">Hidden</p>
                       )}
                     </div>
                   </div>
@@ -468,7 +503,28 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                   <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
                   <div className="flex-1">
                     <span className="text-sm font-medium text-gray-500">Location</span>
-                    {book.owner?.location ? (
+                    {book.pickup_address && currentUser ? (
+                      <div>
+                        <p className="text-gray-900 mb-2">{book.pickup_address}</p>
+                        {pickupMapImageUrl ? (
+                          <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                            <img 
+                              src={pickupMapImageUrl} 
+                              alt={`Map of ${book.pickup_address}`}
+                              className="w-full h-40 object-cover"
+                              onError={(e) => {
+                                console.error('Failed to load map image');
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : mapboxToken ? (
+                          <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 h-40 flex items-center justify-center">
+                            <p className="text-sm text-gray-500">Loading map...</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : book.owner?.location ? (
                       <div>
                         <p className="text-gray-900 mb-2">{book.owner.location}</p>
                         {mapImageUrl ? (
@@ -500,7 +556,6 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
             {/* Additional Photos Carousel */}
             {book.user_images_urls && book.user_images_urls.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Additional Photos</h3>
                 <div className="relative">
                   <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
                     {book.user_images_urls.map((url, index) => (
@@ -517,6 +572,13 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Personal Note */}
+            {book.personal_note && (
+              <div className="mb-6">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{book.personal_note}</p>
               </div>
             )}
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_10_122338) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_11_200722) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -80,6 +80,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_10_122338) do
     t.integer "published_year"
     t.integer "status", default: 0, null: false
     t.integer "view_count", default: 0, null: false
+    t.text "personal_note"
+    t.string "pickup_method"
+    t.text "pickup_address"
     t.index ["status"], name: "index_books_on_status"
     t.index ["user_id"], name: "index_books_on_user_id"
   end

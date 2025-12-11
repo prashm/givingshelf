@@ -153,6 +153,13 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
               }
             />
 
+            {/* Safety Tip */}
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                <strong>Safety reminder:</strong> Your address will be shared with other signed-in book lovers if you add it here. If you prefer more privacy, skip entering an address — you can arrange a meeting or pickup through the in-app chat instead.
+              </p>
+            </div>
+
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">
               <button

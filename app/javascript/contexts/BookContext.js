@@ -105,7 +105,32 @@ export const BookProvider = ({ children }) => {
     try {
       const formData = new FormData();
       
+      // List of text fields that should always be included, even if empty
+      const textFields = ['personal_note', 'pickup_method', 'pickup_address'];
+      
+      // Always include text fields first, even if they're not in bookData
+      // This ensures they're always sent to the backend
+      textFields.forEach(key => {
+        let value = '';
+        if (bookData.hasOwnProperty(key)) {
+          // Preserve the actual value, including empty strings
+          // Convert null/undefined to empty string, but keep actual empty strings
+          if (bookData[key] === null || bookData[key] === undefined) {
+            value = '';
+          } else {
+            value = String(bookData[key]); // Ensure it's a string
+          }
+        }
+        // Always append, even if empty string
+        formData.append(`book[${key}]`, value);
+      });
+      
       Object.keys(bookData).forEach(key => {
+        // Skip text fields as they're already handled above
+        if (textFields.includes(key)) {
+          return;
+        }
+        
         if (key === 'user_images' && Array.isArray(bookData[key])) {
           // Append each file separately for multiple attachments
           bookData[key].forEach((file) => {
@@ -116,7 +141,11 @@ export const BookProvider = ({ children }) => {
           bookData[key].forEach((index) => {
             formData.append(`book[remove_user_image_indices][]`, index);
           });
-        } else if (bookData[key] !== null && bookData[key] !== undefined) {
+        } else if (key === 'cover_image' && bookData[key] instanceof File) {
+          // Handle cover image file upload
+          formData.append(`book[${key}]`, bookData[key]);
+        } else if (bookData[key] !== null && bookData[key] !== undefined && key !== 'cover_image') {
+          // Include all other fields
           formData.append(`book[${key}]`, bookData[key]);
         }
       });

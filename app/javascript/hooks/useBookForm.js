@@ -11,6 +11,9 @@ export const useBookForm = (initialData = {}) => {
     isbn: '',
     cover_image: null,
     user_images: [],
+    personal_note: '',
+    pickup_method: '',
+    pickup_address: '',
     ...initialData
   });
 
@@ -81,6 +84,9 @@ export const useBookForm = (initialData = {}) => {
       isbn: '',
       cover_image: null,
       user_images: [],
+      personal_note: '',
+      pickup_method: '',
+      pickup_address: '',
       ...newData
     });
     setValidationErrors({});

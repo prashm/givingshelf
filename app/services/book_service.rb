@@ -143,6 +143,9 @@ class BookService
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
       view_count: book.view_count || 0,
+      personal_note: book.personal_note,
+      pickup_method: book.pickup_method,
+      pickup_address: book.pickup_address,
       owner: {
         id: book.user.id,
         name: book.user.display_name,

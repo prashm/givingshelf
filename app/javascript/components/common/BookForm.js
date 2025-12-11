@@ -224,6 +224,81 @@ const BookForm = ({
           </span>
         </div>
       </div>
+
+      {/* Personal Note */}
+      <div>
+        <label htmlFor="personal_note" className="block text-sm font-medium text-gray-700 mb-2">
+          Personal Note (Optional)
+        </label>
+        <textarea
+          id="personal_note"
+          name="personal_note"
+          value={formData.personal_note || ''}
+          onChange={onInputChange}
+          rows={4}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          placeholder="write a note or short story about what this book meant to you..."
+        />
+      </div>
+
+      {/* Pickup Method */}
+      <div>
+        <label htmlFor="pickup_method" className="block text-sm font-medium text-gray-700 mb-2">
+          Pickup Method
+        </label>
+        <select
+          id="pickup_method"
+          name="pickup_method"
+          value={formData.pickup_method || ''}
+          onChange={(e) => {
+            onInputChange(e);
+            // Clear pickup address if "meet in person" is selected
+            if (e.target.value === 'meet_in_person') {
+              if (updateFormData) {
+                updateFormData({ pickup_address: '' });
+              } else {
+                onInputChange({ target: { name: 'pickup_address', value: '' } });
+              }
+            }
+          }}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+        >
+          <option value="">Select pickup method...</option>
+          <option value="meet_in_person">Meet in person</option>
+          <option value="pickup_little_library_drop">Pickup little library drop</option>
+          <option value="pickup_porch_drop">Pickup porch drop</option>
+        </select>
+      </div>
+
+      {/* Pickup Address - Conditional (not shown for "meet in person") */}
+      {formData.pickup_method && formData.pickup_method !== 'meet_in_person' && (
+        <div>
+          <label htmlFor="pickup_address" className="block text-sm font-medium text-gray-700 mb-2">
+            Pickup Address
+          </label>
+          {formData.pickup_method === 'pickup_little_library_drop' && (
+            <div className="mb-2">
+              <a
+                href="https://app.littlefreelibrary.org/ourmap"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-emerald-600 hover:text-emerald-700 underline"
+              >
+                Find a Little Free Library near you
+              </a>
+            </div>
+          )}
+          <textarea
+            id="pickup_address"
+            name="pickup_address"
+            value={formData.pickup_address || ''}
+            onChange={onInputChange}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Enter the address for book pickup"
+          />
+        </div>
+      )}
     </>
   );
 };

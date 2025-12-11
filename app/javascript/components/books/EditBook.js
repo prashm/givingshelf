@@ -89,9 +89,11 @@ const EditBook = ({ setCurrentPage, bookId }) => {
             genre: bookData.genre || '',
             published_year: bookData.published_year || new Date().getFullYear(),
             isbn: bookData.isbn || '',
-            isbn: bookData.isbn || '',
             cover_image: null,
-            user_images: [] // We don't populate file objects for existing images, but we can show them
+            user_images: [], // We don't populate file objects for existing images, but we can show them
+            personal_note: bookData.personal_note || '',
+            pickup_method: bookData.pickup_method || '',
+            pickup_address: bookData.pickup_address || ''
           });
 
           // Set current cover image if it exists
@@ -298,6 +300,13 @@ const EditBook = ({ setCurrentPage, bookId }) => {
               onCropUserImage={handleUserImageCrop}
               onRemoveExistingImage={handleRemoveExistingImage}
             />
+
+            {/* Safety Tip */}
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                <strong>Safety reminder:</strong> Your address will be shared with other signed-in book lovers if you add it here. If you prefer more privacy, skip entering an address — you can arrange a meeting or pickup through the in-app chat instead.
+              </p>
+            </div>
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">

@@ -92,7 +92,7 @@ class Api::BooksController < ApplicationController
 
   def book_params
     params.require(:book).permit(:title, :author, :condition, :summary, :isbn, :genre, :published_year,
-    :cover_image, :api_cover_image, user_images: [], remove_user_image_indices: [])
+    :cover_image, :api_cover_image, :personal_note, :pickup_method, :pickup_address, user_images: [], remove_user_image_indices: [])
   end
 
   def my_book_json(book)
