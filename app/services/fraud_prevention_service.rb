@@ -6,7 +6,7 @@ class FraudPreventionService
   MAX_FINGERPRINTS_PER_IP = 10 # Max different devices per IP in window
   SUSPICIOUS_IP_PATTERNS = [
     # Common proxy/VPN patterns (basic heuristics)
-    /\A\d+\.\d+\.\d+\.0\z/, # Likely VPN gateway
+    /\A\d+\.\d+\.\d+\.0\z/ # Likely VPN gateway
   ].freeze
 
   def initialize(device_fingerprint, ip_address, user_id = nil)
@@ -51,7 +51,7 @@ class FraudPreventionService
 
     recent_sessions = Session
       .where(device_fingerprint: @device_fingerprint)
-      .where('created_at > ?', RAPID_IP_CHANGE_WINDOW.ago)
+      .where("created_at > ?", RAPID_IP_CHANGE_WINDOW.ago)
       .distinct
       .pluck(:ip_address)
       .compact
@@ -66,7 +66,7 @@ class FraudPreventionService
 
     recent_fingerprints = Session
       .where(ip_address: @ip_address)
-      .where('created_at > ?', RAPID_IP_CHANGE_WINDOW.ago)
+      .where("created_at > ?", RAPID_IP_CHANGE_WINDOW.ago)
       .where.not(device_fingerprint: nil)
       .distinct
       .pluck(:device_fingerprint)
@@ -83,7 +83,7 @@ class FraudPreventionService
     # Check if this device has been used with different IPs for this user
     user_sessions = Session
       .where(user_id: @user_id, device_fingerprint: @device_fingerprint)
-      .where('created_at > ?', 24.hours.ago)
+      .where("created_at > ?", 24.hours.ago)
       .distinct
       .pluck(:ip_address)
       .compact
@@ -107,7 +107,7 @@ class FraudPreventionService
   # Log suspicious activity for monitoring
   def log_suspicious_activity
     Rails.logger.warn({
-      event: 'suspicious_login_attempt',
+      event: "suspicious_login_attempt",
       device_fingerprint: @device_fingerprint&.first(16), # Log only first 16 chars for privacy
       ip_address: @ip_address,
       user_id: @user_id,

@@ -1,10 +1,10 @@
 # Service to verify Cloudflare Turnstile CAPTCHA tokens
-require 'net/http'
-require 'uri'
-require 'json'
+require "net/http"
+require "uri"
+require "json"
 
 class CaptchaVerificationService
-  TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'.freeze
+  TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify".freeze
 
   def initialize(token, remote_ip = nil)
     @token = token
@@ -17,9 +17,9 @@ class CaptchaVerificationService
   def verify
     return false if @token.blank?
 
-    secret_key = ENV['CLOUDFLARE_TURNSTILE_SECRET_KEY']
+    secret_key = ENV["CLOUDFLARE_TURNSTILE_SECRET_KEY"]
     if secret_key.blank?
-      @errors << 'CAPTCHA verification not configured'
+      @errors << "CAPTCHA verification not configured"
       return false
     end
 
@@ -28,7 +28,7 @@ class CaptchaVerificationService
       handle_verification_response(response)
     rescue StandardError => e
       Rails.logger.error "CAPTCHA verification error: #{e.message}"
-      @errors << 'CAPTCHA verification failed'
+      @errors << "CAPTCHA verification failed"
       false
     end
   end
@@ -53,17 +53,17 @@ class CaptchaVerificationService
   def handle_verification_response(response)
     result = JSON.parse(response.body)
 
-    if result['success'] == true
+    if result["success"] == true
       true
     else
-      error_codes = result['error-codes'] || []
+      error_codes = result["error-codes"] || []
       @errors.concat(error_codes)
       Rails.logger.warn "CAPTCHA verification failed: #{error_codes.join(', ')}"
       false
     end
   rescue JSON::ParserError => e
     Rails.logger.error "Failed to parse CAPTCHA response: #{e.message}"
-    @errors << 'Invalid CAPTCHA response'
+    @errors << "Invalid CAPTCHA response"
     false
   end
 end
