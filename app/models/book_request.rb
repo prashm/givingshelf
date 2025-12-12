@@ -25,6 +25,18 @@ class BookRequest < ApplicationRecord
   scope :for_book_owner, ->(user) { where(owner: user) }
   scope :recent, -> { order(created_at: :desc) }
 
+  # Ransack allowlist for ActiveAdmin search/filter
+  def self.ransackable_attributes(auth_object = nil)
+    %w[
+      id id_value requester_id book_id owner_id status message
+      created_at updated_at
+    ]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    [ "book", "owner", "requester", "messages" ]
+  end
+
   before_validation :set_default_status, on: :create
   before_validation :set_owner, on: :create
 

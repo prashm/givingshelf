@@ -27,6 +27,18 @@ class Book < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
 
+  # Ransack allowlist for ActiveAdmin search/filter
+  def self.ransackable_attributes(auth_object = nil)
+    %w[
+      id id_value title author summary condition isbn genre published_year
+      status view_count personal_note pickup_method pickup_address
+      user_id created_at updated_at
+    ]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    [ "book_requests", "user", "user_images" ]
+  end
 
   def cover_image_url
     cover_image.attached? ? cover_image : nil

@@ -50,6 +50,13 @@ gem "sentry-ruby"
 gem "sentry-rails"
 gem "jwt"
 
+# Admin interface
+gem "activeadmin"
+gem "formtastic"
+# Sprockets for ActiveAdmin assets (ActiveAdmin requires Sprockets for SCSS compilation)
+gem "sprockets-rails"
+gem "sass-rails"
+
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 
 group :development, :test do

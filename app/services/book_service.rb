@@ -160,6 +160,17 @@ class BookService
     }
   end
 
+  def display_status(status)
+    case status
+    when Book::REQUESTED_STATUS
+      "Requested"
+    when Book::DONATED_STATUS
+      "Donated"
+    else
+      "Available"
+    end
+  end
+
   private
 
   def handle_api_cover_image(api_url)
@@ -189,16 +200,5 @@ class BookService
       false
     end
     true
-  end
-
-  def display_status(status)
-    case status
-    when Book::REQUESTED_STATUS
-      "Requested"
-    when Book::DONATED_STATUS
-      "Donated"
-    else
-      "Available"
-    end
   end
 end

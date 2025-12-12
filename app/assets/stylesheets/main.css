@@ -276,7 +276,7 @@
 input, textarea, select {
   appearance: none;
   background-color: #fff;
-  border-color: #d1d5db;
+  border: 1px solid #d1d5db;
 }
 
 input:focus, textarea:focus, select:focus {

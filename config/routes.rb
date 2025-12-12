@@ -1,4 +1,12 @@
 Rails.application.routes.draw do
+  # Admin routes
+  namespace :admin do
+    get "login", to: "sessions#new", as: :login
+    post "login", to: "sessions#create"
+    delete "logout", to: "sessions#destroy", as: :logout
+  end
+
+  ActiveAdmin.routes(self)
   # Handle Chrome devtools requests
   get "/.well-known/appspecific/com.chrome.devtools.json", to: proc { [ 404, {}, [ "" ] ] }
 
@@ -47,13 +55,17 @@ Rails.application.routes.draw do
 
   # Web routes
   resources :users, only: [ :new, :create ]
+  resources :sessions, only: [ :new, :create, :destroy ]
 
   # Catch all for React routing - but exclude system paths
   get "*path", to: "books#index", constraints: ->(request) do
     !request.path.start_with?("/.well-known") &&
     !request.path.start_with?("/api") &&
     !request.path.start_with?("/assets") &&
-    !request.path.start_with?("/packs")
+    !request.path.start_with?("/packs") &&
+    !request.path.start_with?("/admin") &&
+    !request.path.start_with?("/favicon") &&
+    !request.path.match?(/\.(ico|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot)$/i)
   end
 
   root "books#index"

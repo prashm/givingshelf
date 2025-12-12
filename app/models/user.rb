@@ -27,6 +27,17 @@ class User < ApplicationRecord
 
   scope :verified, -> { where(verified: true) }
   scope :by_zip_code, ->(zip_code) { where(zip_code: zip_code) }
+  scope :admin, -> { where(admin: true) }
+
+  # Ransack allowlist for ActiveAdmin search/filter
+  def self.ransackable_attributes(auth_object = nil)
+    # Exclude sensitive fields like password_digest and otp_secret
+    %w[
+      id id_value email_address first_name last_name zip_code phone
+      street_address city state verified admin address_verified trust_score
+      otp_attempts otp_sent_at created_at updated_at
+    ]
+  end
 
   after_update :recalculate_trust_score, if: :saved_change_to_profile_fields?
 

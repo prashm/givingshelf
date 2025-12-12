@@ -174,8 +174,27 @@ end
 
 puts "Created #{created_requests.length} book requests"
 
+# Create super admin user
+puts "Creating super admin user..."
+admin_user = User.find_or_initialize_by(email_address: "admin@booksharecommunity.org")
+admin_user.assign_attributes(
+  password: "Adm!n4bs",
+  password_confirmation: "Adm!n4bs",
+  admin: true,
+  verified: true
+)
+# Skip validations for profile fields since admin user doesn't need them
+admin_user.save!(validate: false)
+
+if admin_user.persisted?
+  puts "Super admin user created/updated: #{admin_user.email_address}"
+else
+  puts "Warning: Failed to create super admin user"
+end
+
 puts "Seed data created successfully!"
 puts "You can now log in with any of these accounts:"
 users.each do |user_data|
   puts "- #{user_data[:email_address]} (password: password123)"
 end
+puts "- #{admin_user.email_address} (password: Adm!n4bs) [ADMIN]"
