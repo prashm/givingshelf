@@ -57,7 +57,6 @@ gem "formtastic"
 # Sprockets for ActiveAdmin assets (ActiveAdmin requires Sprockets for SCSS compilation)
 gem "sprockets-rails"
 gem "sass-rails"
-gem "dartsass-rails"
 
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 

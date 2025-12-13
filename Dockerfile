@@ -61,8 +61,11 @@ RUN npm install && npm run build
 # Precompile bootsnap
 RUN bundle exec bootsnap precompile app/ lib/
 
-# Precompile rails assets
+# Precompile rails assets (this compiles SCSS to CSS)
 RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile
+
+# Remove SCSS files after compilation - only keep CSS files in production
+RUN find app/assets/stylesheets -name "*.scss" -type f -delete
 
 # -------------------
 # FINAL RUNTIME IMAGE
