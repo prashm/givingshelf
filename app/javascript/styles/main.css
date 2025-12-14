@@ -1,10 +1,6 @@
 /* BookShare Community - Tailwind v4 CSS Classes */
 /* This file contains all the specific Tailwind classes used in the BookShare marketplace */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Layout & Structure */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
