@@ -2,6 +2,7 @@ module.exports = {
   plugins: [
     require('@tailwindcss/postcss'),
     require('postcss-media-minmax'),
+    require('postcss-color-functional-notation'),
     require('autoprefixer'),
     {
       postcssPlugin: 'fix-sass-rgb',
