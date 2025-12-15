@@ -1,6 +1,4 @@
 class OtpMailer < ApplicationMailer
-  default from: "BookShare Community <noreply@bookshare.com>"
-
   def send_otp(user, otp_code)
     @user = user
     @otp_code = otp_code
