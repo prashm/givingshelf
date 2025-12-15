@@ -50,7 +50,7 @@
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
     "postcss-loader": "^8.2.0",
-    "postcss-preset-env": "^10.5.0",
+    "postcss-media-minmax": "^5.0.0",
     "react-refresh": "^0.17.0",
     "tailwindcss": "^4.1.17",
     "webpack-dev-server": "^4.15.2"
