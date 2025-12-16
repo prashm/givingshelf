@@ -19,4 +19,3 @@ amazon_production:
   service: S3
   region: us-west-2
   bucket: bookshare-prod
-  public: true
