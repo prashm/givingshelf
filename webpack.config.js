@@ -6,7 +6,9 @@ module.exports = {
   entry: './app/javascript/packs/application.js',
   output: {
     path: path.resolve(__dirname, 'app/assets/javascripts'),
-    filename: 'application.js',
+    // Use a distinct name to avoid colliding with Rails' default Propshaft asset
+    // logical path "application.js" (which can come from app/javascript/application.js).
+    filename: 'application-webpack.js',
     clean: false
   },
   module: {

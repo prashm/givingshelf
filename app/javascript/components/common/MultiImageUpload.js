@@ -24,10 +24,43 @@ const MultiImageUpload = ({
            (typeof window !== 'undefined' && window.innerWidth < 768);
   };
 
-  const handleFileSelect = (files) => {
-    const newFiles = Array.from(files).slice(0, maxImages - images.length - existingImages.length);
-    if (newFiles.length > 0) {
-      onImagesChange([...images, ...newFiles]);
+  const toStableFile = async (file, fallbackName) => {
+    if (!file) return null;
+    if (file instanceof File) {
+      try {
+        // Clone to memory so Android Chrome can't invalidate the underlying temp file mid-flow
+        const bytes = await file.arrayBuffer();
+        return new File([bytes], file.name || fallbackName, {
+          type: file.type || 'application/octet-stream',
+          lastModified: Date.now()
+        });
+      } catch (e) {
+        console.warn('Failed to stabilize file (using original):', e);
+        return file; // fallback
+      }
+    }
+    if (file instanceof Blob) {
+      const name = file.name || fallbackName;
+      const bytes = await file.arrayBuffer();
+      return new File([bytes], name, {
+        type: file.type || 'application/octet-stream',
+        lastModified: Date.now()
+      });
+    }
+    return null;
+  };
+
+  const handleFileSelect = async (files) => {
+    const selected = Array.from(files || []).slice(0, maxImages - images.length - existingImages.length);
+    if (selected.length === 0) return;
+
+    const stabilized = [];
+    for (let i = 0; i < selected.length; i++) {
+      const stable = await toStableFile(selected[i], `upload-${Date.now()}-${i + 1}.jpg`);
+      if (stable) stabilized.push(stable);
+    }
+    if (stabilized.length > 0) {
+      onImagesChange([...images, ...stabilized]);
     }
   };
 

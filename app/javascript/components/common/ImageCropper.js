@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -18,29 +18,54 @@ const ImageCropper = ({
 }) => {
   const [imgSrc, setImgSrc] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const objectUrlRef = useRef('');
 
   useEffect(() => {
     if (!originalImage) return;
     console.log('ImageCropper received image:', originalImage.name, originalImage.type, originalImage.size);
 
     setIsLoading(true);
-    let objectUrl = '';
-    try {
-      objectUrl = URL.createObjectURL(originalImage);
-      setImgSrc(objectUrl);
-    } catch (e) {
-      console.error('Error creating object URL:', e);
-    } finally {
-      // Small timeout to ensure state updates propagate
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 100);
-    }
+    let cancelled = false;
+
+    // On Android Chrome, files returned from camera/gallery can be "temporary".
+    // Creating an object URL directly from that File can later fail with:
+    //   net::ERR_UPLOAD_FILE_CHANGED
+    // To make the crop preview stable, clone the bytes into an in-memory Blob first.
+    (async () => {
+      try {
+        const bytes = await originalImage.arrayBuffer();
+        if (cancelled) return;
+        const stableBlob = new Blob([bytes], { type: originalImage.type || 'image/jpeg' });
+        const nextUrl = URL.createObjectURL(stableBlob);
+
+        // Swap URLs atomically: only revoke the previous URL after the new one is set.
+        const prevUrl = objectUrlRef.current;
+        objectUrlRef.current = nextUrl;
+        setImgSrc(nextUrl);
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+      } catch (e) {
+        console.error('Error creating stable object URL:', e);
+      } finally {
+        // Small timeout to ensure state updates propagate
+        setTimeout(() => {
+          if (!cancelled) setIsLoading(false);
+        }, 100);
+      }
+    })();
 
     return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      cancelled = true;
+      // Don't revoke here unless this effect "owns" the current URL; we revoke on swap.
     };
   }, [originalImage]);
+
+  useEffect(() => {
+    return () => {
+      // Component unmount: revoke any remaining URL
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = '';
+    };
+  }, []);
   if (!showCropModal || !originalImage) {
     return null;
   }

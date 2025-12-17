@@ -16,6 +16,29 @@ export const BookProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Mobile Chrome can abort uploads with net::ERR_UPLOAD_FILE_CHANGED when the underlying
+  // camera/gallery file is "temporary" and gets rewritten/invalidated while uploading.
+  // To make uploads stable, we clone files into memory before appending to FormData.
+  const toStableFile = useCallback(async (file, fallbackName = 'upload.jpg') => {
+    if (!file) return null;
+
+    // If it's already a Blob/File, clone bytes into memory to avoid file-handle invalidation.
+    if (file instanceof Blob) {
+      const name =
+        // Some browsers attach name on File; some code attaches `name` on Blob.
+        (file instanceof File && file.name) || file.name || fallbackName;
+      const type = file.type || 'application/octet-stream';
+
+      const bytes = await file.arrayBuffer();
+      return new File([bytes], name, { type, lastModified: Date.now() });
+    }
+
+    // String URL (e.g., API cover image) should be sent as-is.
+    if (typeof file === 'string') return file;
+
+    return null;
+  }, []);
+
   const fetchBooks = useCallback(async (params = {}) => {
     setLoading(true);
     setError(null);
@@ -70,16 +93,26 @@ export const BookProvider = ({ children }) => {
     try {
       const formData = new FormData();
       
-      Object.keys(bookData).forEach(key => {
+      for (const key of Object.keys(bookData)) {
         if (key === 'user_images' && Array.isArray(bookData[key])) {
-          // Append each file separately for multiple attachments
-          bookData[key].forEach((file) => {
-            formData.append(`book[user_images][]`, file);
-          });
+          // Append each file separately for multiple attachments (stabilize on mobile)
+          for (let i = 0; i < bookData[key].length; i++) {
+            const stable = await toStableFile(bookData[key][i], `user-image-${i + 1}.jpg`);
+            if (stable instanceof File) {
+              formData.append('book[user_images][]', stable);
+            }
+          }
+        } else if (key === 'cover_image') {
+          const stable = await toStableFile(bookData[key], 'cover-image.jpg');
+          if (stable instanceof File) {
+            formData.append('book[cover_image]', stable);
+          } else if (typeof stable === 'string') {
+            formData.append('book[cover_image]', stable);
+          }
         } else if (bookData[key] !== null && bookData[key] !== undefined) {
           formData.append(`book[${key}]`, bookData[key]);
         }
-      });
+      }
 
       const response = await axios.post('/api/books', formData, {
         headers: {
@@ -107,7 +140,6 @@ export const BookProvider = ({ children }) => {
       
       // List of text fields that should always be included, even if empty
       const textFields = ['personal_note', 'pickup_method', 'pickup_address'];
-      
       // Always include text fields first, even if they're not in bookData
       // This ensures they're always sent to the backend
       textFields.forEach(key => {
@@ -124,32 +156,38 @@ export const BookProvider = ({ children }) => {
         // Always append, even if empty string
         formData.append(`book[${key}]`, value);
       });
-      
-      Object.keys(bookData).forEach(key => {
+
+      for (const key of Object.keys(bookData)) {
         // Skip text fields as they're already handled above
         if (textFields.includes(key)) {
-          return;
+          continue;
         }
         
         if (key === 'user_images' && Array.isArray(bookData[key])) {
-          // Append each file separately for multiple attachments
-          bookData[key].forEach((file) => {
-            formData.append(`book[user_images][]`, file);
-          });
+          // Append each file separately for multiple attachments (stabilize on mobile)
+          for (let i = 0; i < bookData[key].length; i++) {
+            const stable = await toStableFile(bookData[key][i], `user-image-${i + 1}.jpg`);
+            if (stable instanceof File) {
+              formData.append('book[user_images][]', stable);
+            }
+          }
         } else if (key === 'remove_user_image_indices' && Array.isArray(bookData[key])) {
           // Append removed image indices
           bookData[key].forEach((index) => {
             formData.append(`book[remove_user_image_indices][]`, index);
           });
-        } else if (key === 'cover_image' && bookData[key] instanceof File) {
-          // Handle cover image file upload
-          formData.append(`book[${key}]`, bookData[key]);
+        } else if (key === 'cover_image') {
+          const stable = await toStableFile(bookData[key], 'cover-image.jpg');
+          if (stable instanceof File) {
+            formData.append('book[cover_image]', stable);
+          } else if (typeof stable === 'string') {
+            formData.append('book[cover_image]', stable);
+          }
         } else if (bookData[key] !== null && bookData[key] !== undefined && key !== 'cover_image') {
           // Include all other fields
           formData.append(`book[${key}]`, bookData[key]);
         }
-      });
-
+      }
       const response = await axios.patch(`/api/books/${bookId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -162,13 +200,14 @@ export const BookProvider = ({ children }) => {
       ));
       return { success: true, book: response.data };
     } catch (err) {
+      console.error('Error updating book:', err);
       const errorMsg = err.response?.data?.errors?.join(', ') || 'Failed to update book';
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toStableFile]);
 
   const deleteBook = useCallback(async (bookId) => {
     setLoading(true);

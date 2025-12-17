@@ -461,14 +461,14 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                     <div>
                       <span className="text-sm font-medium text-gray-500">Donor</span>
                       {currentUser ? (
-                        <p className="text-gray-900 flex items-center gap-2">
+                        <div className="text-gray-900 flex items-center gap-2">
                           {book.owner.name || 'Anonymous'}
                           <VerificationBadge 
                             trustScore={book.owner.trust_score}
                             size="md"
                             verified={book.owner.verified}
                           />
-                        </p>
+                        </div>
                       ) : (
                         <p className="text-gray-900">Hidden</p>
                       )}

@@ -27,8 +27,9 @@
     <link rel="apple-touch-icon" href="/bsc-icon.png">
 
     <%= stylesheet_link_tag "application-bundled", "data-turbo-track": "reload" %>
-    <%= javascript_include_tag "application" %>
-    <%= javascript_importmap_tags %>
+    <%= javascript_include_tag "application-webpack", "data-turbo-track": "reload" %>
+    <%# NOTE: This app’s JS is bundled by webpack into app/assets/javascripts/application-webpack.js.
+        We intentionally do not load importmap here to avoid double-loading "application". %>
   </head>
 
   <body>
