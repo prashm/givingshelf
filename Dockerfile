@@ -56,7 +56,8 @@ RUN bundle install && \
 COPY . .
 
 # Install JS deps + build React/Tailwind
-RUN npm install && npm run build
+# Set NODE_ENV=production so webpack uses production mode
+RUN npm install && NODE_ENV=production npm run build
 
 # Precompile bootsnap
 RUN bundle exec bootsnap precompile app/ lib/

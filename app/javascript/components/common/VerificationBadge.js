@@ -8,8 +8,8 @@ const VerificationBadge = ({
   className = '',
   verified = true 
 }) => {
-  // Don't render if trust score is not available
-  if (trustScore === undefined || trustScore === null) {
+  // Don't render if trust score is not available or if it's less than 70
+  if (trustScore === undefined || trustScore === null || trustScore < 70) {
     return null;
   }
 
@@ -37,19 +37,17 @@ const VerificationBadge = ({
     }
   };
 
-  const score = trustScore || 0;
-
   return (
     <div 
       className={`relative group inline-flex items-center ${className}`}
-      title={showTooltip ? `Trust Score: ${score}/100` : undefined}
+      title={showTooltip ? `Trust Score: ${trustScore}/100` : undefined}
     >
       <ShieldCheckIcon 
-        className={`${getSizeClasses()} ${getTrustScoreIconColor(score)}`}
+        className={`${getSizeClasses()} ${getTrustScoreIconColor(trustScore)}`}
       />
       {showTooltip && (
         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-          Trust Score: {score}/100
+          Trust Score: {trustScore}/100
         </div>
       )}
     </div>

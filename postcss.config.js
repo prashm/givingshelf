@@ -3,6 +3,12 @@ module.exports = {
     require('@tailwindcss/postcss'),
     require('postcss-media-minmax'),
     require('postcss-color-functional-notation'),
+    // Add postcss-nesting to flatten nested CSS for browser compatibility
+    // This ensures space-y-3 and other nested classes work in all browsers
+    require('postcss-nesting')({
+      // Use the standard nesting syntax
+      noIsPseudoSelector: true
+    }),
     require('autoprefixer'),
     {
       postcssPlugin: 'fix-sass-rgb',
