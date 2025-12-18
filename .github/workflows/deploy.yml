@@ -30,6 +30,21 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@44.250.51.11 << 'EOF'
             cd /home/ubuntu/bookshare
             
+            # Check disk space before starting deployment
+            echo "Checking disk space..."
+            DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+            echo "Current disk usage: ${DISK_USAGE}%"
+            
+            if [ "$DISK_USAGE" -gt 85 ]; then
+              echo "WARNING: Disk usage is at ${DISK_USAGE}%. Cleaning up Docker..."
+              docker system prune -a --volumes -f
+              DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+              echo "Disk usage after cleanup: ${DISK_USAGE}%"
+              if [ "$DISK_USAGE" -gt 85 ]; then
+                echo "ERROR: Disk usage still at ${DISK_USAGE}% after cleanup. Aborting deployment."
+                exit 1
+              fi
+            fi
             # pull latest changes from main branch
             git fetch origin
             git reset --hard origin/${{ github.event.workflow_run.head_branch }}
@@ -41,6 +56,10 @@ jobs:
             rm -f .env
             ln -s /etc/bookshare/.env.production .env
             sudo chmod 644 .env
+
+            # Clean up old Docker images before building new ones
+            echo "Cleaning up old Docker images..."
+            docker image prune -f
 
             # build image and start containers
             docker compose -f docker-compose.production.yml build web worker
