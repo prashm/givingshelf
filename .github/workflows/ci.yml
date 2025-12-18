@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
   scan_ruby:
@@ -101,7 +101,7 @@ jobs:
         run: bin/rails db:test:prepare test test:system
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: screenshots
