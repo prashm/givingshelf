@@ -52,6 +52,13 @@ echo "Fixing syslog permissions..."
 usermod -a -G adm cwagent 2>/dev/null || echo "Note: cwagent user may already be in adm group"
 echo "✓ Added cwagent to adm group for syslog access"
 
+# Ensure Docker log directory exists
+echo ""
+echo "Ensuring Docker log directory exists..."
+mkdir -p /home/ubuntu/bookshare/logs/docker
+chown ubuntu:ubuntu /home/ubuntu/bookshare/logs/docker
+echo "✓ Docker log directory ready"
+
 # Restart agent
 echo ""
 echo "Restarting CloudWatch Agent..."
@@ -75,6 +82,7 @@ echo "  - Namespace: CWAgent (for metrics)"
 echo "  - Disk monitoring: Only root filesystem (/)"
 echo "  - Docker overlay filesystems ignored"
 echo "  - Syslog permissions fixed"
+echo "  - Docker container logs (Rails web, Rails worker, Nginx)"
 echo ""
 echo "Check agent logs:"
 echo "  sudo tail -f /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"

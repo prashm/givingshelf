@@ -61,6 +61,12 @@ jobs:
             echo "Cleaning up old Docker images..."
             docker image prune -f
 
+            # Setup Docker log tailing for CloudWatch (if not already set up)
+            if [ ! -f /etc/systemd/system/tail-docker-logs.service ]; then
+              echo "Setting up Docker log tailing..."
+              sudo bash deploy/setup-docker-logs.sh
+            fi
+
             # build image and start containers
             docker compose -f docker-compose.production.yml build web worker
             docker compose -f docker-compose.production.yml up -d --remove-orphans
