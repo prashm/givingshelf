@@ -1,0 +1,93 @@
+[agent]
+  collection_jitter = "0s"
+  debug = false
+  flush_interval = "1s"
+  flush_jitter = "0s"
+  hostname = ""
+  interval = "60s"
+  logfile = "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+  logtarget = "lumberjack"
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  omit_hostname = false
+  precision = ""
+  quiet = false
+  round_interval = false
+  run_as_user = "cwagent"
+  # Add InstanceId as a global tag
+  [agent.tags]
+    InstanceId = "{instance_id}"
+
+[inputs]
+
+  [[inputs.cpu]]
+    fieldpass = ["usage_idle", "usage_iowait", "usage_user", "usage_system"]
+    percpu = false
+    totalcpu = false
+
+  [[inputs.disk]]
+    fieldpass = ["used_percent"]
+    interval = "60s"
+    # Only monitor root filesystem - explicitly exclude Docker paths
+    mount_points = ["/"]
+    # Ignore filesystem types that cause permission errors
+    ignore_fs = ["tmpfs", "devtmpfs", "devfs", "overlay", "aufs", "squashfs", "nsfs", "proc", "sysfs"]
+    # Exclude unnecessary tags to reduce dimensions
+    tagexclude = ["mode", "fstype"]
+    # Filter out Docker-related mount points
+    name_override = "disk_used_percent"
+
+  [[inputs.diskio]]
+    fieldpass = ["io_time", "read_bytes", "write_bytes", "reads", "writes"]
+    interval = "60s"
+
+  [[inputs.logfile]]
+    destination = "cloudwatchlogs"
+    file_state_folder = "/opt/aws/amazon-cloudwatch-agent/logs/state"
+
+    [[inputs.logfile.file_config]]
+      deployment_environment = ""
+      file_path = "/var/log/syslog"
+      from_beginning = true
+      log_group_class = ""
+      log_group_name = "/aws/ec2/bookshare/syslog"
+      log_stream_name = "{instance_id}"
+      pipe = false
+      retention_in_days = 7
+      service_name = ""
+
+    [[inputs.logfile.file_config]]
+      deployment_environment = ""
+      file_path = "/home/ubuntu/bookshare/log/production.log"
+      from_beginning = true
+      log_group_class = ""
+      log_group_name = "/aws/ec2/bookshare/rails"
+      log_stream_name = "{instance_id}"
+      pipe = false
+      retention_in_days = 30
+      service_name = ""
+
+  [[inputs.mem]]
+    fieldpass = ["used_percent"]
+
+  [[inputs.netstat]]
+    fieldpass = ["tcp_established", "tcp_time_wait"]
+
+  [[inputs.processes]]
+    fieldpass = ["running", "sleeping"]
+
+[outputs]
+
+  [[outputs.cloudwatch]]
+    # Set namespace for all metrics
+    namespace = "CWAgent"
+    region = "us-west-2"
+    # InstanceId is automatically added as a dimension when running in EC2 mode
+
+  [[outputs.cloudwatchlogs]]
+    force_flush_interval = "5s"
+    log_stream_name = "{instance_id}"
+    mode = "EC2"
+    region = "us-west-2"
+    region_type = "EC2M"
+

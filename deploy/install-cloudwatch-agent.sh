@@ -26,17 +26,33 @@ else
   exit 1
 fi
 
+# Detect architecture
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+  ARCH="amd64"
+elif [ "$ARCH" = "aarch64" ]; then
+  ARCH="arm64"
+else
+  echo "Unsupported architecture: $ARCH"
+  exit 1
+fi
+
 echo "Detected OS: $OS $VER"
+echo "Detected Architecture: $ARCH"
 echo ""
 
 # Install CloudWatch Agent
 echo "Step 1: Installing CloudWatch Agent..."
 if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
-  wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/amazon-cloudwatch-agent.deb
+  DOWNLOAD_URL="https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${ARCH}/latest/amazon-cloudwatch-agent.deb"
+  echo "Downloading from: $DOWNLOAD_URL"
+  wget "$DOWNLOAD_URL" -O /tmp/amazon-cloudwatch-agent.deb
   dpkg -i -E /tmp/amazon-cloudwatch-agent.deb
   rm /tmp/amazon-cloudwatch-agent.deb
 elif [ "$OS" = "amzn" ] || [ "$OS" = "amazon" ]; then
-  wget https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm -O /tmp/amazon-cloudwatch-agent.rpm
+  DOWNLOAD_URL="https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/${ARCH}/latest/amazon-cloudwatch-agent.rpm"
+  echo "Downloading from: $DOWNLOAD_URL"
+  wget "$DOWNLOAD_URL" -O /tmp/amazon-cloudwatch-agent.rpm
   rpm -U /tmp/amazon-cloudwatch-agent.rpm
   rm /tmp/amazon-cloudwatch-agent.rpm
 else
@@ -47,15 +63,56 @@ fi
 echo "✓ CloudWatch Agent installed"
 echo ""
 
-# Check if config file exists
-CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "Step 2: Creating configuration file..."
-  echo "Please copy deploy/cloudwatch-config.json to $CONFIG_FILE"
+# Check for config file in bookshare directory or standard location
+# Newer CloudWatch agent uses TOML format
+CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
+REPO_CONFIG=""
+
+# Check for TOML first (newer format), then JSON (older format)
+if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.toml" ]; then
+  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.toml"
+  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
+elif [ -f "./deploy/cloudwatch-config.toml" ]; then
+  REPO_CONFIG="./deploy/cloudwatch-config.toml"
+  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
+elif [ -f "$(dirname $0)/cloudwatch-config.toml" ]; then
+  REPO_CONFIG="$(dirname $0)/cloudwatch-config.toml"
+  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
+# Fallback to JSON format (older agent versions)
+elif [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.json" ]; then
+  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.json"
+  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+elif [ -f "./deploy/cloudwatch-config.json" ]; then
+  REPO_CONFIG="./deploy/cloudwatch-config.json"
+  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+elif [ -f "$(dirname $0)/cloudwatch-config.json" ]; then
+  REPO_CONFIG="$(dirname $0)/cloudwatch-config.json"
+  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+fi
+
+# Step 2: Copy config file
+echo "Step 2: Setting up configuration file..."
+if [ -f "$CONFIG_FILE" ]; then
+  echo "✓ Configuration file already exists at $CONFIG_FILE"
+  echo "  (To update it, run: sudo bash deploy/update-cloudwatch-config.sh)"
+elif [ -n "$REPO_CONFIG" ] && [ -f "$REPO_CONFIG" ]; then
+  echo "Copying config from $REPO_CONFIG to $CONFIG_FILE"
+  mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+  cp "$REPO_CONFIG" "$CONFIG_FILE"
+  chown root:root "$CONFIG_FILE"
+  chmod 644 "$CONFIG_FILE"
+  echo "✓ Configuration file copied"
+  
+  # Fix syslog permissions if using TOML
+  if [[ "$CONFIG_FILE" == *.toml ]]; then
+    echo "Fixing syslog permissions..."
+    usermod -a -G adm cwagent 2>/dev/null || true
+  fi
+else
+  echo "⚠ WARNING: Configuration file not found"
+  echo "Please copy deploy/cloudwatch-config.toml (or .json) to $CONFIG_FILE"
   echo "Or create it manually based on the guide in deploy/cloudwatch-setup.md"
   echo ""
-else
-  echo "Step 2: Configuration file found at $CONFIG_FILE"
 fi
 
 # Get instance ID
@@ -78,11 +135,21 @@ fi
 # Start agent (if config exists)
 if [ -f "$CONFIG_FILE" ]; then
   echo "Step 4: Starting CloudWatch Agent..."
-  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-    -a fetch-config \
-    -m ec2 \
-    -c file:$CONFIG_FILE \
-    -s
+  if [[ "$CONFIG_FILE" == *.toml ]]; then
+    # TOML format - use the config file directly
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+      -a fetch-config \
+      -m ec2 \
+      -c file:$CONFIG_FILE \
+      -s
+  else
+    # JSON format
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+      -a fetch-config \
+      -m ec2 \
+      -c file:$CONFIG_FILE \
+      -s
+  fi
   
   echo ""
   echo "Step 5: Checking agent status..."
@@ -93,7 +160,7 @@ else
   echo "Step 4: Skipping agent start (config file not found)"
   echo ""
   echo "Next steps:"
-  echo "1. Copy deploy/cloudwatch-config.json to $CONFIG_FILE"
+  echo "1. Copy deploy/cloudwatch-config.toml (or .json) to $CONFIG_FILE"
   echo "2. Run: sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:$CONFIG_FILE -s"
 fi
 

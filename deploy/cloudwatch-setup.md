@@ -15,9 +15,15 @@ This guide will help you set up CloudWatch monitoring for your EC2 instance, inc
 SSH into your EC2 instance and run:
 
 ```bash
-# Copy the installation script to your EC2 instance, then:
-sudo bash /home/ubuntu/bookshare/deploy/install-cloudwatch-agent.sh
+# The installation script will automatically use the config file from your repo
+cd /home/ubuntu/bookshare
+sudo bash deploy/install-cloudwatch-agent.sh
 ```
+
+The script will:
+1. Install the CloudWatch agent (creates `/opt/aws/amazon-cloudwatch-agent/` directory)
+2. Automatically copy `deploy/cloudwatch-config.json` to the correct location
+3. Start the agent with the configuration
 
 ### Option B: Manual Installation
 
@@ -42,9 +48,35 @@ sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -v
    - EC2 Console → Select instance → Actions → Security → Modify IAM role
    - Select `CloudWatchAgentServerRole`
 
-## Step 3: Configure CloudWatch Agent
+## Step 3: Verify Installation
 
-Copy the configuration file to your EC2 instance:
+The installation script should have automatically:
+- Installed the CloudWatch agent
+- Copied the configuration file
+- Started the agent
+
+Verify everything is working:
+
+```bash
+# Check agent status
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
+
+# Check agent logs for any errors
+sudo tail -20 /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
+```
+
+If the agent didn't start automatically, you can start it manually:
+
+```bash
+# Start the agent with the configuration
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+  -s
+```
+
+**Note:** If you need to manually copy the config file (e.g., if the script couldn't find it), you can do:
 
 ```bash
 # On your local machine, copy the config file
@@ -55,23 +87,7 @@ sudo mv /tmp/cloudwatch-config.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-
 sudo chown root:root /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 ```
 
-Or manually create it using the configuration provided in `deploy/cloudwatch-config.json`.
-
-## Step 4: Start CloudWatch Agent
-
-```bash
-# Start the agent with the configuration
-sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-  -a fetch-config \
-  -m ec2 \
-  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
-  -s
-
-# Check status
-sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
-```
-
-## Step 5: Create CloudWatch Alarms
+## Step 4: Create CloudWatch Alarms
 
 ### Option A: Using AWS Console
 
@@ -96,7 +112,7 @@ aws sns subscribe --topic-arn $SNS_TOPIC_ARN --protocol email --notification-end
 ./deploy/create-cloudwatch-alarms.sh $INSTANCE_ID $SNS_TOPIC_ARN
 ```
 
-## Step 6: Verify Metrics
+## Step 5: Verify Metrics
 
 1. Go to CloudWatch → Metrics → CWAgent
 2. You should see metrics like:
