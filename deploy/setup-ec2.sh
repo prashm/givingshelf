@@ -58,16 +58,16 @@ fi
 # Step 3: Update CloudWatch config to include Docker logs
 echo ""
 echo "Step 3: Updating CloudWatch config for Docker logs..."
-if [ -f "${SCRIPT_DIR}/cloudwatch-config.toml" ]; then
+if [ -f "${SCRIPT_DIR}/cloudwatch-config.json" ]; then
   # Check if Docker logs are already in the config
-  if ! grep -q "rails-web.log" /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml 2>/dev/null; then
+  if ! grep -q "rails-web.log" /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json 2>/dev/null; then
     echo "Updating CloudWatch config to include Docker logs..."
     bash "${SCRIPT_DIR}/update-cloudwatch-config.sh"
   else
     echo "✓ CloudWatch config already includes Docker logs"
   fi
 else
-  echo "Warning: cloudwatch-config.toml not found"
+  echo "Warning: cloudwatch-config.json not found"
 fi
 
 echo ""

@@ -52,7 +52,8 @@ sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -v
 
 The installation script should have automatically:
 - Installed the CloudWatch agent
-- Copied the configuration file
+- Copied the JSON configuration file
+- Added cwagent user to adm and ubuntu groups (for log file access)
 - Started the agent
 
 Verify everything is working:
@@ -68,7 +69,7 @@ sudo tail -20 /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
 If the agent didn't start automatically, you can start it manually:
 
 ```bash
-# Start the agent with the configuration
+# Start the agent with the JSON configuration
 sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
   -a fetch-config \
   -m ec2 \
@@ -76,16 +77,7 @@ sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
   -s
 ```
 
-**Note:** If you need to manually copy the config file (e.g., if the script couldn't find it), you can do:
-
-```bash
-# On your local machine, copy the config file
-scp deploy/cloudwatch-config.json ubuntu@44.250.51.11:/tmp/
-
-# On EC2 instance, move it to the correct location
-sudo mv /tmp/cloudwatch-config.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-sudo chown root:root /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-```
+**Important:** The CloudWatch agent expects JSON format. The agent will translate it to TOML internally. Always use `cloudwatch-config.json`, not the TOML file.
 
 ## Step 4: Create CloudWatch Alarms
 

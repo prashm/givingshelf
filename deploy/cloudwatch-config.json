@@ -3,117 +3,6 @@
     "metrics_collection_interval": 60,
     "run_as_user": "cwagent"
   },
-  "metrics": {
-    "namespace": "CWAgent",
-    "metrics_collected": {
-      "cpu": {
-        "measurement": [
-          {
-            "name": "cpu_usage_idle",
-            "rename": "CPU_USAGE_IDLE",
-            "unit": "Percent"
-          },
-          {
-            "name": "cpu_usage_iowait",
-            "rename": "CPU_USAGE_IOWAIT",
-            "unit": "Percent"
-          },
-          {
-            "name": "cpu_usage_user",
-            "rename": "CPU_USAGE_USER",
-            "unit": "Percent"
-          },
-          {
-            "name": "cpu_usage_system",
-            "rename": "CPU_USAGE_SYSTEM",
-            "unit": "Percent"
-          }
-        ],
-        "totalcpu": false
-      },
-      "disk": {
-        "measurement": [
-          {
-            "name": "used_percent",
-            "rename": "disk_used_percent",
-            "unit": "Percent"
-          }
-        ],
-        "metrics_collection_interval": 60,
-        "resources": [
-          "*"
-        ]
-      },
-      "diskio": {
-        "measurement": [
-          {
-            "name": "io_time"
-          },
-          {
-            "name": "read_bytes",
-            "rename": "DISK_READ_BYTES",
-            "unit": "Bytes"
-          },
-          {
-            "name": "write_bytes",
-            "rename": "DISK_WRITE_BYTES",
-            "unit": "Bytes"
-          },
-          {
-            "name": "reads",
-            "rename": "DISK_READ_OPS",
-            "unit": "Count"
-          },
-          {
-            "name": "writes",
-            "rename": "DISK_WRITE_OPS",
-            "unit": "Count"
-          }
-        ],
-        "metrics_collection_interval": 60,
-        "resources": [
-          "*"
-        ]
-      },
-      "mem": {
-        "measurement": [
-          {
-            "name": "mem_used_percent",
-            "rename": "MEM_USED_PERCENT",
-            "unit": "Percent"
-          }
-        ]
-      },
-      "netstat": {
-        "measurement": [
-          {
-            "name": "tcp_established",
-            "rename": "TCP_ESTABLISHED",
-            "unit": "Count"
-          },
-          {
-            "name": "tcp_time_wait",
-            "rename": "TCP_TIME_WAIT",
-            "unit": "Count"
-          }
-        ]
-      },
-      "processes": {
-        "measurement": [
-          {
-            "name": "running",
-            "rename": "PROCESSES_RUNNING",
-            "unit": "Count"
-          },
-          {
-            "name": "sleeping",
-            "rename": "PROCESSES_SLEEPING",
-            "unit": "Count"
-          }
-        ]
-      }
-    }
-  },
   "logs": {
     "logs_collected": {
       "files": {
@@ -125,14 +14,95 @@
             "retention_in_days": 7
           },
           {
-            "file_path": "/home/ubuntu/bookshare/log/production.log",
-            "log_group_name": "/aws/ec2/bookshare/rails",
+            "file_path": "/home/ubuntu/bookshare/logs/docker/rails-web.log",
+            "log_group_name": "/aws/ec2/bookshare/rails/web",
+            "log_stream_name": "{instance_id}",
+            "retention_in_days": 30
+          },
+          {
+            "file_path": "/home/ubuntu/bookshare/logs/docker/rails-worker.log",
+            "log_group_name": "/aws/ec2/bookshare/rails/worker",
+            "log_stream_name": "{instance_id}",
+            "retention_in_days": 30
+          },
+          {
+            "file_path": "/home/ubuntu/bookshare/logs/docker/nginx.log",
+            "log_group_name": "/aws/ec2/bookshare/nginx",
             "log_stream_name": "{instance_id}",
             "retention_in_days": 30
           }
         ]
       }
     }
+  },
+  "metrics": {
+    "namespace": "CWAgent",
+    "metrics_collected": {
+      "cpu": {
+        "measurement": [
+          {
+            "name": "cpu_usage_idle"
+          },
+          {
+            "name": "cpu_usage_iowait"
+          },
+          {
+            "name": "cpu_usage_user"
+          },
+          {
+            "name": "cpu_usage_system"
+          }
+        ],
+        "totalcpu": false
+      },
+      "disk": {
+        "measurement": [
+          {
+            "name": "used_percent"
+          }
+        ],
+        "metrics_collection_interval": 60,
+        "resources": [
+          "/"
+        ]
+      },
+      "diskio": {
+        "measurement": [
+          "io_time",
+          "read_bytes",
+          "write_bytes",
+          "reads",
+          "writes"
+        ],
+        "metrics_collection_interval": 60
+      },
+      "mem": {
+        "measurement": [
+          {
+            "name": "mem_used_percent"
+          }
+        ]
+      },
+      "netstat": {
+        "measurement": [
+          {
+            "name": "tcp_established"
+          },
+          {
+            "name": "tcp_time_wait"
+          }
+        ]
+      },
+      "processes": {
+        "measurement": [
+          {
+            "name": "running"
+          },
+          {
+            "name": "sleeping"
+          }
+        ]
+      }
+    }
   }
 }
-

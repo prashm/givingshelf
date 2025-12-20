@@ -64,30 +64,17 @@ echo "✓ CloudWatch Agent installed"
 echo ""
 
 # Check for config file in bookshare directory or standard location
-# Newer CloudWatch agent uses TOML format
-CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
+# CloudWatch agent expects JSON format (which it translates to TOML internally)
+CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 REPO_CONFIG=""
 
-# Check for TOML first (newer format), then JSON (older format)
-if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.toml" ]; then
-  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.toml"
-  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
-elif [ -f "./deploy/cloudwatch-config.toml" ]; then
-  REPO_CONFIG="./deploy/cloudwatch-config.toml"
-  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
-elif [ -f "$(dirname $0)/cloudwatch-config.toml" ]; then
-  REPO_CONFIG="$(dirname $0)/cloudwatch-config.toml"
-  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
-# Fallback to JSON format (older agent versions)
-elif [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.json" ]; then
+# Check for JSON config (preferred format)
+if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.json" ]; then
   REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.json"
-  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 elif [ -f "./deploy/cloudwatch-config.json" ]; then
   REPO_CONFIG="./deploy/cloudwatch-config.json"
-  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 elif [ -f "$(dirname $0)/cloudwatch-config.json" ]; then
   REPO_CONFIG="$(dirname $0)/cloudwatch-config.json"
-  CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 fi
 
 # Step 2: Copy config file
@@ -103,14 +90,14 @@ elif [ -n "$REPO_CONFIG" ] && [ -f "$REPO_CONFIG" ]; then
   chmod 644 "$CONFIG_FILE"
   echo "✓ Configuration file copied"
   
-  # Fix syslog permissions if using TOML
-  if [[ "$CONFIG_FILE" == *.toml ]]; then
-    echo "Fixing syslog permissions..."
-    usermod -a -G adm cwagent 2>/dev/null || true
-  fi
+  # Fix permissions for cwagent user
+  echo "Fixing permissions for cwagent user..."
+  usermod -a -G adm cwagent 2>/dev/null || true
+  usermod -a -G ubuntu cwagent 2>/dev/null || true
+  echo "✓ Added cwagent to adm and ubuntu groups"
 else
   echo "⚠ WARNING: Configuration file not found"
-  echo "Please copy deploy/cloudwatch-config.toml (or .json) to $CONFIG_FILE"
+  echo "Please copy deploy/cloudwatch-config.json to $CONFIG_FILE"
   echo "Or create it manually based on the guide in deploy/cloudwatch-setup.md"
   echo ""
 fi
@@ -135,24 +122,16 @@ fi
 # Start agent (if config exists)
 if [ -f "$CONFIG_FILE" ]; then
   echo "Step 4: Starting CloudWatch Agent..."
-  if [[ "$CONFIG_FILE" == *.toml ]]; then
-    # TOML format - use the config file directly
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-      -a fetch-config \
-      -m ec2 \
-      -c file:$CONFIG_FILE \
-      -s
-  else
-    # JSON format
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-      -a fetch-config \
-      -m ec2 \
-      -c file:$CONFIG_FILE \
-      -s
-  fi
+  # Use the agent's config command to load JSON config
+  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -c file:"$CONFIG_FILE" \
+    -s
   
   echo ""
   echo "Step 5: Checking agent status..."
+  sleep 2
   /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
   echo ""
   echo "✓ CloudWatch Agent is running!"
@@ -160,7 +139,7 @@ else
   echo "Step 4: Skipping agent start (config file not found)"
   echo ""
   echo "Next steps:"
-  echo "1. Copy deploy/cloudwatch-config.toml (or .json) to $CONFIG_FILE"
+  echo "1. Copy deploy/cloudwatch-config.json to $CONFIG_FILE"
   echo "2. Run: sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:$CONFIG_FILE -s"
 fi
 

@@ -43,7 +43,13 @@ Sets up a systemd service that tails Docker container logs to files on the host,
 sudo bash deploy/update-cloudwatch-config.sh
 ```
 
-Updates the CloudWatch agent configuration from the repo and restarts the agent.
+Updates the CloudWatch agent configuration from the repo (uses JSON format) and restarts the agent. This script:
+- Stops the agent to prevent config conflicts
+- Cleans up any temp files in the `.d` directory
+- Copies the JSON config file
+- Sets proper permissions (adds cwagent to adm and ubuntu groups)
+- Ensures Docker log directory exists
+- Restarts the agent using the config command
 
 ## CloudWatch Log Groups
 

@@ -19,6 +19,22 @@ echo "Setting up Docker log tailing for CloudWatch..."
 # Create log directory
 mkdir -p "$LOG_DIR"
 chown ubuntu:ubuntu "$LOG_DIR"
+chmod 755 "$LOG_DIR"
+
+# Add cwagent to ubuntu group so it can read log files
+echo "Adding cwagent to ubuntu group for log file access..."
+usermod -a -G ubuntu cwagent 2>/dev/null || echo "Note: cwagent may already be in ubuntu group"
+echo "✓ Added cwagent to ubuntu group"
+
+# Create log files with proper permissions (if they don't exist)
+for log_file in rails-web.log rails-worker.log nginx.log; do
+  log_path="${LOG_DIR}/${log_file}"
+  if [ ! -f "$log_path" ]; then
+    touch "$log_path"
+    chown ubuntu:ubuntu "$log_path"
+    chmod 644 "$log_path"
+  fi
+done
 
 # Create the tail script
 cat > "$SCRIPT_PATH" << 'SCRIPT_EOF'

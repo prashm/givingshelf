@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to update CloudWatch Agent TOML configuration
+# Script to update CloudWatch Agent JSON configuration
 # Run this on your EC2 instance: sudo bash deploy/update-cloudwatch-config.sh
 
 set -e
@@ -10,21 +10,21 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml"
+CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 REPO_CONFIG=""
 
-# Find the config file in the repo
-if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.toml" ]; then
-  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.toml"
-elif [ -f "./deploy/cloudwatch-config.toml" ]; then
-  REPO_CONFIG="./deploy/cloudwatch-config.toml"
-elif [ -f "$(dirname $0)/cloudwatch-config.toml" ]; then
-  REPO_CONFIG="$(dirname $0)/cloudwatch-config.toml"
+# Find the JSON config file in the repo (prefer JSON, fallback to TOML)
+if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.json" ]; then
+  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.json"
+elif [ -f "./deploy/cloudwatch-config.json" ]; then
+  REPO_CONFIG="./deploy/cloudwatch-config.json"
+elif [ -f "$(dirname $0)/cloudwatch-config.json" ]; then
+  REPO_CONFIG="$(dirname $0)/cloudwatch-config.json"
 fi
 
 if [ -z "$REPO_CONFIG" ] || [ ! -f "$REPO_CONFIG" ]; then
-  echo "Error: Could not find cloudwatch-config.toml in the repo"
-  echo "Please ensure the file exists in deploy/cloudwatch-config.toml"
+  echo "Error: Could not find cloudwatch-config.json in the repo"
+  echo "Please ensure the file exists in deploy/cloudwatch-config.json"
   exit 1
 fi
 
@@ -32,6 +32,15 @@ echo "Updating CloudWatch Agent configuration..."
 echo "Source: $REPO_CONFIG"
 echo "Destination: $CONFIG_FILE"
 echo ""
+
+# Stop the agent first to prevent config conflicts
+echo "Stopping CloudWatch Agent..."
+systemctl stop amazon-cloudwatch-agent || true
+
+# Clean up any temp files or TOML files in .d directory that might cause issues
+echo "Cleaning up config directory..."
+rm -f /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/*.tmp
+rm -f /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/*.toml
 
 # Backup existing config
 if [ -f "$CONFIG_FILE" ]; then
@@ -48,24 +57,39 @@ echo "✓ Configuration file updated"
 
 # Fix syslog permissions
 echo ""
-echo "Fixing syslog permissions..."
+echo "Fixing permissions..."
 usermod -a -G adm cwagent 2>/dev/null || echo "Note: cwagent user may already be in adm group"
-echo "✓ Added cwagent to adm group for syslog access"
+usermod -a -G ubuntu cwagent 2>/dev/null || echo "Note: cwagent user may already be in ubuntu group"
+echo "✓ Added cwagent to adm and ubuntu groups"
 
-# Ensure Docker log directory exists
+# Ensure Docker log directory exists and has proper permissions
 echo ""
 echo "Ensuring Docker log directory exists..."
 mkdir -p /home/ubuntu/bookshare/logs/docker
 chown ubuntu:ubuntu /home/ubuntu/bookshare/logs/docker
-echo "✓ Docker log directory ready"
+chmod 755 /home/ubuntu/bookshare/logs/docker
 
-# Restart agent
+# Ensure log files are readable by cwagent
+for log_file in rails-web.log rails-worker.log nginx.log; do
+  log_path="/home/ubuntu/bookshare/logs/docker/${log_file}"
+  if [ -f "$log_path" ]; then
+    chmod 644 "$log_path"
+    chown ubuntu:ubuntu "$log_path"
+  fi
+done
+echo "✓ Docker log directory and files ready"
+
+# Use the agent's config command to load the JSON config
 echo ""
-echo "Restarting CloudWatch Agent..."
-systemctl restart amazon-cloudwatch-agent
+echo "Loading CloudWatch Agent configuration..."
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -c file:"$CONFIG_FILE" \
+  -s
 
-# Wait a moment for restart
-sleep 2
+# Wait a moment for agent to start
+sleep 3
 
 # Check status
 echo ""
@@ -80,9 +104,9 @@ echo ""
 echo "The config now includes:"
 echo "  - Namespace: CWAgent (for metrics)"
 echo "  - Disk monitoring: Only root filesystem (/)"
-echo "  - Docker overlay filesystems ignored"
 echo "  - Syslog permissions fixed"
 echo "  - Docker container logs (Rails web, Rails worker, Nginx)"
+echo "  - cwagent user added to adm and ubuntu groups for file access"
 echo ""
 echo "Check agent logs:"
 echo "  sudo tail -f /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
