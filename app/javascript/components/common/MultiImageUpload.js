@@ -17,6 +17,7 @@ const MultiImageUpload = ({
   const menuRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   // Detect if device is mobile
   const isMobile = () => {
@@ -51,9 +52,46 @@ const MultiImageUpload = ({
   };
 
   const handleFileSelect = async (files) => {
+    setValidationError(''); // Clear previous errors
+    
     const selected = Array.from(files || []).slice(0, maxImages - images.length - existingImages.length);
     if (selected.length === 0) return;
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+    const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB total
+
+    // Calculate current total size of existing images
+    let currentTotalSize = 0;
+    if (images && images.length > 0) {
+      for (const img of images) {
+        if (img instanceof File || img instanceof Blob) {
+          currentTotalSize += img.size;
+        }
+      }
+    }
+
+    // Validate each new file
+    const newFilesWithSizes = [];
+    for (let i = 0; i < selected.length; i++) {
+      const file = selected[i];
+      if (file.size > MAX_FILE_SIZE) {
+        setValidationError(`"${file.name}" is too large. Maximum file size is 5MB per photo.`);
+        return;
+      }
+      newFilesWithSizes.push({ file, size: file.size });
+    }
+
+    // Check total size after adding new files
+    const newFilesTotalSize = newFilesWithSizes.reduce((sum, { size }) => sum + size, 0);
+    const totalSizeAfterAdd = currentTotalSize + newFilesTotalSize;
+
+    if (totalSizeAfterAdd > MAX_TOTAL_SIZE) {
+      const remainingMB = ((MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024)).toFixed(1);
+      setValidationError(`Total photo size exceeds 20MB limit. You have ${remainingMB}MB remaining. Please remove some photos or select smaller images.`);
+      return;
+    }
+
+    // All validation passed, stabilize files and add them
     const stabilized = [];
     for (let i = 0; i < selected.length; i++) {
       const stable = await toStableFile(selected[i], `upload-${Date.now()}-${i + 1}.jpg`);
@@ -61,6 +99,7 @@ const MultiImageUpload = ({
     }
     if (stabilized.length > 0) {
       onImagesChange([...images, ...stabilized]);
+      setValidationError(''); // Clear any previous errors on success
     }
   };
 
@@ -122,9 +161,19 @@ const MultiImageUpload = ({
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-700">
-        Photos ({allImagesCount}/{maxImages})
-      </label>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Photos ({allImagesCount}/{maxImages})
+        </label>
+        <p className="text-xs text-gray-500 mt-1">
+          Max 5MB per photo, 20MB total. Photos can be cropped to reduce size.
+        </p>
+        {validationError && (
+          <p className="mt-2 text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">
+            {validationError}
+          </p>
+        )}
+      </div>
 
       {/* Existing Images Grid */}
       {existingImages.length > 0 && (

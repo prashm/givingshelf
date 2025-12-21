@@ -50,8 +50,51 @@ export const useBookForm = (initialData = {}) => {
         return file; // Return file for cropping
       }
     } else if (name === 'user_images') {
-      // Handle multiple file uploads
+      // Handle multiple file uploads with validation
       const newFiles = Array.from(files || []);
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+      const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB total
+      
+      // Validate each new file size
+      for (const file of newFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          setValidationErrors(prev => ({
+            ...prev,
+            user_images: `"${file.name}" is too large. Maximum file size is 5MB per photo.`
+          }));
+          return null;
+        }
+      }
+      
+      // Calculate current total size
+      const currentImages = formData.user_images || [];
+      let currentTotalSize = 0;
+      for (const img of currentImages) {
+        if (img instanceof File || img instanceof Blob) {
+          currentTotalSize += img.size;
+        }
+      }
+      
+      // Calculate new files total size
+      const newFilesTotalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
+      const totalSizeAfterAdd = currentTotalSize + newFilesTotalSize;
+      
+      if (totalSizeAfterAdd > MAX_TOTAL_SIZE) {
+        const remainingMB = ((MAX_TOTAL_SIZE - currentTotalSize) / (1024 * 1024)).toFixed(1);
+        setValidationErrors(prev => ({
+          ...prev,
+          user_images: `Total photo size exceeds 20MB limit. You have ${remainingMB}MB remaining. Please remove some photos or select smaller images.`
+        }));
+        return null;
+      }
+      
+      // Clear validation error if valid
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.user_images;
+        return newErrors;
+      });
+      
       setFormData(prev => ({
         ...prev,
         user_images: [...(prev.user_images || []), ...newFiles]

@@ -10,6 +10,7 @@ const ImageUpload = ({
   isMobile,
   currentCoverImage = null,
   showCurrentImage = false,
+  validationError = null,
 }) => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);

@@ -158,6 +158,11 @@ const BookForm = ({
           onRemoveExisting={onRemoveExistingImage}
           maxImages={4}
         />
+        {validationErrors.user_images && (
+          <p className="mt-2 text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">
+            {validationErrors.user_images}
+          </p>
+        )}
       </div>
 
       {/* Condition */}

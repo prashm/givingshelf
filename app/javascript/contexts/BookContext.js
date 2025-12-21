@@ -39,6 +39,85 @@ export const BookProvider = ({ children }) => {
     return null;
   }, []);
 
+  // Validate total image size before upload
+  const validateImageSize = useCallback((bookData) => {
+    const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB
+    let totalSize = 0;
+    
+    if (bookData.user_images && Array.isArray(bookData.user_images)) {
+      for (const img of bookData.user_images) {
+        if (img instanceof File || img instanceof Blob) {
+          totalSize += img.size;
+        }
+      }
+    }
+    
+    if (totalSize > MAX_TOTAL_SIZE) {
+      const totalMB = (totalSize / (1024 * 1024)).toFixed(1);
+      return {
+        valid: false,
+        error: `Total image size (${totalMB}MB) exceeds 20MB limit. Please reduce image sizes or remove some photos.`
+      };
+    }
+    
+    return { valid: true };
+  }, []);
+
+  // Build FormData from bookData
+  const buildFormData = useCallback(async (bookData, options = {}) => {
+    const { includeTextFields = false, textFields = [] } = options;
+    const formData = new FormData();
+
+    // For updates, always include text fields first (even if empty)
+    if (includeTextFields) {
+      textFields.forEach(key => {
+        let value = '';
+        if (bookData.hasOwnProperty(key)) {
+          if (bookData[key] === null || bookData[key] === undefined) {
+            value = '';
+          } else {
+            value = String(bookData[key]);
+          }
+        }
+        formData.append(`book[${key}]`, value);
+      });
+    }
+
+    // Process all fields
+    for (const key of Object.keys(bookData)) {
+      // Skip text fields if they were already handled above
+      if (includeTextFields && textFields.includes(key)) {
+        continue;
+      }
+      
+      if (key === 'user_images' && Array.isArray(bookData[key])) {
+        // Append each file separately for multiple attachments (stabilize on mobile)
+        for (let i = 0; i < bookData[key].length; i++) {
+          const stable = await toStableFile(bookData[key][i], `user-image-${i + 1}.jpg`);
+          if (stable instanceof File) {
+            formData.append('book[user_images][]', stable);
+          }
+        }
+      } else if (key === 'remove_user_image_indices' && Array.isArray(bookData[key])) {
+        // Append removed image indices (only for updates)
+        bookData[key].forEach((index) => {
+          formData.append(`book[remove_user_image_indices][]`, index);
+        });
+      } else if (key === 'cover_image') {
+        const stable = await toStableFile(bookData[key], 'cover-image.jpg');
+        if (stable instanceof File) {
+          formData.append('book[cover_image]', stable);
+        } else if (typeof stable === 'string') {
+          formData.append('book[cover_image]', stable);
+        }
+      } else if (bookData[key] !== null && bookData[key] !== undefined) {
+        formData.append(`book[${key}]`, bookData[key]);
+      }
+    }
+
+    return formData;
+  }, [toStableFile]);
+
   const fetchBooks = useCallback(async (params = {}) => {
     setLoading(true);
     setError(null);
@@ -91,29 +170,18 @@ export const BookProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      
-      for (const key of Object.keys(bookData)) {
-        if (key === 'user_images' && Array.isArray(bookData[key])) {
-          // Append each file separately for multiple attachments (stabilize on mobile)
-          for (let i = 0; i < bookData[key].length; i++) {
-            const stable = await toStableFile(bookData[key][i], `user-image-${i + 1}.jpg`);
-            if (stable instanceof File) {
-              formData.append('book[user_images][]', stable);
-            }
-          }
-        } else if (key === 'cover_image') {
-          const stable = await toStableFile(bookData[key], 'cover-image.jpg');
-          if (stable instanceof File) {
-            formData.append('book[cover_image]', stable);
-          } else if (typeof stable === 'string') {
-            formData.append('book[cover_image]', stable);
-          }
-        } else if (bookData[key] !== null && bookData[key] !== undefined) {
-          formData.append(`book[${key}]`, bookData[key]);
-        }
+      // Validate total image size
+      const validation = validateImageSize(bookData);
+      if (!validation.valid) {
+        setError(validation.error);
+        setLoading(false);
+        return { success: false, error: validation.error };
       }
+      
+      // Build FormData
+      const formData = await buildFormData(bookData);
 
+      // Submit request
       const response = await axios.post('/api/books', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -121,6 +189,7 @@ export const BookProvider = ({ children }) => {
         withCredentials: true
       });
 
+      // Update state
       setBooks(prev => [response.data, ...prev]);
       return { success: true, book: response.data };
     } catch (err) {
@@ -130,64 +199,28 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [validateImageSize, buildFormData]);
 
   const updateBook = useCallback(async (bookId, bookData) => {
     setLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
+      // Validate total image size
+      const validation = validateImageSize(bookData);
+      if (!validation.valid) {
+        setError(validation.error);
+        setLoading(false);
+        return { success: false, error: validation.error };
+      }
       
-      // List of text fields that should always be included, even if empty
+      // Build FormData with update-specific options
       const textFields = ['personal_note', 'pickup_method', 'pickup_address'];
-      // Always include text fields first, even if they're not in bookData
-      // This ensures they're always sent to the backend
-      textFields.forEach(key => {
-        let value = '';
-        if (bookData.hasOwnProperty(key)) {
-          // Preserve the actual value, including empty strings
-          // Convert null/undefined to empty string, but keep actual empty strings
-          if (bookData[key] === null || bookData[key] === undefined) {
-            value = '';
-          } else {
-            value = String(bookData[key]); // Ensure it's a string
-          }
-        }
-        // Always append, even if empty string
-        formData.append(`book[${key}]`, value);
+      const formData = await buildFormData(bookData, {
+        includeTextFields: true,
+        textFields: textFields
       });
 
-      for (const key of Object.keys(bookData)) {
-        // Skip text fields as they're already handled above
-        if (textFields.includes(key)) {
-          continue;
-        }
-        
-        if (key === 'user_images' && Array.isArray(bookData[key])) {
-          // Append each file separately for multiple attachments (stabilize on mobile)
-          for (let i = 0; i < bookData[key].length; i++) {
-            const stable = await toStableFile(bookData[key][i], `user-image-${i + 1}.jpg`);
-            if (stable instanceof File) {
-              formData.append('book[user_images][]', stable);
-            }
-          }
-        } else if (key === 'remove_user_image_indices' && Array.isArray(bookData[key])) {
-          // Append removed image indices
-          bookData[key].forEach((index) => {
-            formData.append(`book[remove_user_image_indices][]`, index);
-          });
-        } else if (key === 'cover_image') {
-          const stable = await toStableFile(bookData[key], 'cover-image.jpg');
-          if (stable instanceof File) {
-            formData.append('book[cover_image]', stable);
-          } else if (typeof stable === 'string') {
-            formData.append('book[cover_image]', stable);
-          }
-        } else if (bookData[key] !== null && bookData[key] !== undefined && key !== 'cover_image') {
-          // Include all other fields
-          formData.append(`book[${key}]`, bookData[key]);
-        }
-      }
+      // Submit request
       const response = await axios.patch(`/api/books/${bookId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -195,6 +228,7 @@ export const BookProvider = ({ children }) => {
         withCredentials: true
       });
 
+      // Update state
       setBooks(prev => prev.map(book =>
         book.id === bookId ? response.data : book
       ));
@@ -207,7 +241,7 @@ export const BookProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [toStableFile]);
+  }, [validateImageSize, buildFormData]);
 
   const deleteBook = useCallback(async (bookId) => {
     setLoading(true);
