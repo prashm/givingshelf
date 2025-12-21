@@ -29,6 +29,7 @@ const BookDonationMarketplace = () => {
   const { currentUser, loading: authLoading } = useAuth();
   const { books, fetchBooks, searchBooks, loading } = useBooks();
   const [currentPage, _setPageState] = useState('home');
+  const [previousPage, setPreviousPage] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zipCode, setZipCode] = useState('');
@@ -151,6 +152,9 @@ const BookDonationMarketplace = () => {
 
   // Navigation wrapper to sync with history
   const setCurrentPage = (page, extraState = {}) => {
+    // Track previous page before updating
+    setPreviousPage(currentPage);
+    
     if (extraState.selectedBook) {
       setSelectedBook(extraState.selectedBook);
     }
@@ -288,6 +292,7 @@ const BookDonationMarketplace = () => {
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
           onViewBook={handleBookSelect}
+          fromProfile={previousPage === 'profile'}
         />;
       case 'myRequests':
         return <MyRequests 

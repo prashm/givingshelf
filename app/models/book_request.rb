@@ -44,7 +44,7 @@ class BookRequest < ApplicationRecord
 
   def accept!
     update!(status: ACCEPTED_STATUS)
-    book.update!(status: Book::REQUESTED_STATUS)
+    book.update!(status: BookStatus::REQUESTED)
     # Mark all other requests for this book as In Review
     book.book_requests.where.not(id: id).update_all(status: IN_REVIEW_STATUS)
   end
@@ -56,7 +56,7 @@ class BookRequest < ApplicationRecord
   def complete!
     raise "Can only complete an accepted request" unless accepted?
     update!(status: COMPLETED_STATUS)
-    book.update!(status: Book::DONATED_STATUS)
+    book.update!(status: BookStatus::DONATED)
   end
 
   def pending?

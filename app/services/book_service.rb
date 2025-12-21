@@ -121,8 +121,8 @@ class BookService
     end
 
     {
-      books_shared: base_books.where.not(status: Book::DONATED_STATUS).count,
-      books_donated: base_books.where(status: Book::DONATED_STATUS).count,
+      books_shared: base_books.where.not(status: BookStatus::DONATED).count,
+      books_donated: base_books.where(status: BookStatus::DONATED).count,
       books_requested: base_requests.count,
       happy_readers: base_requests.completed.distinct.count(:requester_id)
     }
@@ -139,7 +139,7 @@ class BookService
       genre: book.genre,
       published_year: book.published_year,
       status: book.status,
-      status_display: display_status(book.status),
+      status_display: BookStatus.display_status(book.status),
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
       view_count: book.view_count || 0,
@@ -160,16 +160,6 @@ class BookService
     }
   end
 
-  def display_status(status)
-    case status
-    when Book::REQUESTED_STATUS
-      "Requested"
-    when Book::DONATED_STATUS
-      "Donated"
-    else
-      "Available"
-    end
-  end
 
   private
 

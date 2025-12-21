@@ -50,6 +50,7 @@ gem "sentry-ruby"
 gem "sentry-rails"
 gem "jwt"
 gem "stackprof"
+gem "active_hash"
 
 # Admin interface
 gem "activeadmin"

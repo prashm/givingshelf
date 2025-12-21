@@ -1,9 +1,4 @@
 class Book < ApplicationRecord
-  # Status constants
-  AVAILABLE_STATUS = 0
-  REQUESTED_STATUS = 1
-  DONATED_STATUS = 2
-
   belongs_to :user
   has_many :book_requests, dependent: :destroy
   has_one_attached :cover_image
@@ -15,11 +10,11 @@ class Book < ApplicationRecord
   validates :summary, presence: true, length: { minimum: 10, maximum: 1000 }
   validates :genre, presence: true, length: { minimum: 1, maximum: 100 }
   validates :published_year, presence: true, numericality: { greater_than: 1800, less_than_or_equal_to: Date.current.year }
-  validates :status, inclusion: { in: [ AVAILABLE_STATUS, REQUESTED_STATUS, DONATED_STATUS ], default: AVAILABLE_STATUS }
+  validates :status, inclusion: { in: BookStatus.values, default: BookStatus::AVAILABLE }
   validates :isbn, format: { with: /\A(?:\d{10}|\d{13})\z/, message: "must be 10 or 13 digits" }, allow_blank: true
 
 
-  scope :available, -> { where.not(status: DONATED_STATUS) }
+  scope :available, -> { where.not(status: BookStatus::DONATED) }
   scope :by_genre, ->(genre) { where(genre: genre) }
   scope :by_author, ->(author) { where("author ILIKE ?", "%#{author}%") }
   scope :by_title, ->(title) { where("title ILIKE ?", "%#{title}%") }
@@ -59,15 +54,15 @@ class Book < ApplicationRecord
   end
 
   def available?
-    status == AVAILABLE_STATUS
+    status == BookStatus::AVAILABLE
   end
 
   def requested?
-    status == REQUESTED_STATUS
+    status == BookStatus::REQUESTED
   end
 
   def donated?
-    status == DONATED_STATUS
+    status == BookStatus::DONATED
   end
 
   def owner?(current_user)

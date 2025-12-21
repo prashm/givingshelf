@@ -294,7 +294,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
         {/* Header with Back Button */}
         <div className="p-6 border-b border-gray-200">
           <button
-            onClick={() => setCurrentPage('home')}
+            onClick={() => window.history.back()}
             className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

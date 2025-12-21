@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { useBooks } from '../../contexts/BookContext';
 
-const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
+const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook, fromProfile = false }) => {
   const [myBooks, setMyBooks] = useState([]);
+  const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, available, requested, donated
+  const [filter, setFilter] = useState('all'); // all, or integer status value
   const { deleteBook: deleteBookFromAPI, getBook } = useBooks();
   const [deletingBookId, setDeletingBookId] = useState(null);
   const [viewingBookId, setViewingBookId] = useState(null);
@@ -18,7 +19,8 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
           throw new Error('Failed to fetch books');
         }
         const data = await response.json();
-        setMyBooks(data);
+        setStatuses(data.statuses || []);
+        setMyBooks(data.books || []);
       } catch (error) {
         console.error('Error fetching books:', error);
         // Optionally set an error state here to show to the user
@@ -81,27 +83,14 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'available':
+      case 0: // Available
         return 'bg-green-100 text-green-800';
-      case 'requested':
+      case 1: // Requested
         return 'bg-yellow-100 text-yellow-800';
-      case 'donated':
+      case 2: // Donated
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'available':
-        return 'Available';
-      case 'requested':
-        return 'Requested';
-      case 'donated':
-        return 'Donated';
-      default:
-        return 'Unknown';
     }
   };
 
@@ -126,14 +115,28 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-bold text-gray-900">My Books</h2>
-          <button
-            onClick={() => setCurrentPage('donate')}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
-          >
-            Add New Book
-          </button>
+        {/* Header with Back Button */}
+        <div className="mb-6">
+          {fromProfile && (
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Profile
+            </button>
+          )}
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold text-gray-900">My Books</h2>
+            <button
+              onClick={() => setCurrentPage('donate')}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+            >
+              Add New Book
+            </button>
+          </div>
         </div>
 
         {/* Filter Tabs */}
@@ -141,9 +144,11 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
           <nav className="-mb-px flex space-x-8">
             {[
               { key: 'all', label: 'All Books', count: myBooks.length },
-              { key: 'available', label: 'Available', count: myBooks.filter(b => b.status === 'available').length },
-              { key: 'requested', label: 'Requested', count: myBooks.filter(b => b.status === 'requested').length },
-              { key: 'donated', label: 'Donated', count: myBooks.filter(b => b.status === 'donated').length }
+              ...statuses.map(status => ({
+                key: status.value,
+                label: status.label,
+                count: myBooks.filter(b => b.status === status.value).length
+              }))
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -170,7 +175,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
             <p className="text-gray-500 mb-6">
               {filter === 'all'
                 ? "You haven't added any books yet."
-                : `You don't have any ${filter} books.`
+                : `You don't have any ${statuses.find(s => s.value === filter)?.label || 'filtered'} books.`
               }
             </p>
             {filter === 'all' && (
@@ -220,7 +225,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
                     </span>
 
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(book.status)}`}>
-                      {getStatusText(book.status)}
+                      {book.status_display}
                     </span>
                   </div>
 
@@ -271,16 +276,6 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook }) => {
             ))}
           </div>
         )}
-
-        {/* Back Button */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => setCurrentPage('profile')}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-          >
-            Back to Profile
-          </button>
-        </div>
       </div>
     </div>
   );

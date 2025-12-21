@@ -9,7 +9,10 @@ class Api::BooksController < ApplicationController
 
   def my_books
     @books = Current.user.books.includes(:book_requests).recent
-    render json: @books.map { |book| my_book_json(book) }
+    render json: {
+      statuses: BookStatus.data,
+      books: @books.map { |book| my_book_json(book) }
+    }
   end
 
   def show
@@ -102,6 +105,7 @@ class Api::BooksController < ApplicationController
       author: book.author,
       condition: book.condition,
       status: book.status,
+      status_display: BookStatus.display_status(book.status),
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       created_at: book.created_at,
       request_count: book.book_requests.count

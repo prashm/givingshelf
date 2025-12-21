@@ -46,8 +46,8 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
 
   const menuItems = currentUser ? (
     <>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('home')}>Browse</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('donate')}>Donate a Book</li>
+      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myBooks')}>My Books</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('messages')}>Messages</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('profile')}>
         {currentUser.first_name || currentUser.email_address || 'Profile'}
@@ -56,7 +56,6 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
     </>
   ) : (
     <>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('home')}>Browse</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={handleLoginClick}>Login</li>
     </>
   );
@@ -73,10 +72,10 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
           {/* Desktop Menu */}
           <nav className="hidden md:block">
             <ul className="flex space-x-6">
-              <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('home')}>Browse</li>
               { currentUser ? ( 
                 <>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate')}>Donate a Book</li>
+                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myBooks')}>My Books</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>Messages</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('profile')}>
                     {currentUser.first_name || currentUser.email_address || 'Profile'}
