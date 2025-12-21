@@ -89,9 +89,37 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
     }
   };
 
+  // Helper function to truncate summary intelligently at sentence boundary
+  const truncateSummary = (text, maxLength = 1000) => {
+    if (!text || text.length <= maxLength) {
+      return text;
+    }
+
+    // Truncate to max length
+    const truncated = text.substring(0, maxLength);
+
+    // Find the last complete sentence ending (., !, or ?)
+    // Use lastIndexOf for each sentence ending and take the maximum
+    const lastPeriod = truncated.lastIndexOf('.');
+    const lastExclamation = truncated.lastIndexOf('!');
+    const lastQuestion = truncated.lastIndexOf('?');
+    const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
+
+    // If we found a sentence ending (and it's not at the very start), truncate at that point (inclusive)
+    if (lastSentenceEnd > 0) {
+      return truncated.substring(0, lastSentenceEnd + 1).trim();
+    }
+
+    // If no sentence ending found, return the truncated text as-is
+    return truncated.trim();
+  };
+
   // Handle book selection from autocomplete
   const handleBookSelect = (book) => {
     const secureThumbnailUrl = book.thumbnail ? book.thumbnail.replace('http:', 'https:') : null;
+
+    // Truncate summary intelligently if it exceeds 1000 characters
+    const summary = book.description ? truncateSummary(book.description, 1000) : '';
 
     // Update form data with book information
     updateFormData({
@@ -100,7 +128,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
       genre: book.categories.length > 0 ? book.categories[0] : '',
       published_year: book.publishedDate ? new Date(book.publishedDate).getFullYear() : new Date().getFullYear(),
       isbn: book.isbn || '',
-      summary: book.description || '',
+      summary: summary,
       cover_image: secureThumbnailUrl, // Set for display in BookForm
       // Don't overwrite condition - let user choose
     });
