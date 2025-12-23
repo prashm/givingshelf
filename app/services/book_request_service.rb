@@ -11,6 +11,10 @@ class BookRequestService
   def create_request(requester, book_id, message)
     book = Book.find(book_id)
 
+    unless requester.profile_complete?
+      raise "User profile is incomplete."
+    end
+
     unless book.can_be_requested_by?(requester)
       raise "Cannot request this book"
     end

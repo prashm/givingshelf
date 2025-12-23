@@ -15,6 +15,10 @@ class BookService
     api_cover_image = book_params.delete(:cover_image)
     user_images = book_params.delete(:user_images)
 
+    unless user.profile_complete?
+      raise "User profile is incomplete."
+    end
+
     @book = user.books.build(book_params)
     if @book.save
         handle_api_cover_image(api_cover_image)

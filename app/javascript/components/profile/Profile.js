@@ -10,6 +10,7 @@ import axios from '../../lib/axios';
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
   const { updateProfile, checkAuthStatus } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -268,7 +269,11 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
     if (formData.phone.trim() && !validatePhoneNumber(formData.phone)) {
       newErrors.phone = 'Please enter a valid US phone number (10 digits)';
     }
-    
+
+    if (!termsAgreed) {
+      newErrors.terms = 'You must agree to the Terms of Service and Privacy Policy';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -701,6 +706,36 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               {errors.zip_code && (
                 <p className="mt-1 text-sm text-red-600">{errors.zip_code}</p>
               )}
+            </div>
+
+            {/* Terms and Privacy Checkbox */}
+            <div className="flex items-start mt-6">
+              <div className="flex items-center h-5">
+                <input
+                  id="terms"
+                  name="terms"
+                  type="checkbox"
+                  checked={termsAgreed}
+                  onChange={(e) => setTermsAgreed(e.target.checked)}
+                  style={{
+                    appearance: 'auto',
+                    WebkitAppearance: 'auto',
+                    accentColor: 'rgb(5, 150, 105)',
+                    width: '1rem',
+                    height: '1rem',
+                    cursor: 'pointer',
+                    marginTop: 0,
+                    marginRight: '0.5rem'
+                  }}
+                  className="focus:ring-emerald-500 text-emerald-600 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="terms" className="font-medium text-gray-700">
+                  I agree to the <button type="button" onClick={() => setCurrentPage('terms')} className="text-emerald-600 hover:text-emerald-500 underline">Terms of Service</button> and <button type="button" onClick={() => setCurrentPage('privacy')} className="text-emerald-600 hover:text-emerald-500 underline">Privacy Policy</button>  *
+                </label>
+                {errors.terms && <p className="text-red-600 text-xs mt-1">{errors.terms}</p>}
+              </div>
             </div>
 
             {/* Action Buttons */}

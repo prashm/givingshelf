@@ -20,7 +20,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
 
     if (currentUser && !currentUser.profile_complete) {
       // User is authenticated but profile is incomplete, redirect to profile
-      setRedirectReason('Please complete your profile to donate a book. Your profile must include your name and ZIP code.');
+      setRedirectReason('Please complete your profile to donate a book. The more information you provide, the more trusted you will be by others in your community.');
       setCurrentPage('profile');
     }
   }, [currentUser, setCurrentPage, setRedirectReason]);

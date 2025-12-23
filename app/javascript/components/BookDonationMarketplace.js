@@ -13,6 +13,8 @@ import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
 import WelcomeModal from './WelcomeModal';
+import PrivacyPolicyPage from './PrivacyPolicy';
+import TermsOfServicePage from './TermsOfService';
 import { 
   MagnifyingGlassIcon, 
   ArrowUpTrayIcon, 
@@ -253,6 +255,7 @@ const BookDonationMarketplace = () => {
           currentUser={currentUser}
           onEditBook={handleEditBook}
           onOpenLoginModal={handleOpenLoginModal}
+          setRedirectReason={setRedirectReason}
         />;
       case 'browse':
         return <BookList 
@@ -299,6 +302,10 @@ const BookDonationMarketplace = () => {
           currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
         />;
+      case 'privacy':
+        return <PrivacyPolicyPage setCurrentPage={setCurrentPage} previousPage={previousPage} />;  
+      case 'terms':  
+        return <TermsOfServicePage setCurrentPage={setCurrentPage} previousPage={previousPage} />;  
       default:
         return <Home 
           books={searchResults} 
@@ -383,7 +390,7 @@ const BookDonationMarketplace = () => {
       <main className="flex-grow bg-gray-50">
         {renderPage()}
       </main>
-      <Footer />
+      <Footer setCurrentPage={setCurrentPage} />
       <WelcomeModal 
         isOpen={isWelcomeModalOpen}
         onClose={handleCloseWelcomeModal}
@@ -393,7 +400,7 @@ const BookDonationMarketplace = () => {
 };
 
 // Simple Footer Component
-const Footer = () => {
+const Footer = ({ setCurrentPage }) => {
   const currentYear = new Date().getFullYear();
   const startYear = 2025;
   const copyrightYear = currentYear === startYear 
@@ -410,6 +417,20 @@ const Footer = () => {
         <p className="text-gray-300 mb-4">
           Connecting book lovers through the joy of sharing literature.
         </p>
+        <div className="flex justify-center gap-6 mb-4 text-sm">
+          <button
+            onClick={() => setCurrentPage('privacy')}
+            className="text-gray-300 hover:text-white transition-colors underline"
+          >
+            Privacy Policy
+          </button>
+          <button
+            onClick={() => setCurrentPage('terms')}
+            className="text-gray-300 hover:text-white transition-colors underline"
+          >
+            Terms of Service
+          </button>
+        </div>
         <div className="text-sm text-gray-400">
           © {copyrightYear} {COMPANY}. All rights reserved.
         </div>

@@ -112,8 +112,8 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
                   onOpenLoginModal('donate');
                 }}
               >
-              <strong>Want to donate books?</strong> 
-              <span className="underline cursor-pointer"> Create an account</span> to share your books with the community.
+              <strong>Want to donate books? </strong> 
+              <span className="underline cursor-pointer">Create an account</span> to share your books with the community.
               </p>
             </div>
         )}

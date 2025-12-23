@@ -3,6 +3,10 @@
 one:
   email_address: one@example.com
   password_digest: <%= password_digest %>
+  first_name: John
+  last_name: Doe
+  zip_code: 12345
+  verified: true
 
 two:
   email_address: two@example.com

@@ -4,7 +4,7 @@ import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
 import VerificationBadge from '../common/VerificationBadge';
 
-const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal }) => {
+const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal, setRedirectReason }) => {
   const { getBook, requestBook } = useBooks();
   const [book, setBook] = useState(initialBook);
   const [showContact, setShowContact] = useState(false);
@@ -215,6 +215,15 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
 
   const openRequestModal = () => {
     requireLogin(() => {
+      // Check if profile is complete before allowing book request
+      if (currentUser && !currentUser.profile_complete) {
+        // Redirect to profile page with a message
+        if (setRedirectReason) {
+          setRedirectReason('Please complete your profile to request books. The more information you provide, the more trusted you will be by others in your community.');
+        }
+        setCurrentPage('profile');
+        return;
+      }
       setRequestMessage('');
       setRequestError('');
       setShowRequestModal(true);
@@ -243,7 +252,15 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
         setShowRequestModal(false);
       } else {
         setRequestStatus('error');
-        setRequestError(result.error || 'Failed to send request. Please try again.');
+        // Check if error is about incomplete profile
+        if (result.error && result.error.includes('profile')) {
+          if (setRedirectReason) {
+            setRedirectReason(result.error);
+          }
+          setCurrentPage('profile');
+        } else {
+          setRequestError(result.error || 'Failed to send request. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error requesting book:', error);
