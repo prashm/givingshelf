@@ -171,17 +171,6 @@ const MessagesPage = ({ setCurrentPage }) => {
             >
               Requests sent
             </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('general')}
-              className={`whitespace-nowrap pb-2 px-1 border-b-2 text-sm font-medium ${
-                activeTab === 'general'
-                  ? 'border-emerald-500 text-emerald-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              General
-            </button>
           </nav>
         </div>
 
@@ -197,11 +186,6 @@ const MessagesPage = ({ setCurrentPage }) => {
 
         {activeTab === 'received' && renderTable(receivedRequests, 'received')}
         {activeTab === 'sent' && renderTable(sentRequests, 'sent')}
-        {activeTab === 'general' && (
-          <div className="py-6 text-center text-gray-500 text-sm">
-            Coming soon
-          </div>
-        )}
       </div>
     </div>
   );

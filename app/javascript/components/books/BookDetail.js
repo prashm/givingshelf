@@ -305,6 +305,15 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     }
   };
 
+  const formatPickupMethod = (pickupMethod) => {
+    if (!pickupMethod) return '';
+    // Remove underscores and capitalize first letter of each word
+    return pickupMethod
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -520,6 +529,9 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                   <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
                   <div className="flex-1">
                     <span className="text-sm font-medium text-gray-500">Location</span>
+                    {book.pickup_method && (
+                      <p className="text-gray-700 text-sm mt-0.5 mb-2">{formatPickupMethod(book.pickup_method)}</p>
+                    )}
                     {book.pickup_address && currentUser ? (
                       <div>
                         <p className="text-gray-900 mb-2">{book.pickup_address}</p>

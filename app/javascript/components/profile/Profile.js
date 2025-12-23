@@ -5,12 +5,16 @@ import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageCropper from '../common/ImageCropper';
 import AddressAutocomplete from '../common/AddressAutocomplete';
 import VerificationBadge from '../common/VerificationBadge';
+import PrivacyPolicyModal from '../PrivacyPolicyModal';
+import TermsOfServiceModal from '../TermsOfServiceModal';
 import axios from '../../lib/axios';
 
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
   const { updateProfile, checkAuthStatus } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -732,7 +736,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               </div>
               <div className="ml-3 text-sm">
                 <label htmlFor="terms" className="font-medium text-gray-700">
-                  I agree to the <button type="button" onClick={() => setCurrentPage('terms')} className="text-emerald-600 hover:text-emerald-500 underline">Terms of Service</button> and <button type="button" onClick={() => setCurrentPage('privacy')} className="text-emerald-600 hover:text-emerald-500 underline">Privacy Policy</button>  *
+                  I agree to the <button type="button" onClick={() => setIsTermsModalOpen(true)} className="text-emerald-600 hover:text-emerald-500 underline">Terms of Service</button> and <button type="button" onClick={() => setIsPrivacyModalOpen(true)} className="text-emerald-600 hover:text-emerald-500 underline">Privacy Policy</button>  *
                 </label>
                 {errors.terms && <p className="text-red-600 text-xs mt-1">{errors.terms}</p>}
               </div>
@@ -896,6 +900,14 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         style={{
           display: 'none',
         }}
+      />
+      <PrivacyPolicyModal 
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
+      <TermsOfServiceModal 
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
       />
     </div>
   );

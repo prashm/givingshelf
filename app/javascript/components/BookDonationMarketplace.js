@@ -13,8 +13,8 @@ import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
 import WelcomeModal from './WelcomeModal';
-import PrivacyPolicyPage from './PrivacyPolicy';
-import TermsOfServicePage from './TermsOfService';
+import PrivacyPolicyModal from './PrivacyPolicyModal';
+import TermsOfServiceModal from './TermsOfServiceModal';
 import { 
   MagnifyingGlassIcon, 
   ArrowUpTrayIcon, 
@@ -43,6 +43,8 @@ const BookDonationMarketplace = () => {
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [zipCodeDetected, setZipCodeDetected] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   
   // Detect zip code on mount and when user logs in
   useEffect(() => {
@@ -302,10 +304,6 @@ const BookDonationMarketplace = () => {
           currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
         />;
-      case 'privacy':
-        return <PrivacyPolicyPage setCurrentPage={setCurrentPage} previousPage={previousPage} />;  
-      case 'terms':  
-        return <TermsOfServicePage setCurrentPage={setCurrentPage} previousPage={previousPage} />;  
       default:
         return <Home 
           books={searchResults} 
@@ -390,17 +388,29 @@ const BookDonationMarketplace = () => {
       <main className="flex-grow bg-gray-50">
         {renderPage()}
       </main>
-      <Footer setCurrentPage={setCurrentPage} />
+      <Footer 
+        setCurrentPage={setCurrentPage}
+        onOpenPrivacyModal={() => setIsPrivacyModalOpen(true)}
+        onOpenTermsModal={() => setIsTermsModalOpen(true)}
+      />
       <WelcomeModal 
         isOpen={isWelcomeModalOpen}
         onClose={handleCloseWelcomeModal}
+      />
+      <PrivacyPolicyModal 
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
+      <TermsOfServiceModal 
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
       />
     </div>
   );
 };
 
 // Simple Footer Component
-const Footer = ({ setCurrentPage }) => {
+const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
   const currentYear = new Date().getFullYear();
   const startYear = 2025;
   const copyrightYear = currentYear === startYear 
@@ -419,13 +429,13 @@ const Footer = ({ setCurrentPage }) => {
         </p>
         <div className="flex justify-center gap-6 mb-4 text-sm">
           <button
-            onClick={() => setCurrentPage('privacy')}
+            onClick={onOpenPrivacyModal}
             className="text-gray-300 hover:text-white transition-colors underline"
           >
             Privacy Policy
           </button>
           <button
-            onClick={() => setCurrentPage('terms')}
+            onClick={onOpenTermsModal}
             className="text-gray-300 hover:text-white transition-colors underline"
           >
             Terms of Service
