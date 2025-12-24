@@ -8,4 +8,4 @@ Disallow: /admin/
 Disallow: /api/
 
 # Sitemap location
-Sitemap: https://booksharecommunity.org/sitemap.xml
+Sitemap: https://booksharecommunity.org/sitemap.xml.gz
