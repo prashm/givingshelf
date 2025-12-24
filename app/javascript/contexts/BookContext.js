@@ -15,6 +15,12 @@ export const BookProvider = ({ children }) => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [paginationMeta, setPaginationMeta] = useState({
+    total: 0,
+    hasMore: false,
+    nextPageUrl: null
+  });
+  const [currentEndpoint, setCurrentEndpoint] = useState('/api/books'); // Track which endpoint was used
 
   // Mobile Chrome can abort uploads with net::ERR_UPLOAD_FILE_CHANGED when the underlying
   // camera/gallery file is "temporary" and gets rewritten/invalidated while uploading.
@@ -118,31 +124,173 @@ export const BookProvider = ({ children }) => {
     return formData;
   }, [toStableFile]);
 
-  const fetchBooks = useCallback(async (params = {}) => {
+  const fetchBooks = useCallback(async (params = {}, append = false) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/books', {
-        params,
+      // Set default size to 6 if not specified
+      const paginationParams = {
+        'page[size]': 6,
+        ...params
+      };
+      
+      const endpoint = '/api/books';
+      setCurrentEndpoint(endpoint);
+      
+      const response = await axios.get(endpoint, {
+        params: paginationParams,
         withCredentials: true
       });
-      setBooks(response.data);
+      
+      // Handle paginated response structure
+      if (response.data && response.data.data) {
+        // Paginated response: { data: [...], meta: {...}, links: {...} }
+        const booksData = response.data.data;
+        const meta = response.data.meta || {};
+        const links = response.data.links || {};
+        
+        // Extract total from meta.page.total (nested structure)
+        const total = meta.page?.total || meta.total || 0;
+        
+        if (append) {
+          setBooks(prev => [...prev, ...booksData]);
+        } else {
+          setBooks(booksData);
+        }
+        
+        setPaginationMeta({
+          total: total,
+          hasMore: !!links.next,
+          nextPageUrl: links.next || null
+        });
+      } else {
+        // Fallback for non-paginated response (backward compatibility)
+        const booksData = Array.isArray(response.data) ? response.data : [];
+        if (append) {
+          setBooks(prev => [...prev, ...booksData]);
+        } else {
+          setBooks(booksData);
+        }
+        setPaginationMeta({
+          total: booksData.length,
+          hasMore: false,
+          nextPageUrl: null
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch books');
     } finally {
       setLoading(false);
     }
   }, []);
-
-  const searchBooks = useCallback(async (query, zipCode) => {
+  
+  const loadMoreBooks = useCallback(async () => {
+    if (!paginationMeta.nextPageUrl || loading) return;
+    
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/books/search', {
-        params: { query, zip_code: zipCode },
+      let url = paginationMeta.nextPageUrl;
+      
+      // If nextPageUrl is a relative path, make it absolute
+      if (url.startsWith('/')) {
+        url = `${window.location.origin}${url}`;
+      } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        // If it's just a path without leading slash, add it
+        url = `${window.location.origin}/${url}`;
+      }
+      
+      // Extract query params from URL
+      const urlObj = new URL(url);
+      const params = {};
+      urlObj.searchParams.forEach((value, key) => {
+        params[key] = value;
+      });
+      
+      // Use the same endpoint that was used originally (could be /api/books or /api/books/search)
+      const endpoint = currentEndpoint;
+      
+      const response = await axios.get(endpoint, {
+        params,
         withCredentials: true
       });
-      setBooks(response.data);
+      
+      if (response.data && response.data.data) {
+        const booksData = response.data.data;
+        const meta = response.data.meta || {};
+        const links = response.data.links || {};
+        
+        // Extract total from meta.page.total (nested structure)
+        const total = meta.page?.total || meta.total || paginationMeta.total;
+        
+        setBooks(prev => [...prev, ...booksData]);
+        setPaginationMeta({
+          total: total,
+          hasMore: !!links.next,
+          nextPageUrl: links.next || null
+        });
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load more books');
+    } finally {
+      setLoading(false);
+    }
+  }, [paginationMeta, loading, currentEndpoint]);
+
+  const searchBooks = useCallback(async (query, zipCode, append = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Set default size to 6 if not specified
+      const paginationParams = {
+        'page[size]': 6,
+        query: query || '',
+        zip_code: zipCode
+      };
+      
+      const endpoint = '/api/books/search';
+      setCurrentEndpoint(endpoint);
+      
+      const response = await axios.get(endpoint, {
+        params: paginationParams,
+        withCredentials: true
+      });
+      
+      // Handle paginated response structure
+      if (response.data && response.data.data) {
+        // Paginated response: { data: [...], meta: {...}, links: {...} }
+        const booksData = response.data.data;
+        const meta = response.data.meta || {};
+        const links = response.data.links || {};
+        
+        // Extract total from meta.page.total (nested structure)
+        const total = meta.page?.total || meta.total || 0;
+        
+        if (append) {
+          setBooks(prev => [...prev, ...booksData]);
+        } else {
+          setBooks(booksData);
+        }
+        
+        setPaginationMeta({
+          total: total,
+          hasMore: !!links.next,
+          nextPageUrl: links.next || null
+        });
+      } else {
+        // Fallback for non-paginated response (backward compatibility)
+        const booksData = Array.isArray(response.data) ? response.data : [];
+        if (append) {
+          setBooks(prev => [...prev, ...booksData]);
+        } else {
+          setBooks(booksData);
+        }
+        setPaginationMeta({
+          total: booksData.length,
+          hasMore: false,
+          nextPageUrl: null
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Search failed');
     } finally {
@@ -292,14 +440,16 @@ export const BookProvider = ({ children }) => {
     books,
     loading,
     error,
+    paginationMeta,
     fetchBooks,
+    loadMoreBooks,
     searchBooks,
     getBook,
     createBook,
     updateBook,
     deleteBook,
     requestBook
-  }), [books, loading, error, fetchBooks, searchBooks, getBook, createBook, updateBook, deleteBook, requestBook]);
+  }), [books, loading, error, paginationMeta, fetchBooks, loadMoreBooks, searchBooks, getBook, createBook, updateBook, deleteBook, requestBook]);
 
   return (
     <BookContext.Provider value={value}>

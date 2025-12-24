@@ -472,9 +472,6 @@
   .mt-12 {
     margin-top: calc(var(--spacing) * 12);
   }
-  .mr-1 {
-    margin-right: calc(var(--spacing) * 1);
-  }
   .mr-2 {
     margin-right: calc(var(--spacing) * 2);
   }
@@ -1618,6 +1615,9 @@
   }
   .disabled\:bg-gray-100:disabled {
     background-color: var(--color-gray-100);
+  }
+  .disabled\:bg-gray-400:disabled {
+    background-color: var(--color-gray-400);
   }
   .disabled\:opacity-50:disabled {
     opacity: 50%;

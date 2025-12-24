@@ -50,6 +50,8 @@ const BookDonationMarketplace = () => {
   useEffect(() => {
     // Don't run until auth check is complete
     if (authLoading) return;
+    // Don't run if we've already detected zip code
+    if (zipCodeDetected) return;
 
     const detectZipCode = async () => {
       // First, check if user is signed in and has a zip code
@@ -62,7 +64,7 @@ const BookDonationMarketplace = () => {
       }
 
       // Only detect from IP if we haven't detected yet and user is not signed in or has no zip
-      if (!zipCodeDetected && (!currentUser || !currentUser.zip_code)) {
+      if (!currentUser || !currentUser.zip_code) {
         // Define helper function for IP-based detection
         const detectZipFromIP = async () => {
           try {
@@ -129,7 +131,8 @@ const BookDonationMarketplace = () => {
     };
 
     detectZipCode();
-  }, [currentUser, authLoading, zipCodeDetected, searchBooks, fetchBooks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, authLoading, zipCodeDetected]);
 
   // Handle browser history navigation
   useEffect(() => {

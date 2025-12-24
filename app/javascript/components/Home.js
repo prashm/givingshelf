@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { fetchCommunityStats } from '../lib/booksApi';
+import { useBooks } from '../contexts/BookContext';
 
 const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage, onOpenLoginModal }) => {
-  const [recentBooks, setRecentBooks] = useState([]);
+  const { paginationMeta, loadMoreBooks, loading: booksLoading } = useBooks();
+  const [availableBooks, setAvailableBooks] = useState([]);
   const [popularGenres, setPopularGenres] = useState([]);
   const [communityStats, setCommunityStats] = useState({
     books_shared: 0,
@@ -14,11 +16,11 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching recent books and popular genres
+    // Use books directly without slicing since backend handles pagination
     if (books && books.length > 0) {
-      setRecentBooks(books.slice(0, 6));
+      setAvailableBooks(books);
       
-      // Calculate popular genres
+      // Calculate popular genres from all available books
       const genreCounts = {};
       books.forEach(book => {
         if (book.genre) {
@@ -32,6 +34,9 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
         .map(([genre]) => genre);
       
       setPopularGenres(sortedGenres);
+    } else {
+      setAvailableBooks([]);
+      setPopularGenres([]);
     }
   }, [books]);
 
@@ -120,12 +125,14 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
         </div>
 
 
-        {/* Recent Books */}
-        {recentBooks.length > 0 && (
+        {/* Available Books */}
+        {availableBooks.length > 0 && (
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">Recently Added Books In Your Community</h2>
+            <h2 className="text-2xl font-bold mb-6">
+              {paginationMeta.total > 0 ? `${paginationMeta.total} Available Books` : 'Available Books'}
+            </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recentBooks.map((book) => (
+              {availableBooks.map((book) => (
                 <div
                   key={book.id}
                   className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
@@ -165,6 +172,17 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
                 </div>
               ))}
             </div>
+            {paginationMeta.hasMore && availableBooks.length < paginationMeta.total && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={loadMoreBooks}
+                  disabled={booksLoading}
+                  className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {booksLoading ? 'Loading...' : 'Show more...'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

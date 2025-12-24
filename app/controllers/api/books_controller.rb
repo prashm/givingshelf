@@ -2,9 +2,10 @@ class Api::BooksController < ApplicationController
   before_action :require_authentication, except: [ :index, :show, :search, :track_view, :stats ]
   before_action :set_book, only: [ :show, :update, :destroy, :track_view ]
 
+  include ApiCursorPagination
+
   def index
-    @books = Book.available.includes(:user).recent
-    render json: @books.map { |book| book_service.book_json(book, Current.user) }
+    paginated_books_response Book.available.includes(:user).recent
   end
 
   def my_books
@@ -45,8 +46,7 @@ class Api::BooksController < ApplicationController
   end
 
   def search
-    books = book_service.search_books(query_string: params[:query], zip_code: params[:zip_code])
-    render json: books.map { |book| book_service.book_json(book, Current.user) }
+    paginated_books_response book_service.search_books(query_string: params[:query], zip_code: params[:zip_code])
   end
 
   def track_view
@@ -107,8 +107,33 @@ class Api::BooksController < ApplicationController
       status: book.status,
       status_display: BookStatus.display_status(book.status),
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
-      created_at: book.created_at,
-      request_count: book.book_requests.count
+      created_at: book.created_at
+    }
+  end
+
+  def paginated_books_response(books)
+    @errors = []
+    # Validate and set pagination options from params
+    validate_and_setup_page_params(params[:page])
+
+    if @errors.blank?
+      paginated_books = paginate(books.select("books.*, books.id as book_id"), "books.id", "book_id")
+      # Build API response with pagination metadata
+      response = {
+        status: "Success",
+        data: paginated_books.map { |book| my_book_json(book) }
+      }.merge(page_links_and_meta_data(request.base_url + request.path, request.query_parameters))
+
+      render json: response, status: :ok
+    else
+      render json: error_response, status: :unprocessable_entity
+    end
+  end
+
+  def error_response
+    {
+      status: "Error",
+      errors: @errors.map { |error| error.is_a?(Hash) ? error : { title: error } }
     }
   end
 end
