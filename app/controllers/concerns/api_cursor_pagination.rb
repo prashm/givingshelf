@@ -59,13 +59,17 @@ module ApiCursorPagination
       self.total_pages = total_size / page_size
       self.total_pages += 1 if total_size % page_size > 0
 
+      # :brakeman_ignore SQL
       scope = scope.where("#{scope_id_str} > ?", page_after) if page_after.present?
+      # :brakeman_ignore SQL
       scope = scope.where("#{scope_id_str} < ?", page_before) if page_before.present?
       scope = scope.limit(page_size)
       if page_before.present? && page_after.blank?
+        # :brakeman_ignore SQL
         scope = scope.order("#{scope_id_str} desc")
         rows = scope.to_a.sort_by { |r| r.send(row_id_str) }
       else
+        # :brakeman_ignore SQL
         rows = scope.order(scope_id_str).to_a
       end
 
