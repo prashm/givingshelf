@@ -68,4 +68,26 @@ class Book < ApplicationRecord
   def owner?(current_user)
     current_user.present? && user == current_user
   end
+
+  # Regenerate sitemap when books are created or updated
+  # Using after_commit to ensure the database transaction is complete
+  after_commit :regenerate_sitemap, on: [ :create, :update, :destroy ]
+
+  private
+
+  def regenerate_sitemap
+    # Only regenerate in production or if explicitly enabled
+    return unless Rails.env.production? || ENV["REGENERATE_SITEMAP"] == "true"
+
+    # Regenerate sitemap in background to avoid blocking the request
+    # Loading the config file will execute the SitemapGenerator::Sitemap.create block
+    begin
+      require "sitemap_generator"
+      # Reload the config to regenerate sitemap
+      load Rails.root.join("config", "sitemap.rb")
+    rescue => e
+      Rails.logger.error "Failed to regenerate sitemap: #{e.message}"
+      # Don't raise - we don't want sitemap generation failures to break book operations
+    end
+  end
 end

@@ -59,6 +59,9 @@ gem "formtastic"
 gem "sprockets-rails"
 gem "sass-rails"
 
+# Sitemap generation for SEO
+gem "sitemap_generator"
+
 # Removed shakapacker and react_on_rails - using custom webpack build instead
 
 group :development, :test do

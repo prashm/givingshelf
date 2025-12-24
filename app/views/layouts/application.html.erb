@@ -1,11 +1,36 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "BookShare - Community Book Donation" %></title>
+    <% 
+      page_title = content_for(:title) || "BookShare - Community Book Donation"
+      page_description = content_for(:description) || "Share and discover books in your local community. Donate used books and find great reads from neighbors."
+      page_url = content_for(:url) || request.url
+      page_image = content_for(:image) || "#{request.protocol}#{request.host}/bsc-icon.png"
+      base_url = "https://booksharecommunity.org"
+      canonical_url = content_for(:canonical) || page_url
+    %>
+    <title><%= page_title %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="description" content="Share and discover books in your local community. Donate used books and find great reads from neighbors.">
+    <meta name="description" content="<%= page_description %>">
+    
+    <%# Canonical URL %>
+    <link rel="canonical" href="<%= canonical_url %>">
+    
+    <%# Open Graph meta tags %>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="<%= page_title %>">
+    <meta property="og:description" content="<%= page_description %>">
+    <meta property="og:url" content="<%= page_url %>">
+    <meta property="og:image" content="<%= page_image %>">
+    <meta property="og:site_name" content="BookShare Community">
+    
+    <%# Twitter Card meta tags %>
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<%= page_title %>">
+    <meta name="twitter:description" content="<%= page_description %>">
+    <meta name="twitter:image" content="<%= page_image %>">
     <% if ENV['SENTRY_DSN_FRONTEND'].present? %>
       <meta name="sentry-dsn" content="<%= ENV['SENTRY_DSN_FRONTEND'] %>">
       <meta name="sentry-environment" content="<%= Rails.env %>">
@@ -25,6 +50,37 @@
     <link rel="icon" href="/bsc-icon.png" type="image/png">
     <link rel="icon" href="/bsc-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/bsc-icon.png">
+
+    <%# Structured Data (JSON-LD) %>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "BookShare Community",
+          "url": "<%= base_url %>",
+          "logo": "<%= base_url %>/bsc-icon.png",
+          "description": "A community platform for sharing and discovering books. Donate used books and find great reads from neighbors.",
+          "sameAs": []
+        },
+        {
+          "@type": "WebSite",
+          "name": "BookShare Community",
+          "url": "<%= base_url %>",
+          "description": "<%= page_description %>",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "<%= base_url %>/?search={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
 
     <%= stylesheet_link_tag "application-bundled", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application-webpack", "data-turbo-track": "reload" %>
