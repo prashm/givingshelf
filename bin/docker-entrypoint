@@ -9,6 +9,10 @@ fi
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   ./bin/rails db:prepare
+  
+  # Generate sitemap after database is ready
+  echo "Generating sitemap..."
+  ./bin/rails sitemap:refresh || echo "Warning: Sitemap generation failed, continuing anyway..."
 fi
 
 exec "${@}"

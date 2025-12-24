@@ -90,6 +90,10 @@ jobs:
             # prepare database (creates if needed, then runs migrations)
             docker compose -f docker-compose.production.yml exec web bundle exec rails db:prepare
             
+            # generate sitemap
+            echo "Generating sitemap..."
+            docker compose -f docker-compose.production.yml exec web bundle exec rake sitemap:refresh || echo "Warning: Sitemap generation failed, continuing anyway..."
+            
             # precompile assets if necessary  
             docker compose -f docker-compose.production.yml exec web bundle exec rails assets:precompile
 
