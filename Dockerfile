@@ -79,7 +79,7 @@ COPY --from=build /rails /rails
 # Non-root user
 RUN groupadd --system --gid 1000 rails && \
     useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+    chown -R rails:rails db log storage tmp public
 USER 1000:1000
 
 # Rails logging to stdout

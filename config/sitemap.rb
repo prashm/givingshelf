@@ -4,8 +4,8 @@ SitemapGenerator::Sitemap.default_host = "https://booksharecommunity.org"
 # Set the sitemap path
 SitemapGenerator::Sitemap.public_path = "public/"
 
-# Set the sitemap path on the server
-SitemapGenerator::Sitemap.sitemaps_path = "sitemaps/"
+# Generate sitemap directly in public/ (not in a subdirectory)
+# This matches the robots.txt reference to /sitemap.xml
 
 # Generate sitemap
 SitemapGenerator::Sitemap.create do
@@ -14,10 +14,9 @@ SitemapGenerator::Sitemap.create do
 
   # Add all available books
   Book.available.find_each do |book|
-    add "/books/#{book.id}", 
+    add "/books/#{book.id}",
         lastmod: book.updated_at,
         priority: 0.8,
         changefreq: "weekly"
   end
 end
-
