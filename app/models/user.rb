@@ -8,6 +8,9 @@ class User < ApplicationRecord
   has_many :book_requests, class_name: "BookRequest", foreign_key: "requester_id", dependent: :destroy
   has_many :received_book_requests, class_name: "BookRequest", foreign_key: "owner_id", dependent: :destroy
   has_many :messages, dependent: :destroy
+  has_many :community_group_memberships, dependent: :destroy
+  has_many :community_groups, through: :community_group_memberships
+  has_many :admin_community_groups, -> { where(community_group_memberships: { admin: true }) }, through: :community_group_memberships, source: :community_group
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   normalizes :first_name, :last_name, with: ->(name) { name.strip.titleize }
@@ -28,17 +31,20 @@ class User < ApplicationRecord
   scope :verified, -> { where(verified: true) }
   scope :by_zip_code, ->(zip_code) { where(zip_code: zip_code) }
   scope :admin, -> { where(admin: true) }
+  scope :group_admin, -> { where(group_admin: true) }
 
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
     # Exclude sensitive fields like password_digest and otp_secret
     %w[
       id id_value email_address first_name last_name zip_code phone
-      street_address city state verified admin address_verified trust_score
+      street_address city state verified admin group_admin address_verified trust_score
       otp_attempts otp_sent_at created_at updated_at
     ]
   end
 
+  after_create :auto_join_groups_after_creation
+  after_update :auto_join_groups_if_email_changed, if: :saved_change_to_email_address?
   after_update :recalculate_trust_score, if: :saved_change_to_profile_fields?
   before_save :geocode_coordinates, if: :should_geocode_coordinates?
 
@@ -109,6 +115,14 @@ class User < ApplicationRecord
     # Address verification bonus (10 points)
     score += 10 if address_verified?
 
+    # Group domain bonus (50 points) - if user is verified and member of group with matching domain
+    if verified? && email_address.present?
+      email_domain = email_address.split("@").last
+      if community_groups.exists?(domain: email_domain)
+        score += 50
+      end
+    end
+
     # Cap at 100
     self.trust_score = [ score, 100 ].min
     save!
@@ -178,5 +192,44 @@ class User < ApplicationRecord
   def profile_completion_required?
     # Only require profile fields when they're being set (not during initial email-only registration)
     first_name.present? || last_name.present? || zip_code.present? || phone.present?
+  end
+
+  def auto_join_groups_by_domain!
+    return unless email_address.present?
+
+    eligible_groups.each do |group|
+      # Check if user is already a member
+      unless community_group_memberships.exists?(community_group: group)
+        community_group_memberships.create!(
+          community_group: group,
+          admin: false,
+          auto_joined: true
+        )
+      end
+    end
+  end
+
+  def eligible_groups
+    CommunityGroup.by_domain(email_address.split("@").last)
+  end
+
+  def password_reset_token
+    signed_id(expires_in: 15.minutes, purpose: :password_reset)
+  end
+
+  def self.find_by_password_reset_token!(token)
+    find_signed!(token, purpose: :password_reset)
+  end
+
+  private
+
+  def auto_join_groups_after_creation
+    auto_join_groups_by_domain!
+    calculate_trust_score! # Recalculate trust score after auto-join
+  end
+
+  def auto_join_groups_if_email_changed
+    auto_join_groups_by_domain!
+    calculate_trust_score! # Recalculate trust score after auto-join
   end
 end

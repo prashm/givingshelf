@@ -92,7 +92,7 @@ class BookService
     false
   end
 
-  def search_books(query_string: nil, zip_code: nil, radius: nil)
+  def search_books(query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     books = Book.available.joins(:user)
 
     if query_string.present?
@@ -103,7 +103,16 @@ class BookService
       books = books.merge(zip_code_scope(zip_code, radius))
     end
 
-    books
+    # Filter by community group - only show books from users who are members
+    if community_group_id.present?
+      books = books.joins(user: :community_group_memberships)
+                   .where(community_group_memberships: { community_group_id: community_group_id })
+
+      # Note: sub_group_id filtering is not implemented as books don't have direct sub_group association
+      # If needed, this could filter by user attributes or be implemented differently
+    end
+
+    books.distinct
   end
 
   def track_book_view(current_user)

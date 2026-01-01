@@ -12,6 +12,8 @@ import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
+import GroupPage from './group/GroupPage';
+import WelcomeModal from './WelcomeModal';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import TermsOfServiceModal from './TermsOfServiceModal';
 import { 
@@ -52,6 +54,18 @@ const BookDonationMarketplace = () => {
   const [zipCodeDetected, setZipCodeDetected] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [groupShortName, setGroupShortName] = useState(null);
+  
+  // Detect route on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    const groupMatch = path.match(/^\/g\/([^\/]+)/);
+    if (groupMatch) {
+      const shortName = groupMatch[1];
+      setGroupShortName(shortName);
+      _setPageState('groupPage');
+    }
+  }, []);
   
   // Sync page state with URL on initial load (in case URL changed before component mounted)
   useEffect(() => {
@@ -346,6 +360,19 @@ const BookDonationMarketplace = () => {
         return <MyRequests 
           currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
+        />;
+      case 'groupPage':
+        return <GroupPage
+          groupShortName={groupShortName}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          zipCode={zipCode}
+          setZipCode={setZipCode}
+          handleSearch={handleSearch}
+          handleBookSelect={handleBookSelect}
+          currentUser={currentUser}
+          setCurrentPage={setCurrentPage}
+          onOpenLoginModal={handleOpenLoginModal}
         />;
       default:
         return <LandingPage 

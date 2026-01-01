@@ -36,8 +36,12 @@ module Authentication
       if request.format.json? || controller_path.start_with?("api/")
         render json: { error: "Authentication required" }, status: :unauthorized
       else
-        redirect_to new_session_path
+        redirect_to before_authentication_url
       end
+    end
+
+    def before_authentication_url
+      new_session_path
     end
 
     def after_authentication_url
@@ -59,7 +63,8 @@ module Authentication
     end
 
     def terminate_session
-      Current.session.destroy
+      Current.session&.destroy
+      Current.session = nil
       cookies.delete(:session_id)
     end
 end

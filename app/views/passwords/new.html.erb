@@ -1,8 +1,41 @@
-<h1>Forgot your password?</h1>
-
-<%= tag.div(flash[:alert], style: "color:red") if flash[:alert] %>
-
-<%= form_with url: passwords_path do |form| %>
-  <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email_address] %><br>
-  <%= form.submit "Email reset instructions" %>
-<% end %>
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div class="bg-white rounded-lg shadow-md p-8">
+      <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Forgot your password?</h1>
+        <p class="text-sm text-gray-600">Enter your email address and we'll send you reset instructions</p>
+      </div>
+      
+      <% if flash[:alert] %>
+        <div class="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
+          <p class="text-sm text-red-600"><%= flash[:alert] %></p>
+        </div>
+      <% end %>
+      
+      <% if flash[:notice] %>
+        <div class="mt-6 bg-green-50 border border-green-200 rounded-md p-4">
+          <p class="text-sm text-green-600"><%= flash[:notice] %></p>
+        </div>
+      <% end %>
+      
+      <%= form_with url: passwords_path, local: true, class: "mt-8 space-y-6" do |form| %>
+        <% if params[:return_to].present? %>
+          <%= form.hidden_field :return_to, value: params[:return_to] %>
+        <% end %>
+        
+        <div>
+          <%= form.label :email_address, "Email address", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", value: params[:email_address], class: "appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm", placeholder: "Enter your email address" %>
+        </div>
+        
+        <div>
+          <%= form.submit "Send reset instructions", class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors" %>
+        </div>
+        
+        <div class="text-center">
+          <%= link_to "Back to login", params[:return_to] == "group_admin" ? group_admin_login_path : new_session_path, class: "text-sm font-medium text-emerald-600 hover:text-emerald-500 transition-colors" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

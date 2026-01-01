@@ -8,6 +8,7 @@ import VerificationBadge from '../common/VerificationBadge';
 import PrivacyPolicyModal from '../PrivacyPolicyModal';
 import TermsOfServiceModal from '../TermsOfServiceModal';
 import axios from '../../lib/axios';
+import { fetchGroupMemberships, updateGroupMemberships } from '../../lib/communityGroupsApi';
 
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
   const { updateProfile, checkAuthStatus } = useAuth();
@@ -30,6 +31,9 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
+  const [allGroups, setAllGroups] = useState([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -122,8 +126,23 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
       if (currentUser && !currentUser.profile_complete) {
         setIsEditing(true);
       }
+      
+      // Load community groups
+      if (currentUser && currentUser.community_groups) {
+        setSelectedGroupIds(currentUser.community_groups.map(g => g.id));
+      } else {
+        setSelectedGroupIds([]);
+      }
     }
   }, [currentUser, profilePicture]);
+  
+  // Load all available groups (for now, we'll just use the groups from user memberships)
+  // In the future, this could fetch all groups from an API endpoint
+  useEffect(() => {
+    if (currentUser && currentUser.community_groups) {
+      setAllGroups(currentUser.community_groups);
+    }
+  }, [currentUser]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -311,6 +330,18 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
       
       const result = await updateProfile(userData, profilePictureToSend);
       
+      // Update community groups separately
+      if (result.success && currentUser) {
+        try {
+          await updateGroupMemberships(currentUser.id, selectedGroupIds);
+          // Refresh auth to get updated user with groups
+          await checkAuthStatus();
+        } catch (error) {
+          console.error('Error updating community groups:', error);
+          // Don't fail the entire save if group update fails
+        }
+      }
+      
       if (result.success) {
         // Clean up blob URL before clearing
         if (profilePicturePreview && profilePicturePreview.startsWith('blob:')) {
@@ -368,6 +399,12 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         setProfilePicturePreview(currentUser.profile_picture_url);
       } else {
         setProfilePicturePreview(null);
+      }
+      // Reset selected groups
+      if (currentUser.community_groups) {
+        setSelectedGroupIds(currentUser.community_groups.map(g => g.id));
+      } else {
+        setSelectedGroupIds([]);
       }
     }
   };
@@ -712,6 +749,51 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               )}
             </div>
 
+            {/* Community Groups */}
+            {allGroups.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Community Groups
+                </label>
+                <div className="space-y-2 border border-gray-300 rounded-md p-4">
+                  {allGroups.map((group) => (
+                    <div key={group.id} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={`group-${group.id}`}
+                        checked={selectedGroupIds.includes(group.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGroupIds([...selectedGroupIds, group.id]);
+                          } else {
+                            setSelectedGroupIds(selectedGroupIds.filter(id => id !== group.id));
+                          }
+                        }}
+                        style={{
+                          appearance: 'auto',
+                          WebkitAppearance: 'auto',
+                          accentColor: 'rgb(5, 150, 105)',
+                          width: '1rem',
+                          height: '1rem',
+                          cursor: 'pointer',
+                          marginTop: 0,
+                          marginRight: '0.5rem'
+                        }}
+                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor={`group-${group.id}`} className="ml-3 text-sm text-gray-700">
+                        {group.name}
+                        {group.auto_joined && (
+                          <span className="ml-2 text-xs text-gray-500">(Auto-joined)</span>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Uncheck to leave a group</p>
+              </div>
+            )}
+
             {/* Terms and Privacy Checkbox */}
             <div className="flex items-start mt-6">
               <div className="flex items-center h-5">
@@ -850,6 +932,30 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   <p className="text-gray-900">{currentUser.zip_code || 'Not provided'}</p>
                 </div>
               </div>
+
+              {/* Community Groups */}
+              {currentUser.community_groups && currentUser.community_groups.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-500">Community Groups</span>
+                    <div className="mt-1 space-y-1">
+                      {currentUser.community_groups.map((group) => (
+                        <div key={group.id} className="text-gray-900">
+                          {group.name}
+                          {group.auto_joined && (
+                            <span className="ml-2 text-xs text-gray-500">(Auto-joined)</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Actions */}

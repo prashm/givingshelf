@@ -237,7 +237,7 @@ export const BookProvider = ({ children }) => {
     }
   }, [paginationMeta, loading, currentEndpoint]);
 
-  const searchBooks = useCallback(async (query, zipCode, append = false, radius = null) => {
+  const searchBooks = useCallback(async (query, zipCode, append = false, radius = null, communityGroupId = null, subGroupId = null) => {
     setLoading(true);
     setError(null);
     try {
@@ -250,6 +250,14 @@ export const BookProvider = ({ children }) => {
       
       if (radius) {
         paginationParams.radius = radius;
+      }
+      
+      if (communityGroupId) {
+        paginationParams.community_group_id = communityGroupId;
+      }
+      
+      if (subGroupId) {
+        paginationParams.sub_group_id = subGroupId;
       }
       
       const endpoint = '/api/books/search';

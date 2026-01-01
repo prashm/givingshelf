@@ -46,7 +46,13 @@ class Api::BooksController < ApplicationController
   end
 
   def search
-    paginated_books_response book_service.search_books(query_string: params[:query], zip_code: params[:zip_code], radius: params[:radius])
+    paginated_books_response book_service.search_books(
+      query_string: params[:query],
+      zip_code: params[:zip_code],
+      radius: params[:radius],
+      community_group_id: params[:community_group_id],
+      sub_group_id: params[:sub_group_id]
+    )
   end
 
   def track_view
