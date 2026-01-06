@@ -183,10 +183,10 @@ const BookDonationMarketplace = () => {
     }
   }, [books]);
   
-  const handleSearch = () => {
+  const handleSearch = (searchRadius = null) => {
     // Use searchBooks from context which handles zip code filtering on backend
     if (zipCode) {
-      searchBooks(searchQuery, zipCode);
+      searchBooks(searchQuery, zipCode, false, searchRadius);
     } else {
       // If no zip code, filter locally
     const query = searchQuery.toLowerCase();

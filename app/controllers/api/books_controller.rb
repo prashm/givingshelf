@@ -46,7 +46,7 @@ class Api::BooksController < ApplicationController
   end
 
   def search
-    paginated_books_response book_service.search_books(query_string: params[:query], zip_code: params[:zip_code])
+    paginated_books_response book_service.search_books(query_string: params[:query], zip_code: params[:zip_code], radius: params[:radius])
   end
 
   def track_view
@@ -79,7 +79,7 @@ class Api::BooksController < ApplicationController
   end
 
   def stats
-    stats = BookService.community_stats(zip_code: params[:zip_code])
+    stats = book_service.community_stats(zip_code: params[:zip_code], radius: params[:radius])
     render json: stats
   end
 

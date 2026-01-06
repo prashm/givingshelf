@@ -40,6 +40,7 @@ class User < ApplicationRecord
   end
 
   after_update :recalculate_trust_score, if: :saved_change_to_profile_fields?
+  before_save :geocode_coordinates, if: :should_geocode_coordinates?
 
   def saved_change_to_profile_fields?
     saved_change_to_first_name? ||
@@ -54,6 +55,21 @@ class User < ApplicationRecord
 
   def recalculate_trust_score
     calculate_trust_score!
+  end
+
+  def should_geocode_coordinates?
+    zip_code.present? && (zip_code_changed? || latitude.nil? || longitude.nil?)
+  end
+
+  def geocode_coordinates
+    service = AddressVerificationService.new
+    coords = service.geocode_zip_code(zip_code)
+    if coords
+      self.latitude = coords[:latitude]
+      self.longitude = coords[:longitude]
+    else
+      Rails.logger.error "Geocoding failed for User #{id} and ZIP code #{zip_code}: #{service.errors.to_sentence}"
+    end
   end
 
   def full_name

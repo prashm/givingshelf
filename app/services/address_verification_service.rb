@@ -42,8 +42,6 @@ class AddressVerificationService
     false
   end
 
-  private
-
   def geocode_address(query, proximity: nil, limit: 5, types: "address")
     return [] unless Mapbox::ACCESS_TOKEN.present?
 
@@ -85,29 +83,42 @@ class AddressVerificationService
   end
 
   def geocode_zip_code(zip_code)
-    return nil unless Mapbox::ACCESS_TOKEN.present?
+    # TODO: Uncomment this to switch to Mapbox geocoding API
+    # return nil unless Mapbox::ACCESS_TOKEN.present?
 
-    url = Mapbox.geocoding_url(zip_code, {
-      limit: 1,
-      types: "postcode",
-      country: "us"
-    })
+    # url = Mapbox.geocoding_url(zip_code, {
+    #   limit: 1,
+    #   types: "postcode",
+    #   country: "us"
+    # })
 
-    uri = URI(url)
-    response = Net::HTTP.get_response(uri)
+    # uri = URI(url)
+    # response = Net::HTTP.get_response(uri)
 
-    return nil unless response.is_a?(Net::HTTPSuccess)
+    # return nil unless response.is_a?(Net::HTTPSuccess)
 
-    data = JSON.parse(response.body)
-    feature = data["features"]&.first
-    return nil unless feature
+    # data = JSON.parse(response.body)
+    # feature = data["features"]&.first
+    # return nil unless feature
 
-    coords = feature["geometry"]["coordinates"]
-    { latitude: coords[1], longitude: coords[0] }
-  rescue => e
-    Rails.logger.error "Zip code geocoding error: #{e.message}"
-    nil
+    # coords = feature["geometry"]["coordinates"]
+    # { latitude: coords[1], longitude: coords[0] }
+
+    return nil if zip_code.blank?
+
+    begin
+      results = Geocoder.search(zip_code)
+      raise "No results found" if results.empty?
+      # Get the last result since that matches US ZIP codes
+      result = results.last
+      { latitude: result.latitude, longitude: result.longitude }
+    rescue => e
+      @errors << "Geocoding error for ZIP code #{zip_code}: #{e.message}"
+      nil
+    end
   end
+
+  private
 
   def extract_context(feature)
     feature["context"] || []

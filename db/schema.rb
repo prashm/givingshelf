@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_12_000638) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_28_035400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -87,6 +87,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_000638) do
     t.index ["user_id"], name: "index_books_on_user_id"
   end
 
+  create_table "community_group_memberships", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "community_group_id", null: false
+    t.boolean "admin", default: false, null: false
+    t.boolean "auto_joined", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["admin"], name: "index_community_group_memberships_on_admin"
+    t.index ["community_group_id"], name: "index_community_group_memberships_on_community_group_id"
+    t.index ["user_id", "community_group_id"], name: "index_cgm_on_user_and_group", unique: true
+    t.index ["user_id"], name: "index_community_group_memberships_on_user_id"
+  end
+
+  create_table "community_groups", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "group_type"
+    t.string "domain", null: false
+    t.string "short_name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["domain"], name: "index_community_groups_on_domain", unique: true
+    t.index ["short_name"], name: "index_community_groups_on_short_name", unique: true
+  end
+
   create_table "messages", force: :cascade do |t|
     t.bigint "book_request_id", null: false
     t.bigint "user_id", null: false
@@ -106,6 +130,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_000638) do
     t.datetime "updated_at", null: false
     t.index ["session_id"], name: "index_sessions_on_session_id", unique: true
     t.index ["updated_at"], name: "index_sessions_on_updated_at"
+  end
+
+  create_table "sub_groups", force: :cascade do |t|
+    t.string "name", null: false
+    t.bigint "community_group_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["community_group_id"], name: "index_sub_groups_on_community_group_id"
   end
 
   create_table "user_sessions", force: :cascade do |t|
@@ -140,8 +172,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_000638) do
     t.boolean "address_verified", default: false, null: false
     t.integer "trust_score", default: 0, null: false
     t.boolean "admin", default: false, null: false
+    t.boolean "group_admin", default: false, null: false
+    t.decimal "latitude", precision: 10, scale: 7
+    t.decimal "longitude", precision: 10, scale: 7
     t.index ["admin"], name: "index_users_on_admin"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["group_admin"], name: "index_users_on_group_admin"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
@@ -150,7 +186,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_000638) do
   add_foreign_key "book_requests", "users", column: "owner_id"
   add_foreign_key "book_requests", "users", column: "requester_id"
   add_foreign_key "books", "users"
+  add_foreign_key "community_group_memberships", "community_groups"
+  add_foreign_key "community_group_memberships", "users"
   add_foreign_key "messages", "book_requests"
   add_foreign_key "messages", "users"
+  add_foreign_key "sub_groups", "community_groups"
   add_foreign_key "user_sessions", "users"
 end

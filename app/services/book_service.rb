@@ -86,7 +86,7 @@ class BookService
     false
   end
 
-  def search_books(query_string: nil, zip_code: nil)
+  def search_books(query_string: nil, zip_code: nil, radius: nil)
     books = Book.available.joins(:user)
 
     if query_string.present?
@@ -94,7 +94,7 @@ class BookService
     end
 
     if zip_code.present?
-      books = books.where(users: { zip_code: zip_code })
+      books = books.merge(zip_code_scope(zip_code, radius))
     end
 
     books
@@ -108,13 +108,14 @@ class BookService
     self.book.view_count
   end
 
-  def self.community_stats(zip_code: nil)
+  def community_stats(zip_code: nil, radius: nil)
     base_books = Book.joins(:user)
     base_requests = BookRequest.joins(book: :user)
 
     if zip_code.present?
-      base_books = base_books.where(users: { zip_code: zip_code })
-      base_requests = base_requests.where(users: { zip_code: zip_code })
+      scope = zip_code_scope(zip_code, radius)
+      base_books = base_books.merge(scope)
+      base_requests = base_requests.merge(scope)
     end
 
     {
@@ -159,6 +160,36 @@ class BookService
 
 
   private
+
+  def zip_code_scope(zip_code, radius)
+    if (radius_miles = radius.to_i) > 0
+      address_verification_service = AddressVerificationService.new
+      search_coords = address_verification_service.geocode_zip_code(zip_code)
+      radius_scope = false
+      if search_coords && search_coords[:latitude] && search_coords[:longitude]
+        # Use SQL Haversine formula to calculate distance
+        # Formula: (6371 * acos(cos(radians(lat1)) * cos(radians(lat2)) * cos(radians(lng2) - radians(lng1)) + sin(radians(lat1)) * sin(radians(lat2)))) * 0.621371
+        # 6371 = Earth's radius in km, 0.621371 converts km to miles
+        # Use GREATEST/LEAST to clamp acos input to [-1, 1] to avoid floating point precision errors
+        lat = search_coords[:latitude]
+        lng = search_coords[:longitude]
+
+        scope = Book.where(
+          "(6371 * acos(GREATEST(-1.0, LEAST(1.0, cos(radians(?)) * cos(radians(users.latitude)) * cos(radians(users.longitude) - radians(?)) + sin(radians(?)) * sin(radians(users.latitude)))))) * 0.621371 <= ? AND users.latitude IS NOT NULL AND users.longitude IS NOT NULL",
+          lat, lng, lat, radius_miles
+        )
+        radius_scope = true
+      else
+        # If geocoding fails, fall back to exact ZIP match
+        Rails.logger.warn "Geocoding failed for ZIP code #{zip_code}, falling back to exact match. Error: #{address_verification_service.errors.to_sentence}"
+      end
+    end
+    unless radius_scope
+      # Exact ZIP code match (default behavior)
+      scope = Book.where(users: { zip_code: zip_code })
+    end
+    scope
+  end
 
   def handle_api_cover_image(api_url)
     # Only process if it's a string URL, not a File object

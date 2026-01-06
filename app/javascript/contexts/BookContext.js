@@ -237,7 +237,7 @@ export const BookProvider = ({ children }) => {
     }
   }, [paginationMeta, loading, currentEndpoint]);
 
-  const searchBooks = useCallback(async (query, zipCode, append = false) => {
+  const searchBooks = useCallback(async (query, zipCode, append = false, radius = null) => {
     setLoading(true);
     setError(null);
     try {
@@ -247,6 +247,10 @@ export const BookProvider = ({ children }) => {
         query: query || '',
         zip_code: zipCode
       };
+      
+      if (radius) {
+        paginationParams.radius = radius;
+      }
       
       const endpoint = '/api/books/search';
       setCurrentEndpoint(endpoint);
