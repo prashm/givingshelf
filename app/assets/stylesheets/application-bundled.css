@@ -1680,6 +1680,11 @@
     --tw-outline-style: none;
     outline-style: none;
   }
+  @media (hover: hover) {
+    .enabled\:hover\:bg-blue-200:enabled:hover {
+      background-color: var(--color-blue-200);
+    }
+  }
   .disabled\:cursor-not-allowed:disabled {
     cursor: not-allowed;
   }

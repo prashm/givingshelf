@@ -289,7 +289,7 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
                 <button
                   onClick={loadMoreBooks}
                   disabled={booksLoading}
-                  className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="border border-blue-200 bg-blue-50 text-blue-800 px-6 py-2 rounded-md enabled:hover:bg-blue-200 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   {booksLoading ? 'Loading...' : 'Show more...'}
                 </button>
@@ -353,7 +353,11 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
           <h2 className="text-3xl font-bold mb-4">Ready to Share Your Books?</h2>
           <button
             onClick={() => {
-              onOpenLoginModal('donate');
+              if (currentUser) {
+                setCurrentPage('donate');
+              } else {
+                onOpenLoginModal('donate');
+              }
             }}
             className="bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-emerald-700 transition-colors"
           >
