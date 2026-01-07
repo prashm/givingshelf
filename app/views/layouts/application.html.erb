@@ -1,7 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <% 
+      # Normalize canonical URL - always use HTTPS and non-www
+      def normalize_canonical_url(url)
+        return url if url.blank?
+        # Replace http:// with https://
+        url = url.gsub(/^http:\/\//, 'https://')
+        # Remove www subdomain
+        url = url.gsub(/^https:\/\/www\./, 'https://')
+        # For query parameters (like ?search=), use base URL
+        if url.include?('?search=')
+          return "https://booksharecommunity.org/"
+        end
+        url
+      end
+      
       # If this is a book detail page, use book-specific meta tags
       if defined?(@book) && @book.present?
         page_title = content_for(:title) || "#{@book.title} by #{@book.author} - BookShare Community"
@@ -11,15 +25,18 @@
         if @book.cover_image.attached?
           page_image = content_for(:image) || rails_blob_url(@book.cover_image, only_path: false)
         else
-          page_image = content_for(:image) || "#{request.protocol}#{request.host}/bsc-icon.png"
+          page_image = content_for(:image) || "https://booksharecommunity.org/bsc-icon.png"
         end
-        canonical_url = content_for(:canonical) || "#{request.protocol}#{request.host}/books/#{@book.id}"
+        canonical_url = content_for(:canonical) || "https://booksharecommunity.org/books/#{@book.id}"
       else
-        page_title = content_for(:title) || "BookShare - Community Book Donation"
-        page_description = content_for(:description) || "Share and discover books in your local community. Donate used books and find great reads from neighbors."
-        page_url = content_for(:url) || request.url
-        page_image = content_for(:image) || "#{request.protocol}#{request.host}/bsc-icon.png"
-        canonical_url = content_for(:canonical) || page_url
+        page_title = content_for(:title) || "Donate Books for Free | BookShare Community - Share Books Locally"
+        page_description = content_for(:description) || "Donate books for free in your local community. BookShare Community helps you donate used books, discover free books from neighbors, and share the joy of reading. 100% free book donation and sharing platform."
+        # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
+        current_url = request.url
+        # Remove query parameters for canonical URL
+        canonical_url = content_for(:canonical) || normalize_canonical_url(current_url.split('?').first)
+        page_url = content_for(:url) || normalize_canonical_url(current_url)
+        page_image = content_for(:image) || "https://booksharecommunity.org/bsc-icon.png"
       end
       base_url = "https://booksharecommunity.org"
     %>
@@ -121,6 +138,25 @@
           "query-input" => "required name=search_term_string"
         }
       }
+      
+      # Add Service schema for book donation (only for homepage)
+      if !defined?(@book) || @book.blank?
+        structured_data["@graph"] << {
+          "@type" => "Service",
+          "name" => "Book Donation and Sharing Service",
+          "description" => "Free book donation and sharing service for local communities. Donate books, discover free books, and share books with neighbors.",
+          "provider" => {
+            "@type" => "Organization",
+            "name" => "BookShare Community"
+          },
+          "areaServed" => {
+            "@type" => "Country",
+            "name" => "United States"
+          },
+          "serviceType" => "Book Donation and Sharing",
+          "url" => base_url
+        }
+      end
     %>
     <%= structured_data.to_json.html_safe %>
     </script>

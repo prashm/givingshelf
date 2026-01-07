@@ -3,7 +3,7 @@ import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { fetchCommunityStats } from '../lib/booksApi';
 import { useBooks } from '../contexts/BookContext';
 
-const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage, onOpenLoginModal }) => {
+const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleSearch, handleBookSelect, currentUser, setCurrentPage, onOpenLoginModal }) => {
   const { paginationMeta, loadMoreBooks, loading: booksLoading } = useBooks();
   const [availableBooks, setAvailableBooks] = useState([]);
   const [popularGenres, setPopularGenres] = useState([]);
@@ -369,6 +369,5 @@ const Home = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, handleS
   );
 };
 
-export default Home;
-
+export default BookList;
 

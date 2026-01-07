@@ -2,17 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useBooks } from '../contexts/BookContext';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from './Navbar';
-import Home from './Home';
+import LandingPage from './LandingPage';
+import BookList from './BookList';
 import AddBook from './books/AddBook';
 import EditBook from './books/EditBook';
-import BookList from './books/BookList';
 import BookDetail from './books/BookDetail';
 import BookRequestDetail from './messages/BookRequestDetail';
 import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
-import WelcomeModal from './WelcomeModal';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import TermsOfServiceModal from './TermsOfServiceModal';
 import { 
@@ -30,7 +29,14 @@ import { COMPANY, VERSION } from '../lib/version';
 const BookDonationMarketplace = () => {
   const { currentUser, loading: authLoading } = useAuth();
   const { books, fetchBooks, searchBooks, loading } = useBooks();
-  const [currentPage, _setPageState] = useState('home');
+  // Initialize page state from URL
+  const getInitialPage = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname === '/browse' ? 'browse' : 'home';
+    }
+    return 'home';
+  };
+  const [currentPage, _setPageState] = useState(getInitialPage);
   const [previousPage, setPreviousPage] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,12 +48,22 @@ const BookDonationMarketplace = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [zipCodeDetected, setZipCodeDetected] = useState(false);
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   
-  // Detect zip code on mount and when user logs in
+  // Sync page state with URL on initial load (in case URL changed before component mounted)
   useEffect(() => {
+    const path = window.location.pathname;
+    const expectedPage = path === '/browse' ? 'browse' : 'home';
+    if (currentPage !== expectedPage) {
+      _setPageState(expectedPage);
+    }
+  }, []); // Only run once on mount
+
+  // Detect zip code only when on browse page
+  useEffect(() => {
+    // Only run on browse page
+    if (currentPage !== 'browse') return;
     // Don't run until auth check is complete
     if (authLoading) return;
     // Don't run if we've already detected zip code
@@ -132,12 +148,14 @@ const BookDonationMarketplace = () => {
 
     detectZipCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, authLoading, zipCodeDetected]);
+  }, [currentPage, currentUser, authLoading, zipCodeDetected]);
 
   // Handle browser history navigation
   useEffect(() => {
-    // Set initial state
-    window.history.replaceState({ page: 'home' }, '', window.location.pathname);
+    // Set initial state based on URL
+    const initialPath = window.location.pathname;
+    const initialPage = initialPath === '/browse' ? 'browse' : 'home';
+    window.history.replaceState({ page: initialPage }, '', window.location.pathname);
 
     const handlePopState = (event) => {
       const state = event.state;
@@ -149,7 +167,13 @@ const BookDonationMarketplace = () => {
         if (state.editingBookId) setEditingBookId(state.editingBookId);
         if (state.bookRequestId) setSelectedBookRequestId(state.bookRequestId);
       } else {
-        _setPageState('home');
+        // Read from URL if state is missing
+        const path = window.location.pathname;
+        if (path === '/browse') {
+          _setPageState('browse');
+        } else {
+          _setPageState('home');
+        }
       }
     };
 
@@ -173,7 +197,16 @@ const BookDonationMarketplace = () => {
     }
 
     _setPageState(page);
-    window.history.pushState({ page, ...extraState }, '', window.location.pathname);
+    
+    // Update URL based on page
+    let url = window.location.pathname;
+    if (page === 'browse') {
+      url = '/browse';
+    } else if (page === 'home') {
+      url = '/';
+    }
+    
+    window.history.pushState({ page, ...extraState }, '', url);
   };
 
   // Update search results when books change
@@ -216,31 +249,17 @@ const BookDonationMarketplace = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Home 
-          books={searchResults} 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          zipCode={zipCode}
-          setZipCode={setZipCode}
-          handleSearch={handleSearch}
-          handleBookSelect={handleBookSelect}
-          currentUser={currentUser}
+        return <LandingPage 
           setCurrentPage={setCurrentPage}
+          currentUser={currentUser}
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'login':
       case 'signup':
         // Login/signup is handled via modal (useEffect will open modal and redirect to home)
-        return <Home 
-          books={searchResults} 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          zipCode={zipCode}
-          setZipCode={setZipCode}
-          handleSearch={handleSearch}
-          handleBookSelect={handleBookSelect}
-          currentUser={currentUser}
+        return <LandingPage 
           setCurrentPage={setCurrentPage}
+          currentUser={currentUser}
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'donate':
@@ -264,7 +283,7 @@ const BookDonationMarketplace = () => {
         />;
       case 'browse':
         return <BookList 
-          books={searchResults}
+          books={searchResults} 
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           zipCode={zipCode}
@@ -273,6 +292,7 @@ const BookDonationMarketplace = () => {
           handleBookSelect={handleBookSelect}
           currentUser={currentUser}
           setCurrentPage={setCurrentPage}
+          onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'messages':
         return <MessagesPage 
@@ -308,16 +328,9 @@ const BookDonationMarketplace = () => {
           setCurrentPage={setCurrentPage}
         />;
       default:
-        return <Home 
-          books={searchResults} 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          zipCode={zipCode}
-          setZipCode={setZipCode}
-          handleSearch={handleSearch}
-          handleBookSelect={handleBookSelect}
-          currentUser={currentUser}
+        return <LandingPage 
           setCurrentPage={setCurrentPage}
+          currentUser={currentUser}
           onOpenLoginModal={handleOpenLoginModal}
         />;
     }
@@ -359,19 +372,6 @@ const BookDonationMarketplace = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
-  // Check if user is a first-time visitor and show welcome modal
-  useEffect(() => {
-    if (!localStorage.getItem('bookshare_welcome_seen')) {
-      setIsWelcomeModalOpen(true);
-    }
-  }, []);
-
-  // Handle closing welcome modal and mark as seen
-  const handleCloseWelcomeModal = () => {
-    setIsWelcomeModalOpen(false);
-    localStorage.setItem('bookshare_welcome_seen', 'true');
-  };
-
   const handleLogout = async () => {
     await logout();
     setCurrentPage('home');
@@ -395,10 +395,6 @@ const BookDonationMarketplace = () => {
         setCurrentPage={setCurrentPage}
         onOpenPrivacyModal={() => setIsPrivacyModalOpen(true)}
         onOpenTermsModal={() => setIsTermsModalOpen(true)}
-      />
-      <WelcomeModal 
-        isOpen={isWelcomeModalOpen}
-        onClose={handleCloseWelcomeModal}
       />
       <PrivacyPolicyModal 
         isOpen={isPrivacyModalOpen}
