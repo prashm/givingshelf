@@ -92,7 +92,7 @@ const MessagesPage = ({ setCurrentPage }) => {
                   <button
                     type="button"
                     onClick={() =>
-                      setCurrentPage('bookDetails', { selectedBook: request.book })
+                      setCurrentPage('bookDetails', { selectedBook: request.book, bookDetailSource: 'messages' })
                     }
                     className="text-emerald-700 hover:text-emerald-900 underline"
                   >
@@ -140,7 +140,7 @@ const MessagesPage = ({ setCurrentPage }) => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Messages</h2>
           <button
-            onClick={() => setCurrentPage('home')}
+            onClick={() => setCurrentPage('browse')}
             className="text-sm text-emerald-700 hover:text-emerald-900"
           >
             Back to Home

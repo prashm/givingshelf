@@ -151,7 +151,7 @@ const MyRequests = ({ currentUser, setCurrentPage }) => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold text-gray-900">My Book Requests</h2>
           <button
-            onClick={() => setCurrentPage('home')}
+            onClick={() => setCurrentPage('browse')}
             className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
           >
             Browse More Books
@@ -198,7 +198,7 @@ const MyRequests = ({ currentUser, setCurrentPage }) => {
             </p>
             {filter === 'all' && (
               <button
-                onClick={() => setCurrentPage('home')}
+                onClick={() => setCurrentPage('browse')}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
               >
                 Browse Books

@@ -19,6 +19,9 @@ class BookService
       raise "User profile is incomplete."
     end
 
+    # Set genre to "Other" if empty
+    book_params[:genre] = "Other" if book_params[:genre].blank?
+
     @book = user.books.build(book_params)
     if @book.save
         handle_api_cover_image(api_cover_image)
@@ -44,6 +47,9 @@ class BookService
     api_cover_image = book_params.delete(:cover_image)
     user_images = book_params.delete(:user_images)
     remove_user_image_indices = book_params.delete(:remove_user_image_indices)
+
+    # Set genre to "Other" if empty
+    book_params[:genre] = "Other" if book_params[:genre].blank?
 
     if self.book.update(book_params)
 

@@ -4,7 +4,7 @@ import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
 import VerificationBadge from '../common/VerificationBadge';
 
-const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal, setRedirectReason }) => {
+const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal, setRedirectReason, sourcePage }) => {
   const { getBook, requestBook } = useBooks();
   const [book, setBook] = useState(initialBook);
   const [showContact, setShowContact] = useState(false);
@@ -29,7 +29,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Book Not Found</h2>
             <p className="text-gray-600 mb-4">The book you're looking for doesn't exist.</p>
             <button
-              onClick={() => setCurrentPage('home')}
+              onClick={() => setCurrentPage('browse')}
               className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
             >
               Back to Home
@@ -40,10 +40,22 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     );
   }
 
-  // Sync state with prop
+  // Sync state with prop and fetch full book details if owner is missing
   useEffect(() => {
     setBook(initialBook);
-  }, [initialBook]);
+    // If book exists but owner is missing, fetch full book details
+    if (initialBook && !initialBook.owner && initialBook.id) {
+      getBook(initialBook.id)
+        .then(bookData => {
+          if (bookData) {
+            setBook(bookData);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching full book details:', error);
+        });
+    }
+  }, [initialBook, getBook]);
 
   // Initialize view count from book prop and reset tracking when book changes
   useEffect(() => {
@@ -138,7 +150,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
       return;
     }
 
-    const zipCode = book.owner.location;
+    const zipCode = book.owner?.location;
     
     // Geocode the zip code to get coordinates, then create a static map
     const geocodeZipCode = async () => {
@@ -269,6 +281,12 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     }
   };
 
+  const handleDonateSimilarBookClick = () => {
+    requireLogin(() => {
+      setCurrentPage('donate', { donateInitialTitle: book.title });
+    }, 'donate');
+  };
+
   const handleDonateClick = () => {
     requireLogin(() => {
       setCurrentPage('donate');
@@ -320,13 +338,25 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
         {/* Header with Back Button */}
         <div className="p-6 border-b border-gray-200">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (sourcePage === 'myBooks') {
+                setCurrentPage('myBooks');
+              } else if (sourcePage === 'messages') {
+                setCurrentPage('messages');
+              } else {
+                setCurrentPage('browse');
+              }
+            }}
             className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to search results
+            {sourcePage === 'myBooks' 
+              ? 'Back to My Books' 
+              : sourcePage === 'messages'
+              ? 'Back to Messages'
+              : 'Back to search results'}
           </button>
 
           <h1 className="text-3xl font-bold text-gray-900">{book.title}</h1>
@@ -426,7 +456,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
 
               {book.owner?.id !== currentUser?.id && (
                 <button
-                  onClick={handleDonateClick}
+                  onClick={handleDonateSimilarBookClick}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Donate a Similar Book
@@ -488,12 +518,14 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                       <span className="text-sm font-medium text-gray-500">Donor</span>
                       {currentUser ? (
                         <div className="text-gray-900 flex items-center gap-2">
-                          {book.owner.name || 'Anonymous'}
-                          <VerificationBadge 
-                            trustScore={book.owner.trust_score}
-                            size="md"
-                            verified={book.owner.verified}
-                          />
+                          {book.owner?.name || 'Anonymous'}
+                          {book.owner && (
+                            <VerificationBadge 
+                              trustScore={book.owner.trust_score}
+                              size="md"
+                              verified={book.owner.verified}
+                            />
+                          )}
                         </div>
                       ) : (
                         <p className="text-gray-900">Hidden</p>
@@ -555,12 +587,12 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                       </div>
                     ) : book.owner?.location ? (
                       <div>
-                        <p className="text-gray-900 mb-2">{book.owner.location}</p>
+                        <p className="text-gray-900 mb-2">{book.owner?.location}</p>
                         {mapImageUrl ? (
                           <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                             <img 
                               src={mapImageUrl} 
-                              alt={`Map of ${book.owner.location}`}
+                              alt={`Map of ${book.owner?.location}`}
                               className="w-full h-40 object-cover"
                               onError={(e) => {
                                 console.error('Failed to load map image');
@@ -616,9 +648,9 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-3">Contact Information</h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Name:</span> {book.donor_contact.name}</p>
-                  <p><span className="font-medium">Email:</span> {book.donor_contact.email}</p>
-                  {book.donor_contact.phone && (
+                  <p><span className="font-medium">Name:</span> {book.donor_contact?.name || 'N/A'}</p>
+                  <p><span className="font-medium">Email:</span> {book.donor_contact?.email || 'N/A'}</p>
+                  {book.donor_contact?.phone && (
                     <p><span className="font-medium">Phone:</span> {book.donor_contact.phone}</p>
                   )}
                 </div>
@@ -636,7 +668,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setCurrentPage('home')}
+                  onClick={() => setCurrentPage('browse')}
                   className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                 >
                   Browse More Books

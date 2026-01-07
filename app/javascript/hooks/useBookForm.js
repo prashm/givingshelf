@@ -27,7 +27,7 @@ export const useBookForm = (initialData = {}) => {
     if (!formData.summary.trim()) errors.summary = 'Summary is required';
     if (formData.summary.trim().length < 10) errors.summary = 'Summary must be at least 10 characters';
     if (formData.summary.trim().length > 1000) errors.summary = 'Summary must be less than 1000 characters';
-    if (!formData.genre.trim()) errors.genre = 'Genre is required';
+    // Genre is optional - no validation error if empty
     if (!formData.published_year) errors.published_year = 'Published year is required';
     if (formData.published_year < 1800 || formData.published_year > new Date().getFullYear()) {
       errors.published_year = `Published year must be between 1800 and ${new Date().getFullYear()}`;

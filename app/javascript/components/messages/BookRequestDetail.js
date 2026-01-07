@@ -204,7 +204,7 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentPage('bookDetails', { selectedBook: request.book })
+                  setCurrentPage('bookDetails', { selectedBook: request.book, bookDetailSource: 'messages' })
                 }
                 className="mt-2 text-sm text-emerald-700 hover:text-emerald-900 underline"
               >

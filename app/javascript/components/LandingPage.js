@@ -165,7 +165,7 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1">Pick It Up</h3>
-                        <p className="text-gray-600">Arrange a safe, convenient pickup time and enjoy your new book</p>
+                        <p className="text-gray-600">Arrange a safe, convenient pickup location and time and enjoy your new book</p>
                       </div>
                     </div>
                   </div>

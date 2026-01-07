@@ -7,7 +7,7 @@ import ImageUpload from '../common/ImageUpload';
 import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
 
-const AddBook = ({ setCurrentPage, setRedirectReason }) => {
+const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage }) => {
   const { currentUser } = useAuth();
 
   // Check if user is authenticated and profile is complete
@@ -31,7 +31,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
   }
 
   const { createBook, loading, error } = useBooks();
-  const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useBookForm();
+  const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useBookForm(initialTitle ? { title: initialTitle } : {});
 
   // Separate crop instance for user_images
   const {
@@ -142,7 +142,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
 
     const result = await createBook(formData);
     if (result.success) {
-      setCurrentPage('home');
+      setCurrentPage('browse');
     }
   };
 
@@ -192,7 +192,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason }) => {
             <div className="flex gap-4 pt-4">
               <button
                 type="button"
-                onClick={() => setCurrentPage('home')}
+                onClick={() => setCurrentPage(previousPage || 'browse')}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 Cancel

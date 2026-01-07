@@ -45,6 +45,8 @@ const BookDonationMarketplace = () => {
   const [editingBookId, setEditingBookId] = useState(null);
   const [selectedBookRequestId, setSelectedBookRequestId] = useState(null);
   const [redirectReason, setRedirectReason] = useState(null);
+  const [donateInitialTitle, setDonateInitialTitle] = useState(null);
+  const [bookDetailSource, setBookDetailSource] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [zipCodeDetected, setZipCodeDetected] = useState(false);
@@ -166,6 +168,8 @@ const BookDonationMarketplace = () => {
         if (state.selectedBook) setSelectedBook(state.selectedBook);
         if (state.editingBookId) setEditingBookId(state.editingBookId);
         if (state.bookRequestId) setSelectedBookRequestId(state.bookRequestId);
+        if (state.donateInitialTitle) setDonateInitialTitle(state.donateInitialTitle);
+        if (state.bookDetailSource) setBookDetailSource(state.bookDetailSource);
       } else {
         // Read from URL if state is missing
         const path = window.location.pathname;
@@ -194,6 +198,18 @@ const BookDonationMarketplace = () => {
     }
     if (extraState.bookRequestId) {
       setSelectedBookRequestId(extraState.bookRequestId);
+    }
+    // Clear donateInitialTitle if navigating to donate page without it, or set it if provided
+    if (page === 'donate') {
+      if (extraState.donateInitialTitle !== undefined) {
+        setDonateInitialTitle(extraState.donateInitialTitle);
+      } else {
+        setDonateInitialTitle(null);
+      }
+    }
+    // Track book detail source
+    if (extraState.bookDetailSource !== undefined) {
+      setBookDetailSource(extraState.bookDetailSource);
     }
 
     _setPageState(page);
@@ -231,9 +247,10 @@ const BookDonationMarketplace = () => {
     }
   };
   
-  const handleBookSelect = (book) => {
+  const handleBookSelect = (book, source = 'browse') => {
     setSelectedBook(book);
-    setCurrentPage('bookDetails', { selectedBook: book });
+    setBookDetailSource(source);
+    setCurrentPage('bookDetails', { selectedBook: book, bookDetailSource: source });
   };
   
   const handleEditBook = (bookId) => {
@@ -243,7 +260,7 @@ const BookDonationMarketplace = () => {
   
   const handleDonateBook = (bookData) => {
     // This will be handled by the BookContext
-    setCurrentPage('home');
+    setCurrentPage('browse');
   };
   
   const renderPage = () => {
@@ -266,6 +283,8 @@ const BookDonationMarketplace = () => {
         return <AddBook 
           setCurrentPage={setCurrentPage}
           setRedirectReason={setRedirectReason}
+          initialTitle={donateInitialTitle}
+          previousPage={previousPage}
         />;
       case 'editBook':
         return <EditBook 
@@ -280,6 +299,7 @@ const BookDonationMarketplace = () => {
           onEditBook={handleEditBook}
           onOpenLoginModal={handleOpenLoginModal}
           setRedirectReason={setRedirectReason}
+          sourcePage={bookDetailSource}
         />;
       case 'browse':
         return <BookList 
@@ -319,7 +339,7 @@ const BookDonationMarketplace = () => {
           currentUser={currentUser} 
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
-          onViewBook={handleBookSelect}
+          onViewBook={(book) => handleBookSelect(book, 'myBooks')}
           fromProfile={previousPage === 'profile'}
         />;
       case 'myRequests':
@@ -367,7 +387,7 @@ const BookDonationMarketplace = () => {
   useEffect(() => {
     if (currentPage === 'login' || currentPage === 'signup') {
       handleOpenLoginModal();
-      setCurrentPage('home');
+      setCurrentPage('browse');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);

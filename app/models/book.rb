@@ -8,7 +8,7 @@ class Book < ApplicationRecord
   validates :author, presence: true, length: { minimum: 1, maximum: 255 }
   validates :condition, presence: true, inclusion: { in: %w[excellent good fair poor], message: "must be excellent, good, fair, or poor" }
   validates :summary, presence: true, length: { minimum: 10, maximum: 1000 }
-  validates :genre, presence: true, length: { minimum: 1, maximum: 100 }
+  validates :genre, length: { maximum: 100 }, allow_blank: true
   validates :published_year, presence: true, numericality: { greater_than: 1800, less_than_or_equal_to: Date.current.year }
   validates :status, inclusion: { in: BookStatus.values, default: BookStatus::AVAILABLE }
   validates :isbn, format: { with: /\A(?:\d{10}|\d{13})\z/, message: "must be 10 or 13 digits" }, allow_blank: true

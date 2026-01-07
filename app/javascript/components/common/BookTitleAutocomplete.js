@@ -23,10 +23,17 @@ const BookTitleAutocomplete = ({
     hideSuggestions,
   } = useBookAutocomplete();
 
-  // Update input value when external value changes
+  // Update input value when external value changes and trigger search if needed
   useEffect(() => {
-    setInputValue(value || '');
-  }, [value]);
+    const newValue = value || '';
+    setInputValue(newValue);
+    // Trigger search if value is set externally and has at least 2 characters
+    if (newValue.length >= 2) {
+      searchBooks(newValue);
+    } else {
+      hideSuggestions();
+    }
+  }, [value, searchBooks, hideSuggestions]);
 
   // Handle input change
   const handleInputChange = (e) => {
