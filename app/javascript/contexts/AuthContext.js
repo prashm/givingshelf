@@ -71,35 +71,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData) => {
-    try {
-      // Split name into first_name and last_name
-      const nameParts = userData.name.split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
-      const response = await axios.post('/api/register', {
-        user: {
-          first_name: firstName,
-          last_name: lastName,
-          email_address: userData.email,
-          zip_code: userData.zip_code,
-          password: userData.password,
-          password_confirmation: userData.password
-        }
-      }, {
-        withCredentials: true
-      });
-      
-      if (response.data.user) {
-        setCurrentUser(response.data.user);
-        return { success: true };
-      }
-    } catch (error) {
-      throw new Error(error.response?.data?.error || 'Registration failed');
-    }
-  };
-
   const logout = async () => {
     try {
       await axios.delete('/api/logout', { withCredentials: true });
@@ -157,7 +128,6 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     loginWithEmail,
-    register,
     logout,
     updateProfile,
     checkAuthStatus

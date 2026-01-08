@@ -78,7 +78,6 @@ Rails.application.routes.draw do
     post "/verify_otp", to: "sessions#verify_otp"
     post "/resend_otp", to: "sessions#resend_otp"
     delete "/logout", to: "sessions#destroy"
-    post "/register", to: "registrations#create"
   end
 
   # Web routes
