@@ -25,7 +25,7 @@ class PasswordsController < ApplicationController
       redirect_to redirect_path, notice: "Password has been reset."
     else
       redirect_to edit_password_path(params[:token], return_to: params[:return_to]),
-        alert: "Passwords did not match."
+        alert: @user.errors.full_messages.to_sentence
     end
   end
 

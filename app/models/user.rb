@@ -1,4 +1,5 @@
 require "rotp"
+require "zxcvbn"
 
 class User < ApplicationRecord
   has_secure_password
@@ -27,6 +28,7 @@ class User < ApplicationRecord
   validates :zip_code, presence: true, format: { with: /\A\d{5}(-\d{4})?\z/, message: "must be a valid US zip code" }, if: -> { profile_completion_required? }
   validates :phone, format: { with: /\A\+?1?\d{10}\z/, message: "must be a valid US phone number (10 digits)" }, if: -> { phone.present? }
   validates :password, length: { minimum: 8 }, if: -> { password.present? }
+  validate :password_strength, if: -> { password.present? }
 
   scope :verified, -> { where(verified: true) }
   scope :by_zip_code, ->(zip_code) { where(zip_code: zip_code) }
@@ -222,6 +224,23 @@ class User < ApplicationRecord
   end
 
   private
+
+  def password_strength
+    return unless password.present?
+    # Skip strength validation if password doesn't meet minimum length
+    return if password.length < 8
+
+    result = Zxcvbn.test(password, [ email_address, first_name, last_name ].compact)
+    # Score: 0 = too guessable, 1 = very guessable, 2 = somewhat guessable,
+    # 3 = safely unguessable, 4 = very unguessable
+    # Require at least score 2 (somewhat guessable) for acceptance
+    if result.score < 2
+      feedback_parts = []
+      feedback_parts << result.feedback.warning if result.feedback.warning.present?
+      feedback_parts << "Please use a stronger password with a mix of letters, numbers, and symbols."
+      errors.add(:password, "is too weak. #{feedback_parts.join("; ")}")
+    end
+  end
 
   def auto_join_groups_after_creation
     auto_join_groups_by_domain!
