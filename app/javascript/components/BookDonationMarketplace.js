@@ -26,15 +26,18 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from '../lib/axios';
 import { COMPANY, VERSION } from '../lib/version';
+import { parsePageFromPath } from '../lib/textUtils';
 
 // Main App Component
 const BookDonationMarketplace = () => {
   const { currentUser, loading: authLoading } = useAuth();
   const { books, fetchBooks, searchBooks, loading } = useBooks();
+  
   // Initialize page state from URL
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
-      return window.location.pathname === '/browse' ? 'browse' : 'home';
+      const { page } = parsePageFromPath(window.location.pathname);
+      return page;
     }
     return 'home';
   };
@@ -56,21 +59,20 @@ const BookDonationMarketplace = () => {
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [groupShortName, setGroupShortName] = useState(null);
   
-  // Detect route on mount
+  // Detect route on mount and set group short name if on group page
   useEffect(() => {
-    const path = window.location.pathname;
-    const groupMatch = path.match(/^\/g\/([^\/]+)/);
-    if (groupMatch) {
-      const shortName = groupMatch[1];
+    const { groupShortName: shortName } = parsePageFromPath(window.location.pathname);
+    if (shortName) {
       setGroupShortName(shortName);
-      _setPageState('groupPage');
     }
-  }, []);
+  }, []); // Only run once on mount
   
   // Sync page state with URL on initial load (in case URL changed before component mounted)
   useEffect(() => {
-    const path = window.location.pathname;
-    const expectedPage = path === '/browse' ? 'browse' : 'home';
+    const { page: expectedPage, groupShortName: shortName } = parsePageFromPath(window.location.pathname);
+    if (shortName) {
+      setGroupShortName(shortName);
+    }
     if (currentPage !== expectedPage) {
       _setPageState(expectedPage);
     }
@@ -169,8 +171,10 @@ const BookDonationMarketplace = () => {
   // Handle browser history navigation
   useEffect(() => {
     // Set initial state based on URL
-    const initialPath = window.location.pathname;
-    const initialPage = initialPath === '/browse' ? 'browse' : 'home';
+    const { page: initialPage, groupShortName: initialShortName } = parsePageFromPath(window.location.pathname);
+    if (initialShortName) {
+      setGroupShortName(initialShortName);
+    }
     window.history.replaceState({ page: initialPage }, '', window.location.pathname);
 
     const handlePopState = (event) => {
@@ -184,13 +188,13 @@ const BookDonationMarketplace = () => {
         if (state.bookRequestId) setSelectedBookRequestId(state.bookRequestId);
         if (state.donateInitialTitle) setDonateInitialTitle(state.donateInitialTitle);
         if (state.bookDetailSource) setBookDetailSource(state.bookDetailSource);
+        if (state.groupShortName) setGroupShortName(state.groupShortName);
       } else {
         // Read from URL if state is missing
-        const path = window.location.pathname;
-        if (path === '/browse') {
-          _setPageState('browse');
-        } else {
-          _setPageState('home');
+        const { page, groupShortName: shortName } = parsePageFromPath(window.location.pathname);
+        _setPageState(page);
+        if (shortName) {
+          setGroupShortName(shortName);
         }
       }
     };
@@ -225,6 +229,10 @@ const BookDonationMarketplace = () => {
     if (extraState.bookDetailSource !== undefined) {
       setBookDetailSource(extraState.bookDetailSource);
     }
+    // Track group short name for group pages
+    if (page === 'groupPage' && extraState.groupShortName) {
+      setGroupShortName(extraState.groupShortName);
+    }
 
     _setPageState(page);
     
@@ -234,7 +242,11 @@ const BookDonationMarketplace = () => {
       url = '/browse';
     } else if (page === 'home') {
       url = '/';
+    } else if (page === 'groupPage' && extraState.groupShortName) {
+      url = `/g/${extraState.groupShortName}`;
     }
+    // Don't update URL if we're on a group page and navigating to another group page
+    // (preserve the current URL)
     
     window.history.pushState({ page, ...extraState }, '', url);
   };
@@ -264,7 +276,12 @@ const BookDonationMarketplace = () => {
   const handleBookSelect = (book, source = 'browse') => {
     setSelectedBook(book);
     setBookDetailSource(source);
-    setCurrentPage('bookDetails', { selectedBook: book, bookDetailSource: source });
+    const extraState = { selectedBook: book, bookDetailSource: source };
+    // If navigating from a group page, include the group short name
+    if (source === 'groupPage' && groupShortName) {
+      extraState.groupShortName = groupShortName;
+    }
+    setCurrentPage('bookDetails', extraState);
   };
   
   const handleEditBook = (bookId) => {

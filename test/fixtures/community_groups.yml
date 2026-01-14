@@ -1,0 +1,17 @@
+one:
+  name: "Test Group"
+  domain: "test.com"
+  short_name: "test-group"
+  group_type: "community"
+
+two:
+  name: "Another Group"
+  domain: "another.com"
+  short_name: "another-group"
+  group_type: "community"
+
+three:
+  name: "Original Group"
+  domain: "original.com"
+  short_name: "original-group"
+  group_type: "community"

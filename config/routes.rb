@@ -28,7 +28,7 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
-    resources :community_groups, only: [ :show ] do
+    resources :community_groups, only: [] do
       collection do
         get "by_short_name/:short_name", to: "community_groups#by_short_name"
       end

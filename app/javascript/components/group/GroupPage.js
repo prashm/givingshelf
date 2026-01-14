@@ -15,11 +15,6 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
       try {
         const groupData = await fetchGroupByShortName(groupShortName);
         setGroup(groupData);
-        
-        // Load books for this group
-        if (groupData) {
-          searchBooks(searchQuery || '', zipCode || '', false, groupData.id, selectedSubGroupId);
-        }
       } catch (error) {
         console.error('Failed to load group:', error);
         setGroup(null);
@@ -33,11 +28,15 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
     }
   }, [groupShortName]);
 
+  // Search books when group is loaded or search parameters change
   useEffect(() => {
-    if (group && (searchQuery !== undefined || zipCode !== undefined || selectedSubGroupId !== undefined)) {
-      searchBooks(searchQuery || '', zipCode || '', false, group.id, selectedSubGroupId);
+    if (!group) {
+      return;
     }
-  }, [searchQuery, zipCode, selectedSubGroupId, group]);
+    
+    // searchBooks signature: (query, zipCode, append, radius, communityGroupId, subGroupId)
+    searchBooks(searchQuery || '', zipCode || '', false, null, group.id, selectedSubGroupId);
+  }, [group, searchQuery, zipCode, selectedSubGroupId, searchBooks]);
 
   useEffect(() => {
     if (books && books.length > 0) {
@@ -159,7 +158,7 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
                 <div
                   key={book.id}
                   className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => handleBookSelect(book)}
+                  onClick={() => handleBookSelect(book, 'groupPage')}
                 >
                   <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
                     {book.cover_image_url ? (

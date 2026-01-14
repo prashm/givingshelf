@@ -1,0 +1,17 @@
+one:
+  user: one
+  community_group: one
+  admin: true
+  auto_joined: false
+
+two:
+  user: two
+  community_group: one
+  admin: false
+  auto_joined: true
+
+three:
+  user: one
+  community_group: two
+  admin: false
+  auto_joined: false

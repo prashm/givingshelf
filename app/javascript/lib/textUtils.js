@@ -53,3 +53,44 @@ export const linkifyText = (text) => {
   return parts.length > 0 ? parts : text;
 };
 
+/**
+ * Parses the page state from a URL path
+ * @param {string} path - The URL path to parse
+ * @returns {Object} Object with page type and groupShortName (if applicable)
+ * @returns {string} returns.page - The page type: 'browse', 'groupPage', or 'home'
+ * @returns {string|null} returns.groupShortName - The group short name if on a group page, null otherwise
+ */
+export const parsePageFromPath = (path) => {
+  if (path === '/browse') {
+    return { page: 'browse', groupShortName: null };
+  }
+  const groupMatch = path.match(/^\/g\/([^\/]+)/);
+  if (groupMatch) {
+    return { page: 'groupPage', groupShortName: groupMatch[1] };
+  }
+  return { page: 'home', groupShortName: null };
+};
+
+/**
+ * Gets group page information from the current URL or history state
+ * @returns {Object} Object with isGroupPage flag and groupShortName
+ * @returns {boolean} returns.isGroupPage - Whether the current page is a group page
+ * @returns {string|null} returns.groupShortName - The group short name if on a group page, null otherwise
+ */
+export const getGroupPageInfo = () => {
+  if (typeof window !== 'undefined') {
+    // First check history state for groupShortName
+    const state = window.history.state;
+    if (state && state.groupShortName) {
+      return { isGroupPage: true, groupShortName: state.groupShortName };
+    }
+    // Fallback: check URL
+    const path = window.location.pathname;
+    const parsed = parsePageFromPath(path);
+    if (parsed.page === 'groupPage') {
+      return { isGroupPage: true, groupShortName: parsed.groupShortName };
+    }
+  }
+  return { isGroupPage: false, groupShortName: null };
+};
+

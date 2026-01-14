@@ -1,0 +1,11 @@
+one:
+  community_group: one
+  name: "Sub Group 1"
+
+two:
+  community_group: one
+  name: "Sub Group 2"
+
+three:
+  community_group: two
+  name: "Sub Group 3"

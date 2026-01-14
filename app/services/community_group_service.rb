@@ -10,17 +10,13 @@ class CommunityGroupService
   def create_group(admin_user, params)
     @group = CommunityGroup.new(params)
 
-    if @group.save
-      # Add admin_user as admin member
+    ActiveRecord::Base.transaction do
+      @group.save!
       @group.community_group_memberships.create!(
         user: admin_user,
         admin: true,
         auto_joined: false
       )
-      @group
-    else
-      @errors = @group.errors.full_messages
-      nil
     end
   rescue => e
     @errors << e.message
@@ -28,30 +24,36 @@ class CommunityGroupService
   end
 
   def update_group(params)
-    return nil unless @group
+    raise "group can't be blank" unless @group
 
-    if @group.update(params)
-      @group
-    else
+    unless @group.update(params)
       @errors = @group.errors.full_messages
-      nil
+      return false
     end
+    true
+  rescue => e
+    @errors << e.message
+    false
   end
 
   def add_sub_group(name)
-    return nil unless @group
+    raise "group can't be blank" unless @group
 
     sub_group = @group.sub_groups.build(name: name)
-    if sub_group.save
-      sub_group
-    else
+    unless sub_group.save
       @errors = sub_group.errors.full_messages
-      nil
+      return nil
     end
+    sub_group
+  rescue => e
+    @errors << e.message
+    nil
   end
 
-  def remove_sub_group(sub_group)
-    return false unless @group && sub_group.community_group == @group
+  def remove_sub_group(sub_group_id)
+    raise "sub_group is invalid" if sub_group_id.to_i <= 0
+    raise "group can't be blank" unless @group
+    sub_group = @group.sub_groups.find(sub_group_id)
 
     sub_group.destroy
     true
@@ -125,7 +127,43 @@ class CommunityGroupService
     false
   end
 
-  def self.find_by_short_name(short_name)
-    CommunityGroup.by_short_name(short_name).first
+  def get_group_by_short_name(short_name)
+    group = CommunityGroup.by_short_name(short_name).first
+    return {} unless group
+    self.class.group_json(group)
+  end
+
+  def get_memberships_for_group
+    return nil unless self.group
+    memberships = self.group.community_group_memberships.includes(:user)
+    memberships.map { |m| self.class.membership_json(m) }
+  end
+
+  def self.group_json(group)
+    {
+      id: group.id,
+      name: group.name,
+      group_type: group.group_type,
+      domain: group.domain,
+      short_name: group.short_name,
+      sub_groups: group.sub_groups.map { |sg| { id: sg.id, name: sg.name } },
+      created_at: group.created_at,
+      updated_at: group.updated_at
+    }
+  end
+
+  def self.membership_json(membership)
+    {
+      id: membership.id,
+      user: {
+        id: membership.user.id,
+        email_address: membership.user.email_address,
+        display_name: membership.user.display_name,
+        full_name: membership.user.full_name
+      },
+      admin: membership.admin,
+      auto_joined: membership.auto_joined,
+      created_at: membership.created_at
+    }
   end
 end

@@ -3,6 +3,7 @@ import { MapPinIcon, CalendarIcon, UserIcon, BookOpenIcon, ChevronLeftIcon, Chev
 import axios from '../../lib/axios';
 import { useBooks } from '../../contexts/BookContext';
 import VerificationBadge from '../common/VerificationBadge';
+import { getGroupPageInfo } from '../../lib/textUtils';
 
 const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook, onOpenLoginModal, setRedirectReason, sourcePage }) => {
   const { getBook, requestBook } = useBooks();
@@ -29,7 +30,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Book Not Found</h2>
             <p className="text-gray-600 mb-4">The book you're looking for doesn't exist.</p>
             <button
-              onClick={() => setCurrentPage('browse')}
+              onClick={handleBackNavigation}
               className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
             >
               Back to Home
@@ -332,21 +333,40 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
       .join(' ');
   };
 
+
+  const handleBackNavigation = () => {
+    if (sourcePage === 'myBooks') {
+      setCurrentPage('myBooks');
+    } else if (sourcePage === 'messages') {
+      setCurrentPage('messages');
+    } else {
+      // Check if we're on a group page (either from sourcePage or URL)
+      const { isGroupPage, groupShortName } = getGroupPageInfo();
+      if ((sourcePage === 'groupPage' || isGroupPage) && groupShortName) {
+        setCurrentPage('groupPage', { groupShortName });
+      } else {
+        setCurrentPage('browse');
+      }
+    }
+  };
+
+  const handleBrowseMoreBooks = () => {
+    // Check if we're on a group page
+    const { isGroupPage, groupShortName } = getGroupPageInfo();
+    if (isGroupPage && groupShortName) {
+      setCurrentPage('groupPage', { groupShortName });
+    } else {
+      setCurrentPage('browse');
+    }
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {/* Header with Back Button */}
         <div className="p-6 border-b border-gray-200">
           <button
-            onClick={() => {
-              if (sourcePage === 'myBooks') {
-                setCurrentPage('myBooks');
-              } else if (sourcePage === 'messages') {
-                setCurrentPage('messages');
-              } else {
-                setCurrentPage('browse');
-              }
-            }}
+            onClick={handleBackNavigation}
             className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,6 +376,8 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
               ? 'Back to My Books' 
               : sourcePage === 'messages'
               ? 'Back to Messages'
+              : sourcePage === 'groupPage' || getGroupPageInfo().isGroupPage
+              ? 'Back to search results'
               : 'Back to search results'}
           </button>
 
@@ -668,7 +690,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setCurrentPage('browse')}
+                  onClick={handleBrowseMoreBooks}
                   className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                 >
                   Browse More Books

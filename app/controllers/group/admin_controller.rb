@@ -4,6 +4,7 @@ module Group
 
     before_action :ensure_group_admin, except: [ :new, :create, :destroy ]
     skip_before_action :require_authentication, only: [ :new, :create, :destroy ]
+    before_action :set_group, only: [ :show, :update, :create_sub_group, :destroy_sub_group ]
 
     def new
       redirect_to group_admin_index_path if authenticated? && Current.user.group_admin?
@@ -35,59 +36,42 @@ module Group
     end
 
     def show
-      @group = Current.user.admin_community_groups.find(params[:id])
-      @group_service = CommunityGroupService.new(@group)
     end
 
     def create_group
-      group_service = CommunityGroupService.new
       @group = group_service.create_group(Current.user, group_params)
 
       if @group
-        redirect_to group_admin_group_path(@group), notice: "Group created successfully."
+        redirect_to group_admin_group_path(@group.id), notice: "Group created successfully."
       else
-        flash.now[:alert] = group_service.errors.join(", ")
-        @groups = Current.user.admin_community_groups.includes(:sub_groups).order(created_at: :desc)
-        render :index, status: :unprocessable_entity
+        redirect_to group_admin_index_path, alert: group_service.errors.join(", ")
       end
     end
 
     def update
-      @group = Current.user.admin_community_groups.find(params[:id])
-      group_service = CommunityGroupService.new(@group)
-
       if group_service.update_group(group_params)
-        redirect_to group_admin_group_path(@group), notice: "Group updated successfully."
+        redirect_to group_admin_group_path(@group.id), notice: "Group updated successfully."
       else
         flash.now[:alert] = group_service.errors.join(", ")
-        @group_service = group_service
         render :show, status: :unprocessable_entity
       end
     end
 
     def create_sub_group
-      @group = Current.user.admin_community_groups.find(params[:id])
-      group_service = CommunityGroupService.new(@group)
-
-      sub_group = group_service.add_sub_group(params[:name])
-      if sub_group
-        redirect_to group_admin_group_path(@group), notice: "Sub group added successfully."
+      if group_service.add_sub_group(params[:name])
+        redirect_to group_admin_group_path(@group.id), notice: "Sub group added successfully."
       else
         flash[:alert] = group_service.errors.join(", ")
-        redirect_to group_admin_group_path(@group)
+        redirect_to group_admin_group_path(@group.id)
       end
     end
 
     def destroy_sub_group
-      @group = Current.user.admin_community_groups.find(params[:id])
-      sub_group = @group.sub_groups.find(params[:sub_group_id])
-      group_service = CommunityGroupService.new(@group)
-
-      if group_service.remove_sub_group(sub_group)
-        redirect_to group_admin_group_path(@group), notice: "Sub group removed successfully."
+      if group_service.remove_sub_group(params[:sub_group_id].to_i)
+        redirect_to group_admin_group_path(@group.id), notice: "Sub group removed successfully."
       else
         flash[:alert] = group_service.errors.join(", ")
-        redirect_to group_admin_group_path(@group)
+        redirect_to group_admin_group_path(@group.id)
       end
     end
 
@@ -98,6 +82,16 @@ module Group
 
     private
 
+    def set_group
+      @group = Current.user.admin_community_groups.find(params[:id])
+    rescue ActiveRecord::RecordNotFound
+      redirect_to group_admin_index_path, alert: "Group not found."
+    end
+
+    def group_service
+      @group_service ||= CommunityGroupService.new(@group)
+    end
+
     def ensure_group_admin
       unless authenticated? && Current.user.group_admin?
         redirect_to group_admin_login_path, alert: "You must be a group admin to access this page."
@@ -105,10 +99,10 @@ module Group
     end
 
     def group_params
-      params.require(:community_group).permit(:name, :group_type, :domain, :short_name)
+      params.require(:community_group).permit(:name, :group_type, :domain, :short_name).to_h.with_indifferent_access
     rescue ActionController::ParameterMissing
       # Handle case where params might not be nested
-      params.permit(:name, :group_type, :domain, :short_name)
+      params.permit(:name, :group_type, :domain, :short_name).to_h.with_indifferent_access
     end
 
     def before_authentication_url
