@@ -4,7 +4,7 @@ module Group
 
     before_action :ensure_group_admin, except: [ :new, :create, :destroy ]
     skip_before_action :require_authentication, only: [ :new, :create, :destroy ]
-    before_action :set_group, only: [ :show, :update, :create_sub_group, :destroy_sub_group ]
+    before_action :set_group, only: [ :show, :update, :create_sub_group, :destroy_sub_group, :destroy_group ]
 
     def new
       redirect_to group_admin_index_path if authenticated? && Current.user.group_admin?
@@ -72,6 +72,15 @@ module Group
       else
         flash[:alert] = group_service.errors.join(", ")
         redirect_to group_admin_group_path(@group.id)
+      end
+    end
+
+    def destroy_group
+      if group_service.delete_group
+        redirect_to group_admin_index_path, notice: "Group deleted successfully."
+      else
+        flash[:alert] = group_service.errors.join(", ")
+        redirect_to group_admin_index_path
       end
     end
 

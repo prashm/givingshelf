@@ -19,6 +19,7 @@ Rails.application.routes.draw do
     get "admin/:id", to: "admin#show", as: :admin_group
     post "admin", to: "admin#create_group"
     patch "admin/:id", to: "admin#update"
+    delete "admin/:id", to: "admin#destroy_group", as: :admin_group_delete
     post "admin/:id/sub_groups", to: "admin#create_sub_group", as: :admin_sub_groups
     delete "admin/:id/sub_groups/:sub_group_id", to: "admin#destroy_sub_group", as: :admin_sub_group
   end

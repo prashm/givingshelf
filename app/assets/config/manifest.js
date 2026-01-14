@@ -4,3 +4,4 @@
 //= link active_admin.css
 //= link active_admin.js
 //= link application-bundled.css
+//= link admin_app.js

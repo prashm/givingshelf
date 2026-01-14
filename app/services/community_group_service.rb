@@ -62,6 +62,16 @@ class CommunityGroupService
     false
   end
 
+  def delete_group
+    raise "group can't be blank" unless @group
+
+    @group.destroy
+    true
+  rescue => e
+    @errors << e.message
+    false
+  end
+
   def add_member(user, auto_joined: false, admin: false)
     return nil unless @group
 
