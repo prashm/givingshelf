@@ -467,7 +467,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   COMPANY: function() { return /* binding */ COMPANY; },\n/* harmony export */   VERSION: function() { return /* binding */ VERSION; }\n/* harmony export */ });\nconst VERSION = \"1.0\";\nconst COMPANY = \"SimplifAI LLC\";\n\n//# sourceURL=webpack://app/./app/javascript/lib/version.js?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   COMPANY: function() { return /* binding */ COMPANY; },\n/* harmony export */   VERSION: function() { return /* binding */ VERSION; }\n/* harmony export */ });\nconst VERSION = \"1.1\";\nconst COMPANY = \"SimplifAI LLC\";\n\n//# sourceURL=webpack://app/./app/javascript/lib/version.js?\n}");
 
 /***/ }),
 

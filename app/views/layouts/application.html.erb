@@ -29,7 +29,7 @@
         end
         canonical_url = content_for(:canonical) || "https://booksharecommunity.org/books/#{@book.id}"
       else
-        page_title = content_for(:title) || "Donate Books for Free | BookShare Community - Share Books Locally"
+        page_title = content_for(:title) || "Donate Books for Free | BookShare Community - Share. Discover. Connect."
         page_description = content_for(:description) || "Donate books for free in your local community. BookShare Community helps you donate used books, discover free books from neighbors, and share the joy of reading. 100% free book donation and sharing platform."
         # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
         current_url = request.url
