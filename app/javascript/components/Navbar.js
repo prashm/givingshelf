@@ -62,23 +62,25 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
 
   return (
     <>
-      <header className="bg-emerald-600 text-white p-4 shadow-sd relative">
-        <div className="mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleNavClick('home')}>
-            <img src="/bsc-icon.png" alt="BookShare Community" className="h-8 w-8" />
-            <h1 className="text-xl md:text-2xl font-bold">BookShare Community</h1>
+      <header className="bg-emerald-600 text-white shadow-sd relative h-16 w-full">
+        <div className="flex justify-between items-center h-full w-full">
+          <div className="flex items-center h-full cursor-pointer" onClick={() => handleNavClick('home')}>
+            <div className="bg-white h-full aspect-square flex items-center justify-center p-2">
+              <img src="/bsc-icon.png" alt="BookShare Community" className="h-full w-full object-contain" />
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold ml-4">BookShare Community</h1>
           </div>
-          
+
           {/* Desktop Menu */}
-          <nav className="hidden md:block">
+          <nav className="hidden md:block mr-4">
             <ul className="flex space-x-6">
-              { currentUser ? ( 
+              {currentUser ? (
                 <>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate')}>Donate a Book</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myBooks')}>My Books</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>Messages</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('profile')}>
-                    {currentUser.first_name || currentUser.email_address || 'Profile'}
+                    Profile
                   </li>
                   <li className="cursor-pointer hover:underline" onClick={onLogout}>Logout</li>
                 </>
@@ -106,7 +108,7 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
 
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
-          <nav 
+          <nav
             ref={menuRef}
             className="md:hidden absolute top-full left-0 right-0 bg-emerald-600 shadow-lg z-50"
           >
@@ -117,7 +119,7 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
         )}
       </header>
       {isLoginModalOpen && (
-        <LoginSignupModal 
+        <LoginSignupModal
           isOpen={isLoginModalOpen}
           onClose={onCloseLoginModal}
           onSuccess={handleLoginSuccess}

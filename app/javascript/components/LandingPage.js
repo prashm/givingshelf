@@ -46,13 +46,12 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
         <div
           className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
           style={{
-            backgroundImage: `url('/bsc-icon.png')`,
-            backgroundRepeat: 'repeat-x',
+            backgroundImage: `url('/bsc-bg.png')`,
             backgroundPosition: 'center',
-            backgroundSize: 'auto 100%',
+            backgroundSize: 'contain',
+            backgroundRepeat: 'no-repeat',
             transform: `translateY(${offsetY * 0.5}px)`,
-            filter: 'grayscale(100%)',
-            opacity: 0.05
+            opacity: 0.15
           }}
         />
 
@@ -67,7 +66,7 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
 
             {/* Subheadline */}
             <p className="text-xl md:text-2xl text-gray-700 mb-12 leading-relaxed drop-shadow-md">
-              Connect with neighbors to give and receive books for free. No buying, no selling—just sharing the joy of reading within your local community.
+              Connect with neighbors to give and receive books for free. No buying, no selling—just sharing the joy of reading.
             </p>
 
             {/* Primary Action Buttons */}
