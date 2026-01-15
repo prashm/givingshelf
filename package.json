@@ -56,6 +56,6 @@
     "postcss-nesting": "^12.1.5",
     "react-refresh": "^0.17.0",
     "tailwindcss": "^4.1.17",
-    "webpack-dev-server": "^4.15.2"
+    "webpack-dev-server": "^5.2.3"
   }
 }
