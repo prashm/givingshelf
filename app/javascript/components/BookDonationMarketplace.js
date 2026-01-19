@@ -26,7 +26,6 @@ import {
   ShieldCheckIcon 
 } from '@heroicons/react/24/outline';
 import axios from '../lib/axios';
-import { COMPANY, VERSION } from '../lib/version';
 import { parsePageFromPath } from '../lib/textUtils';
 
 // Main App Component
@@ -482,11 +481,10 @@ const BookDonationMarketplace = () => {
 
 // Simple Footer Component
 const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
-  const currentYear = new Date().getFullYear();
-  const startYear = 2025;
-  const copyrightYear = currentYear === startYear 
-    ? `${startYear}` 
-    : `${startYear} - ${currentYear}`;
+  const meta = (typeof window !== 'undefined' && window.BookshareAppMeta) ? window.BookshareAppMeta : {};
+  const companyName = meta.companyName || 'SimplifAI LLC';
+  const appVersion = meta.appVersion || '';
+  const copyrightYear = meta.copyrightYear || `${new Date().getFullYear()}`;
 
   return (
     <footer className="bg-gray-800 text-white py-8">
@@ -513,10 +511,10 @@ const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
           </button>
         </div>
         <div className="text-sm text-gray-400">
-          © {copyrightYear} {COMPANY}. All rights reserved.
+          © {copyrightYear} {companyName}. All rights reserved.
         </div>
         <div className="text-xs text-gray-500 mt-2">
-          Version {VERSION}
+          {appVersion ? `Version ${appVersion}` : null}
         </div>
       </div>
     </footer>

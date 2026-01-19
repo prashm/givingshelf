@@ -227,10 +227,102 @@
           padding: 1rem;
         }
       }
+
+      /* Admin layout chrome (navbar + footer) */
+      .admin-shell {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .admin-main {
+        flex: 1;
+      }
+      .admin-navbar {
+        background-color: #059669;
+        color: #fff;
+        height: 4rem;
+        width: 100%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+      .admin-navbar-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+      }
+      .admin-navbar-brand {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        cursor: pointer;
+        user-select: none;
+      }
+      .admin-navbar-logo-wrap {
+        background: #fff;
+        height: 100%;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+      }
+      .admin-navbar-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-left: 1rem;
+      }
+      .admin-navbar-right {
+        margin-right: 1rem;
+      }
+      .admin-navbar-logout {
+        color: #fff;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .admin-navbar-logout:hover {
+        text-decoration: underline;
+      }
+      .admin-footer {
+        background: #111827;
+        color: #9ca3af;
+        text-align: center;
+        padding: 1.75rem 1rem;
+        font-size: 0.95rem;
+      }
+      .admin-footer-version {
+        margin-top: 0.4rem;
+        font-size: 0.9rem;
+        color: #9ca3af;
+      }
     </style>
   </head>
-  <body>
-    <%= yield %>
+  <body class="admin-shell">
+    <header class="admin-navbar">
+      <div class="admin-navbar-inner">
+        <div class="admin-navbar-brand" onclick="window.location='/'">
+          <div class="admin-navbar-logo-wrap">
+            <img src="/bsc-icon.png" alt="BookShare Community" style="height: 100%; width: 100%; object-fit: contain;" />
+          </div>
+          <div class="admin-navbar-title">BookShare Community</div>
+        </div>
+
+        <div class="admin-navbar-right">
+          <% if controller_path.start_with?("group/") && authenticated? && Current.user&.group_admin? %>
+            <%= link_to "Logout", group_admin_logout_path, data: { turbo_method: :delete }, class: "admin-navbar-logout" %>
+          <% end %>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <%= yield %>
+    </main>
+
+    <footer class="admin-footer">
+      <div>© <%= Bookshare::Version.copyright_year %> <%= Bookshare::Version::COMPANY_NAME %>. All rights reserved.</div>
+      <div class="admin-footer-version">Version <%= Bookshare::Version::APP_VERSION %></div>
+    </footer>
   </body>
 </html>
 

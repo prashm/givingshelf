@@ -154,6 +154,13 @@
     </script>
 
     <%= stylesheet_link_tag "application-bundled", "data-turbo-track": "reload" %>
+    <script>
+      window.BookshareAppMeta = {
+        companyName: "<%= j(Bookshare::Version::COMPANY_NAME) %>",
+        appVersion: "<%= j(Bookshare::Version::APP_VERSION) %>",
+        copyrightYear: "<%= j(Bookshare::Version.copyright_year) %>"
+      };
+    </script>
     <%= javascript_include_tag "application-webpack", "data-turbo-track": "reload" %>
     <%# NOTE: This app’s JS is bundled by webpack into app/assets/javascripts/application-webpack.js.
         We intentionally do not load importmap here to avoid double-loading "application". %>
