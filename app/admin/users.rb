@@ -16,6 +16,7 @@ ActiveAdmin.register User do
     column :zip_code
     column :verified
     column :admin
+    column :group_admin
     column :trust_score
     column :created_at
     actions
@@ -27,6 +28,7 @@ ActiveAdmin.register User do
   filter :zip_code
   filter :verified
   filter :admin
+  filter :group_admin
   filter :created_at
 
   show do
@@ -42,6 +44,7 @@ ActiveAdmin.register User do
       row :state
       row :verified
       row :admin
+      row :group_admin
       row :address_verified
       row :trust_score
       row :created_at
@@ -62,6 +65,8 @@ ActiveAdmin.register User do
       f.input :verified
       f.input :address_verified
       f.input :trust_score
+      f.input :admin
+      f.input :group_admin
     end
     f.actions
   end

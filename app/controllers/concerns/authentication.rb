@@ -2,7 +2,8 @@ module Authentication
   extend ActiveSupport::Concern
 
   included do
-    before_action :require_authentication
+    before_action :require_authentication, unless: :skip_main_authentication?
+
     helper_method :authenticated?
   end
 
@@ -13,6 +14,11 @@ module Authentication
   end
 
   private
+    def skip_main_authentication?
+      # ActiveAdmin handles its own authentication using `authenticate_admin_user!`, so we skip the main site authentication
+      defined?(ActiveAdmin::BaseController) && is_a?(ActiveAdmin::BaseController)
+    end
+
     def authenticated?
       resume_session
     end
