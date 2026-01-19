@@ -10,36 +10,36 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_28_035400) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_16_003000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "active_record_sessions", id: { type: :string, limit: 128 }, force: :cascade do |t|
-    t.text "data"
     t.datetime "created_at", null: false
+    t.text "data"
     t.datetime "updated_at", null: false
     t.index ["updated_at"], name: "index_active_record_sessions_on_updated_at"
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "record_type", null: false
-    t.bigint "record_id", null: false
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", force: :cascade do |t|
-    t.string "key", null: false
-    t.string "filename", null: false
-    t.string "content_type"
-    t.text "metadata"
-    t.string "service_name", null: false
     t.bigint "byte_size", null: false
     t.string "checksum"
+    t.string "content_type"
     t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
   end
 
@@ -50,13 +50,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_28_035400) do
   end
 
   create_table "book_requests", force: :cascade do |t|
-    t.integer "requester_id", null: false
     t.integer "book_id", null: false
-    t.integer "status", default: 0, null: false
-    t.text "message"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.text "message"
     t.bigint "owner_id", null: false
+    t.integer "requester_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
     t.index ["book_id", "requester_id"], name: "index_book_requests_on_book_id_and_requester_id", unique: true
     t.index ["book_id"], name: "index_book_requests_on_book_id"
     t.index ["owner_id"], name: "index_book_requests_on_owner_id"
@@ -65,116 +65,141 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_28_035400) do
   end
 
   create_table "books", force: :cascade do |t|
-    t.string "title"
     t.string "author"
-    t.text "details"
-    t.text "meta"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
     t.string "condition"
-    t.text "summary"
     t.string "cover_image"
-    t.string "isbn"
+    t.datetime "created_at", null: false
+    t.text "details"
     t.string "genre"
+    t.string "isbn"
+    t.text "meta"
+    t.text "personal_note"
+    t.text "pickup_address"
+    t.string "pickup_method"
     t.integer "published_year"
     t.integer "status", default: 0, null: false
+    t.text "summary"
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.integer "view_count", default: 0, null: false
-    t.text "personal_note"
-    t.string "pickup_method"
-    t.text "pickup_address"
     t.index ["status"], name: "index_books_on_status"
     t.index ["user_id"], name: "index_books_on_user_id"
   end
 
   create_table "community_group_memberships", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.bigint "community_group_id", null: false
     t.boolean "admin", default: false, null: false
     t.boolean "auto_joined", default: false, null: false
+    t.bigint "community_group_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "group_membership_request_id"
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["admin"], name: "index_community_group_memberships_on_admin"
     t.index ["community_group_id"], name: "index_community_group_memberships_on_community_group_id"
+    t.index ["group_membership_request_id"], name: "idx_on_group_membership_request_id_705f4891ef"
     t.index ["user_id", "community_group_id"], name: "index_cgm_on_user_and_group", unique: true
     t.index ["user_id"], name: "index_community_group_memberships_on_user_id"
   end
 
   create_table "community_groups", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "group_type"
-    t.string "domain", null: false
-    t.string "short_name", null: false
     t.datetime "created_at", null: false
+    t.string "domain"
+    t.string "group_description", limit: 100
+    t.string "name", null: false
+    t.boolean "public", default: false, null: false
+    t.string "short_name", null: false
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_community_groups_on_domain", unique: true
+    t.index ["public"], name: "index_community_groups_on_public"
     t.index ["short_name"], name: "index_community_groups_on_short_name", unique: true
+  end
+
+  create_table "group_membership_requests", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.bigint "community_group_id", null: false
+    t.datetime "created_at", null: false
+    t.string "email_address"
+    t.text "message"
+    t.bigint "requester_id", null: false
+    t.string "requester_type", null: false
+    t.datetime "responded_at"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["community_group_id", "email_address"], name: "index_gmr_unique_invited_by_email_and_group", unique: true, where: "((status = 1) AND (email_address IS NOT NULL))"
+    t.index ["community_group_id", "requester_id"], name: "index_gmr_unique_requested_by_user_and_group", unique: true, where: "((status = 0) AND ((requester_type)::text = 'User'::text))"
+    t.index ["community_group_id", "status"], name: "idx_on_community_group_id_status_5d9c038d87"
+    t.index ["community_group_id"], name: "index_group_membership_requests_on_community_group_id"
+    t.index ["email_address"], name: "index_group_membership_requests_on_email_address"
+    t.index ["requester_id"], name: "index_group_membership_requests_on_requester_id"
+    t.index ["requester_type"], name: "index_group_membership_requests_on_requester_type"
+    t.index ["status"], name: "index_group_membership_requests_on_status"
   end
 
   create_table "messages", force: :cascade do |t|
     t.bigint "book_request_id", null: false
-    t.bigint "user_id", null: false
     t.text "content"
-    t.datetime "read_at"
     t.datetime "created_at", null: false
+    t.datetime "read_at"
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["book_request_id", "created_at"], name: "index_messages_on_book_request_id_and_created_at"
     t.index ["book_request_id"], name: "index_messages_on_book_request_id"
     t.index ["user_id"], name: "index_messages_on_user_id"
   end
 
   create_table "sessions", force: :cascade do |t|
-    t.string "session_id", null: false
-    t.text "data"
     t.datetime "created_at", null: false
+    t.text "data"
+    t.string "session_id", null: false
     t.datetime "updated_at", null: false
     t.index ["session_id"], name: "index_sessions_on_session_id", unique: true
     t.index ["updated_at"], name: "index_sessions_on_updated_at"
   end
 
   create_table "sub_groups", force: :cascade do |t|
-    t.string "name", null: false
     t.bigint "community_group_id", null: false
     t.datetime "created_at", null: false
+    t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["community_group_id"], name: "index_sub_groups_on_community_group_id"
   end
 
   create_table "user_sessions", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.string "ip_address"
-    t.string "user_agent"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.string "device_fingerprint"
+    t.string "ip_address"
     t.boolean "suspicious_activity", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.integer "user_id", null: false
     t.index ["device_fingerprint"], name: "index_user_sessions_on_device_fingerprint"
     t.index ["suspicious_activity"], name: "index_user_sessions_on_suspicious_activity"
     t.index ["user_id"], name: "index_user_sessions_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
-    t.string "email_address", null: false
-    t.string "password_digest", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "first_name"
-    t.string "last_name"
-    t.string "zip_code"
-    t.string "phone"
-    t.boolean "verified"
-    t.string "otp_secret"
-    t.datetime "otp_sent_at"
-    t.integer "otp_attempts", default: 0
-    t.string "street_address"
-    t.string "city"
-    t.string "state"
     t.boolean "address_verified", default: false, null: false
-    t.integer "trust_score", default: 0, null: false
     t.boolean "admin", default: false, null: false
+    t.string "city"
+    t.datetime "created_at", null: false
+    t.string "email_address", null: false
+    t.string "first_name"
     t.boolean "group_admin", default: false, null: false
+    t.string "last_name"
     t.decimal "latitude", precision: 10, scale: 7
     t.decimal "longitude", precision: 10, scale: 7
+    t.integer "otp_attempts", default: 0
+    t.string "otp_secret"
+    t.datetime "otp_sent_at"
+    t.string "password_digest", null: false
+    t.string "phone"
+    t.string "state"
+    t.string "street_address"
+    t.integer "trust_score", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.boolean "verified"
+    t.string "zip_code"
     t.index ["admin"], name: "index_users_on_admin"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["group_admin"], name: "index_users_on_group_admin"
@@ -187,7 +212,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_28_035400) do
   add_foreign_key "book_requests", "users", column: "requester_id"
   add_foreign_key "books", "users"
   add_foreign_key "community_group_memberships", "community_groups"
+  add_foreign_key "community_group_memberships", "group_membership_requests"
   add_foreign_key "community_group_memberships", "users"
+  add_foreign_key "group_membership_requests", "community_groups"
+  add_foreign_key "group_membership_requests", "users", column: "requester_id"
   add_foreign_key "messages", "book_requests"
   add_foreign_key "messages", "users"
   add_foreign_key "sub_groups", "community_groups"

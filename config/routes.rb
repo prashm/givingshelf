@@ -12,16 +12,39 @@ Rails.application.routes.draw do
 
   # Group admin routes (before catch-all)
   namespace :group do
-    get "admin", to: "admin#index", as: :admin_index
+    # Admin session
     get "admin/login", to: "admin#new", as: :admin_login
     post "admin/login", to: "admin#create"
     delete "admin/logout", to: "admin#destroy", as: :admin_logout
-    get "admin/:id", to: "admin#show", as: :admin_group
-    post "admin", to: "admin#create_group"
-    patch "admin/:id", to: "admin#update"
-    delete "admin/:id", to: "admin#destroy_group", as: :admin_group_delete
-    post "admin/:id/sub_groups", to: "admin#create_sub_group", as: :admin_sub_groups
-    delete "admin/:id/sub_groups/:sub_group_id", to: "admin#destroy_sub_group", as: :admin_sub_group
+
+    # Admin-managed groups (keeps URLs at /group/admin...)
+    resources :groups, path: "admin", controller: "groups", as: :admin, only: [ :index, :show, :create, :update, :destroy ] do
+      member do
+        post "sub_groups", action: :create_sub_group
+        delete "sub_groups/:sub_group_id", action: :destroy_sub_group, as: :sub_group
+      end
+
+      # Memberships page + membership actions
+      resources :memberships, controller: "memberships", only: [ :index ], param: :membership_id do
+        member do
+          post :promote, action: :promote_member
+          post :demote, action: :demote_member
+          delete :revoke, action: :revoke_membership
+        end
+      end
+
+      # Membership request actions (join requests + invites)
+      resources :membership_requests, controller: "memberships", only: [], param: :request_id do
+        member do
+          post :accept, action: :accept_membership_request
+          post :reject, action: :reject_membership_request
+          post :revoke_invite, action: :revoke_invite
+        end
+        collection do
+          post :invite, action: :create_invite
+        end
+      end
+    end
   end
 
   # Group pages (before catch-all)
@@ -29,14 +52,21 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
-    resources :community_groups, only: [] do
+    resources :community_groups, only: [ :index, :show ] do
       collection do
         get "by_short_name/:short_name", to: "community_groups#by_short_name"
       end
       member do
-        get :memberships
+        post :request_to_join
       end
     end
+
+    get "my_groups", to: "community_groups#my_groups"
+    get "my_groups/requests", to: "community_groups#my_group_requests"
+    get "my_groups/invites", to: "community_groups#my_group_invites"
+    post "my_groups/invites/:id/accept", to: "community_groups#accept_invite"
+    delete "my_groups/memberships/:id", to: "community_groups#leave_group"
+    delete "my_groups/requests/:id", to: "community_groups#cancel_join_request"
 
     resources :books, only: [ :index, :show, :create, :update, :destroy ] do
       collection do

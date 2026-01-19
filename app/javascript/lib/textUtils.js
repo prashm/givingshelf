@@ -64,6 +64,9 @@ export const parsePageFromPath = (path) => {
   if (path === '/browse') {
     return { page: 'browse', groupShortName: null };
   }
+  if (path.startsWith('/my-groups')) {
+    return { page: 'myGroups', groupShortName: null };
+  }
   const groupMatch = path.match(/^\/g\/([^\/]+)/);
   if (groupMatch) {
     return { page: 'groupPage', groupShortName: groupMatch[1] };

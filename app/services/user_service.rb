@@ -71,4 +71,55 @@ class UserService
     @errors << e.message
     false
   end
+
+  def my_groups
+    memberships = user.community_group_memberships
+      .includes(:community_group).order(created_at: :desc)
+    memberships.map { |m|
+      CommunityGroupService.group_map(m.community_group).merge(
+        membership_id: m.id,
+        joined_at: m.created_at
+      )
+    }
+  end
+
+  def my_group_requests
+    requests = GroupMembershipRequest
+      .requested
+      .includes(:community_group)
+      .where(requester: user, requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE)
+      .order(created_at: :desc)
+
+    requests.map { |r| group_membership_request_map(r) }
+  end
+
+  def my_group_invites
+    requests = GroupMembershipRequest
+      .invited
+      .includes(:community_group, :requester)
+      .where(email_address: user.email_address)
+      .order(created_at: :desc)
+
+    requests.map { |r| group_membership_request_map(r, include_inviter: true) }
+  end
+
+  private
+
+  def group_membership_request_map(request, include_inviter: false)
+    result = {
+      id: request.id,
+      status: request.status,
+      status_display: request.display_status,
+      message: request.message,
+      created_at: request.created_at,
+      community_group: CommunityGroupService.group_map(request.community_group)
+    }
+    if include_inviter
+      result[:inviter] = {
+        id: request.requester.id,
+        display_name: request.requester.display_name
+      }
+    end
+    result
+  end
 end

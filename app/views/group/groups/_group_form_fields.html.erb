@@ -1,0 +1,35 @@
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  <div class="flex flex-col h-full">
+    <%= form.label :name, "Group Name *", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-2">Descriptive name shown on the group page.</p>
+    <%= form.text_field :name, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+  </div>
+
+  <div class="flex flex-col h-full">
+    <%= form.label :group_description, "Short Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-2">Shown below the group name on the group page.</p>
+    <%= form.text_field :group_description, maxlength: 100, placeholder: CommunityGroup::DEFAULT_SHORT_DESCRIPTION, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+  </div>
+
+  <div class="flex flex-col h-full">
+    <%= form.label :domain, "Email Domain", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-2">Users signing up with this email domain will auto-join this group.</p>
+    <%= form.text_field :domain, placeholder: "school.edu", class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+  </div>
+
+  <div class="flex flex-col h-full">
+    <%= form.label :short_name, "Short Name *", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-2">Part of your public group URL (<span class="font-mono">/g/&lt;your_short_name&gt;</span>).</p>
+    <%= form.text_field :short_name, required: true, placeholder: "my-group", class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+  </div>
+
+  <div class="md:col-span-2">
+    <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
+      <%= form.check_box :public, 
+          style: "appearance: auto; WebkitAppearance: auto; accentColor: rgb(5, 150, 105); width: 1rem; height: 1rem; cursor: pointer; marginTop: 0; marginRight: 0.5rem;"
+      %>
+      <span>Public group (visible in search and joinable by request)</span>
+    </label>
+  </div>
+</div>
+

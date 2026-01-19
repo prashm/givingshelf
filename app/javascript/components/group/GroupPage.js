@@ -93,8 +93,8 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
           <h2 className="text-3xl font-bold text-center mb-2">
             {group.name}
           </h2>
-          {group.group_type && (
-            <p className="text-center text-gray-600 mb-6">Find Books In Your {group.group_type} Community</p>
+          {group.group_description && (
+            <p className="text-center text-gray-600 mb-6">{group.group_description}</p>
           )}
           
           {/* Search Section */}
@@ -131,7 +131,7 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
                   value={selectedSubGroupId || ''}
                   onChange={handleSubGroupChange}
                 >
-                  <option value="">All {group.group_type || 'Sub Group'}s</option>
+                  <option value="">All</option>
                   {group.sub_groups.map((sg) => (
                     <option key={sg.id} value={sg.id}>{sg.name}</option>
                   ))}

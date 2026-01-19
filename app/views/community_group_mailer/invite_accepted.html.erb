@@ -1,0 +1,27 @@
+# app/views/community_group_mailer/invite_accepted.html.erb
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>Invite Accepted</h2>
+
+    <p>Hello Group Admin,</p>
+
+    <p>
+      <strong><%= @user.display_name %></strong> (<%= @user.email_address %>) accepted the invitation to join <strong><%= @group.name %></strong>.
+    </p>
+
+    <p>
+      <a href="<%= @manage_url %>"><%= @manage_url %></a>
+    </p>
+
+    <p>
+      Group page: <a href="<%= @group_page_url %>"><%= @group_page_url %></a>
+    </p>
+
+    <p>Thank you,<br>BookShare Community</p>
+  </body>
+</html>
+

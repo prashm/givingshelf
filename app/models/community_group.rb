@@ -4,9 +4,15 @@ class CommunityGroup < ApplicationRecord
   has_many :members, through: :community_group_memberships, source: :user
   has_many :admins, -> { where(community_group_memberships: { admin: true }) }, through: :community_group_memberships, source: :user
 
+  DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books Within This Group".freeze
+
+  before_validation :set_default_short_description
+
   validates :name, presence: true
-  validates :domain, presence: true, uniqueness: true, format: { with: /\A[\w\.-]+\.[a-z]{2,}\z/i, message: "must be a valid domain" }
+  validates :domain, uniqueness: true, allow_blank: true,
+                     format: { with: /\A[\w\.-]+\.[a-z]{2,}\z/i, message: "must be a valid domain" }
   validates :short_name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9-]+\z/, message: "must be lowercase alphanumeric and hyphens only" }
+  validates :group_description, length: { maximum: 100 }, allow_blank: true
 
   scope :by_domain, ->(domain) { where(domain: domain) }
   scope :by_short_name, ->(short_name) { where(short_name: short_name) }
@@ -23,5 +29,11 @@ class CommunityGroup < ApplicationRecord
   def admin?(user)
     return false unless user
     community_group_memberships.exists?(user: user, admin: true)
+  end
+
+  private
+
+  def set_default_short_description
+    self.group_description = DEFAULT_SHORT_DESCRIPTION if group_description.blank?
   end
 end

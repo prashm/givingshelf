@@ -1,0 +1,36 @@
+# app/views/community_group_mailer/invite.html.erb
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>You're invited to join <%= @group.name %></h2>
+
+    <p>Hello,</p>
+
+    <p>
+      <%= @inviter&.display_name || "A group admin" %> invited you to join the group <strong><%= @group.name %></strong>.
+    </p>
+
+    <h3>Group details</h3>
+    <ul>
+      <li>Members: <%= @member_count %></li>
+      <li>Created: <%= @group.created_at.to_date %></li>
+      <li>Group page: <a href="<%= @group_page_url %>"><%= @group_page_url %></a></li>
+    </ul>
+
+    <% if @message.present? %>
+      <h3>Message</h3>
+      <p><%= @message %></p>
+    <% end %>
+
+    <p>
+      To accept, sign in and visit your My Groups Invites tab:
+      <a href="<%= @my_groups_url %>"><%= @my_groups_url %></a>
+    </p>
+
+    <p>Thank you,<br>BookShare Community</p>
+  </body>
+</html>
+

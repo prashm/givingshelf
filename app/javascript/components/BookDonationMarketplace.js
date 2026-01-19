@@ -12,6 +12,7 @@ import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyBooks from './profile/MyBooks';
 import MyRequests from './profile/MyRequests';
+import MyGroups from './profile/MyGroups';
 import GroupPage from './group/GroupPage';
 import WelcomeModal from './WelcomeModal';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
@@ -242,6 +243,8 @@ const BookDonationMarketplace = () => {
       url = '/browse';
     } else if (page === 'home') {
       url = '/';
+    } else if (page === 'myGroups') {
+      url = '/my-groups';
     } else if (page === 'groupPage' && extraState.groupShortName) {
       url = `/g/${extraState.groupShortName}`;
     }
@@ -376,6 +379,11 @@ const BookDonationMarketplace = () => {
       case 'myRequests':
         return <MyRequests 
           currentUser={currentUser} 
+          setCurrentPage={setCurrentPage}
+        />;
+      case 'myGroups':
+        return <MyGroups
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
         />;
       case 'groupPage':

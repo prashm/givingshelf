@@ -20,7 +20,7 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
         name: "New Group",
         domain: "newgroup.com",
         short_name: "new-group",
-        group_type: "community"
+        group_description: "community"
       }
 
       result = @service.create_group(@admin_user, params)
@@ -128,10 +128,10 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       service = CommunityGroupService.new(group)
 
       # Force an exception by trying to update with invalid domain format
-      result = service.update_group(domain: "")
+      result = service.update_group(domain: "not_a_domain")
 
       assert_not result
-      assert_includes service.errors.join(" "), "Domain can't be blank"
+      assert_includes service.errors.join(" "), "must be a valid domain"
     end
   end
 
@@ -424,7 +424,7 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       assert_equal "Test Group", result[:name]
       assert_equal "test.com", result[:domain]
       assert_equal "test-group", result[:short_name]
-      assert_equal "community", result[:group_type]
+      assert_equal CommunityGroup::DEFAULT_SHORT_DESCRIPTION, result[:group_description]
       assert_equal 2, result[:sub_groups].length  # Fixture has 2 sub groups
     end
 
@@ -471,15 +471,15 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
     end
   end
 
-  describe ".group_json" do
+  describe ".group_map" do
     it "returns correct json structure" do
       group = community_groups(:one)  # Use fixture
 
-      result = CommunityGroupService.group_json(group)
+      result = CommunityGroupService.group_map(group, include_sub_groups: true)
 
       assert_equal group.id, result[:id]
       assert_equal "Test Group", result[:name]
-      assert_equal "community", result[:group_type]
+      assert_equal CommunityGroup::DEFAULT_SHORT_DESCRIPTION, result[:group_description]
       assert_equal "test.com", result[:domain]
       assert_equal "test-group", result[:short_name]
       assert_equal 2, result[:sub_groups].length  # Fixture has 2 sub groups
@@ -488,11 +488,11 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
     end
   end
 
-  describe ".membership_json" do
+  describe ".membership_map" do
     it "returns correct json structure" do
       membership = community_group_memberships(:one)  # Use fixture
 
-      result = CommunityGroupService.membership_json(membership)
+      result = CommunityGroupService.membership_map(membership)
 
       assert_equal membership.id, result[:id]
       assert_equal users(:one).id, result[:user][:id]

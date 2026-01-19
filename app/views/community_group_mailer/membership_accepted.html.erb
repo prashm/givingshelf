@@ -1,0 +1,25 @@
+# app/views/community_group_mailer/membership_accepted.html.erb
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>Congratulations — you're now a member of <%= @group.name %>!</h2>
+
+    <p>Hello <%= @user.display_name %>,</p>
+
+    <p>
+      Congratulations, you're now a member of this group. Start sharing books within this group or discover books from other members like you.
+    </p>
+
+    <p>
+      <a href="<%= @group_page_url %>" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;padding:10px 14px;border-radius:6px;">
+        Go to the group page
+      </a>
+    </p>
+
+    <p>Thank you,<br>BookShare Community</p>
+  </body>
+</html>
+

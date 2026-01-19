@@ -1,0 +1,37 @@
+# app/views/community_group_mailer/join_request.html.erb
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <h2>New Group Join Request</h2>
+
+    <p>Hello Group Admin,</p>
+
+    <p>
+      <strong><%= @requester&.display_name || "A user" %></strong>
+      requested to join the group <strong><%= @group.name %></strong>.
+    </p>
+
+    <h3>User details</h3>
+    <ul>
+      <li>Name: <%= @requester&.full_name %></li>
+      <li>Email: <%= @requester&.email_address %></li>
+      <li>Trust score: <%= @requester&.trust_score %></li>
+    </ul>
+
+    <% if @message.present? %>
+      <h3>Message</h3>
+      <p><%= @message %></p>
+    <% end %>
+
+    <p>
+      Manage this request here:
+      <a href="<%= @manage_url %>"><%= @manage_url %></a>
+    </p>
+
+    <p>Thank you,<br>BookShare Community</p>
+  </body>
+</html>
+

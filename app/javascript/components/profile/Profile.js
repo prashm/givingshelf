@@ -961,7 +961,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
             {/* Quick Actions */}
             <div className="border-t pt-6">
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
                   onClick={() => setCurrentPage('myBooks')}
                   className="p-4 bg-blue-50 rounded-lg text-center hover:bg-blue-100 transition-colors"
@@ -978,6 +978,15 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   <div className="text-2xl mb-2">🔍</div>
                   <div className="font-medium text-green-900">My Requests</div>
                   <div className="text-sm text-green-600">Track book requests</div>
+                </button>
+
+                <button
+                  onClick={() => setCurrentPage('myGroups')}
+                  className="p-4 bg-purple-50 rounded-lg text-center hover:bg-purple-100 transition-colors"
+                >
+                  <div className="text-2xl mb-2">👥</div>
+                  <div className="font-medium text-purple-900">My Groups</div>
+                  <div className="text-sm text-purple-600">Manage your community groups</div>
                 </button>
               </div>
             </div>
