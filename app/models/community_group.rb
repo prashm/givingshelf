@@ -31,6 +31,10 @@ class CommunityGroup < ApplicationRecord
     community_group_memberships.exists?(user: user, admin: true)
   end
 
+  def has_only_one_admin?
+    community_group_memberships.admins.count == 1
+  end
+
   private
 
   def set_default_short_description

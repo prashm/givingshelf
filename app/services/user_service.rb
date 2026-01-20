@@ -74,11 +74,21 @@ class UserService
 
   def my_groups
     memberships = user.community_group_memberships
-      .includes(:community_group).order(created_at: :desc)
+      .includes(:sub_group, community_group: :sub_groups).order(created_at: :desc)
+
+    admin_counts = CommunityGroupMembership.admins
+      .where(community_group_id: memberships.map(&:community_group_id))
+      .group(:community_group_id)
+      .count
+
     memberships.map { |m|
       CommunityGroupService.group_map(m.community_group).merge(
         membership_id: m.id,
-        joined_at: m.created_at
+        joined_at: m.created_at,
+        admin: m.admin,
+        sole_admin: m.admin && admin_counts[m.community_group_id].to_i == 1,
+        sub_groups: m.community_group.sub_groups.map { |sg| { id: sg.id, name: sg.name } },
+        sub_group: m.sub_group ? { id: m.sub_group.id, name: m.sub_group.name } : nil
       )
     }
   end

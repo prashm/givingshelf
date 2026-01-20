@@ -1,6 +1,6 @@
 class Api::UsersController < ApplicationController
   before_action :require_authentication
-  before_action :set_user, only: [ :show, :update, :update_community_groups ]
+  before_action :set_user, only: [ :show, :update ]
 
   def show
     if @user == Current.user || Current.user.verified?
@@ -38,51 +38,6 @@ class Api::UsersController < ApplicationController
     render json: @requests.map { |request| request_json(request) }
   end
 
-  def update_community_groups
-    if @user != Current.user
-      render json: { error: "Not authorized" }, status: :forbidden
-      return
-    end
-
-    group_ids = params[:group_ids] || []
-
-    # Get current memberships (all memberships, not just non-auto-joined)
-    current_memberships = Current.user.community_group_memberships
-    current_group_ids = current_memberships.pluck(:community_group_id)
-
-    # Find groups to add and remove
-    groups_to_add = group_ids.map(&:to_i) - current_group_ids
-    groups_to_remove = current_group_ids - group_ids.map(&:to_i)
-
-    # Add new memberships (only if not already a member)
-    groups_to_add.each do |group_id|
-      group = CommunityGroup.find_by(id: group_id)
-      next unless group
-
-      # Only add if not already a member (avoid duplicate)
-      unless Current.user.community_group_memberships.exists?(community_group: group)
-        Current.user.community_group_memberships.create!(
-          community_group: group,
-          admin: false,
-          auto_joined: false
-        )
-      end
-    end
-
-    # Remove memberships (all memberships can be removed)
-    groups_to_remove.each do |group_id|
-      membership = current_memberships.find_by(community_group_id: group_id)
-      membership&.destroy
-    end
-
-    render json: {
-      message: "Community groups updated successfully",
-      group_ids: Current.user.community_group_memberships.pluck(:community_group_id)
-    }
-  rescue => e
-    render json: { errors: [ e.message ] }, status: :unprocessable_entity
-  end
-
   private
 
   def set_user
@@ -94,6 +49,7 @@ class Api::UsersController < ApplicationController
   end
 
   def user_json(user)
+    memberships = user.community_group_memberships.includes(:sub_group, :community_group)
     {
       id: user.id,
       email_address: user.email_address,
@@ -111,13 +67,16 @@ class Api::UsersController < ApplicationController
       verified: user.verified?,
       profile_complete: user.profile_complete?,
       profile_picture_url: user.profile_picture.attached? ? user.profile_picture.attachment.url : nil,
-      community_groups: user.community_group_memberships.includes(:community_group).map { |m|
+      community_groups: memberships.map { |m|
+        sub_group = m.sub_group
+        group = m.community_group
         {
-          id: m.community_group.id,
-          name: m.community_group.name,
-          short_name: m.community_group.short_name,
-          admin: m.admin,
-          auto_joined: m.auto_joined
+          id: group.id,
+          name: group.name,
+          short_name: group.short_name,
+          public: group.public,
+          auto_joined: m.auto_joined,
+          sub_group: sub_group ? { id: sub_group.id, name: sub_group.name } : nil
         }
       },
       created_at: user.created_at,

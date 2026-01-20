@@ -8,7 +8,6 @@ import VerificationBadge from '../common/VerificationBadge';
 import PrivacyPolicyModal from '../PrivacyPolicyModal';
 import TermsOfServiceModal from '../TermsOfServiceModal';
 import axios from '../../lib/axios';
-import { fetchGroupMemberships, updateGroupMemberships } from '../../lib/communityGroupsApi';
 
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
   const { updateProfile, checkAuthStatus } = useAuth();
@@ -32,7 +31,6 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
   const [allGroups, setAllGroups] = useState([]);
-  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -128,11 +126,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
       }
       
       // Load community groups
-      if (currentUser && currentUser.community_groups) {
-        setSelectedGroupIds(currentUser.community_groups.map(g => g.id));
-      } else {
-        setSelectedGroupIds([]);
-      }
+      // (Group membership is managed in My Groups now)
     }
   }, [currentUser, profilePicture]);
   
@@ -307,7 +301,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSaving(true);
     
     try {
@@ -330,17 +324,8 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
       
       const result = await updateProfile(userData, profilePictureToSend);
       
-      // Update community groups separately
-      if (result.success && currentUser) {
-        try {
-          await updateGroupMemberships(currentUser.id, selectedGroupIds);
-          // Refresh auth to get updated user with groups
-          await checkAuthStatus();
-        } catch (error) {
-          console.error('Error updating community groups:', error);
-          // Don't fail the entire save if group update fails
-        }
-      }
+      // Refresh auth after updating profile
+      if (result.success && currentUser) await checkAuthStatus();
       
       if (result.success) {
         // Clean up blob URL before clearing
@@ -401,11 +386,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
         setProfilePicturePreview(null);
       }
       // Reset selected groups
-      if (currentUser.community_groups) {
-        setSelectedGroupIds(currentUser.community_groups.map(g => g.id));
-      } else {
-        setSelectedGroupIds([]);
-      }
+      // (Group membership is managed in My Groups now)
     }
   };
 
@@ -749,48 +730,32 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               )}
             </div>
 
-            {/* Community Groups */}
-            {allGroups.length > 0 && (
+            {/* Community Groups (read-only) */}
+            {currentUser.community_groups && currentUser.community_groups.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Community Groups
-                </label>
-                <div className="space-y-2 border border-gray-300 rounded-md p-4">
-                  {allGroups.map((group) => (
-                    <div key={group.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`group-${group.id}`}
-                        checked={selectedGroupIds.includes(group.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedGroupIds([...selectedGroupIds, group.id]);
-                          } else {
-                            setSelectedGroupIds(selectedGroupIds.filter(id => id !== group.id));
-                          }
-                        }}
-                        style={{
-                          appearance: 'auto',
-                          WebkitAppearance: 'auto',
-                          accentColor: 'rgb(5, 150, 105)',
-                          width: '1rem',
-                          height: '1rem',
-                          cursor: 'pointer',
-                          marginTop: 0,
-                          marginRight: '0.5rem'
-                        }}
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor={`group-${group.id}`} className="ml-3 text-sm text-gray-700">
-                        {group.name}
-                        {group.auto_joined && (
-                          <span className="ml-2 text-xs text-gray-500">(Auto-joined)</span>
-                        )}
-                      </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Community Groups
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage('myGroups')}
+                    title="My Groups lets you join/leave groups and pick a sub-group (if available)."
+                    className="text-sm text-emerald-700 hover:text-emerald-800 underline"
+                  >
+                    Manage
+                  </button>
+                </div>
+                <div className="space-y-1 border border-gray-300 rounded-md p-4">
+                  {currentUser.community_groups.map((group) => (
+                    <div key={group.id} className="text-gray-900 text-sm">
+                      {group.sub_group ? `${group.name} — ${group.sub_group.name}` : group.name}
+                      {group.auto_joined && (
+                        <span className="ml-2 text-xs text-gray-500">(Auto-joined)</span>
+                      )}
                     </div>
                   ))}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Uncheck to leave a group</p>
               </div>
             )}
 
@@ -946,7 +911,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                     <div className="mt-1 space-y-1">
                       {currentUser.community_groups.map((group) => (
                         <div key={group.id} className="text-gray-900">
-                          {group.name}
+                          {group.sub_group ? `${group.name} — ${group.sub_group.name}` : group.name}
                           {group.auto_joined && (
                             <span className="ml-2 text-xs text-gray-500">(Auto-joined)</span>
                           )}

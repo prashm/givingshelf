@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_16_003000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_20_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,11 +93,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_003000) do
     t.bigint "community_group_id", null: false
     t.datetime "created_at", null: false
     t.bigint "group_membership_request_id"
+    t.bigint "sub_group_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["admin"], name: "index_community_group_memberships_on_admin"
     t.index ["community_group_id"], name: "index_community_group_memberships_on_community_group_id"
     t.index ["group_membership_request_id"], name: "idx_on_group_membership_request_id_705f4891ef"
+    t.index ["sub_group_id"], name: "index_community_group_memberships_on_sub_group_id"
     t.index ["user_id", "community_group_id"], name: "index_cgm_on_user_and_group", unique: true
     t.index ["user_id"], name: "index_community_group_memberships_on_user_id"
   end
@@ -213,6 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_003000) do
   add_foreign_key "books", "users"
   add_foreign_key "community_group_memberships", "community_groups"
   add_foreign_key "community_group_memberships", "group_membership_requests"
+  add_foreign_key "community_group_memberships", "sub_groups"
   add_foreign_key "community_group_memberships", "users"
   add_foreign_key "group_membership_requests", "community_groups"
   add_foreign_key "group_membership_requests", "users", column: "requester_id"

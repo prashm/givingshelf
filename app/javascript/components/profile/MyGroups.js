@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from '../../lib/axios';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TABS = [
   { key: 'current', label: 'Current' },
@@ -8,11 +9,13 @@ const TABS = [
 ];
 
 const MyGroups = ({ currentUser, setCurrentPage }) => {
+  const { checkAuthStatus } = useAuth();
   const [activeTab, setActiveTab] = useState('current');
   const [loading, setLoading] = useState(false);
   const [currentGroups, setCurrentGroups] = useState([]);
   const [requested, setRequested] = useState([]);
   const [invites, setInvites] = useState([]);
+  const [updatingSubGroupMembershipId, setUpdatingSubGroupMembershipId] = useState(null);
 
   // Public group search
   const [searchInput, setSearchInput] = useState('');
@@ -121,10 +124,47 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
     }
   };
 
-  const leaveGroup = async (membershipId) => {
-    if (!window.confirm('Leave this group?')) return;
-    await axios.delete(`/api/my_groups/memberships/${membershipId}`, { withCredentials: true });
-    await loadAll();
+  const leaveGroup = async (group) => {
+    if (group.sole_admin) {
+      window.alert("You are the only admin of this group. Assign another admin before leaving.");
+      return;
+    }
+
+    const warning = group.public === false
+      ? "You've chosen to leave a private group. You won't be able to join back into this group unless the group admin explicitly invites you. Are you sure?"
+      : "Leave this group?";
+
+    if (!window.confirm(warning)) return;
+
+    try {
+      await axios.delete(`/api/my_groups/memberships/${group.membership_id}`, { withCredentials: true });
+      await loadAll();
+    } catch (e) {
+      const message = e?.response?.data?.errors?.join(', ') || e?.response?.data?.error || 'Failed to leave group';
+      window.alert(message);
+    }
+  };
+
+  const updateSubGroup = async (group, subGroupId) => {
+    setUpdatingSubGroupMembershipId(group.membership_id);
+    try {
+      const res = await axios.patch(
+        `/api/my_groups/memberships/${group.membership_id}`,
+        { sub_group_id: subGroupId },
+        { withCredentials: true }
+      );
+      const updated = res.data?.sub_group || null;
+      setCurrentGroups((prev) => prev.map((g) => (
+        g.membership_id === group.membership_id ? { ...g, sub_group: updated } : g
+      )));
+      // Ensure Profile pages reflect latest membership/sub-group.
+      await checkAuthStatus();
+    } catch (e) {
+      const message = e?.response?.data?.errors?.join(', ') || e?.response?.data?.error || 'Failed to update sub-group';
+      window.alert(message);
+    } finally {
+      setUpdatingSubGroupMembershipId(null);
+    }
   };
 
   const cancelRequest = async (requestId) => {
@@ -296,11 +336,35 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                   <div key={g.membership_id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="text-lg font-semibold text-gray-900">{g.name}</div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {g.sub_group ? `${g.name} — ${g.sub_group.name}` : g.name}
+                        </div>
                         <div className="text-sm text-gray-600">/g/{g.short_name}</div>
                         <div className="text-xs text-gray-500 mt-1">
                           Joined {new Date(g.joined_at).toLocaleDateString()}
                         </div>
+
+                        {g.sub_groups && g.sub_groups.length > 0 && (
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Sub Group
+                            </label>
+                            <select
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                              value={g.sub_group?.id || ''}
+                              disabled={updatingSubGroupMembershipId === g.membership_id}
+                              onChange={(e) => {
+                                const value = e.target.value ? parseInt(e.target.value, 10) : null;
+                                updateSubGroup(g, value);
+                              }}
+                            >
+                              <option value="">None</option>
+                              {g.sub_groups.map((sg) => (
+                                <option key={sg.id} value={sg.id}>{sg.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <button
                         onClick={() => setCurrentPage('groupPage', { groupShortName: g.short_name })}
@@ -310,12 +374,22 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                       </button>
                     </div>
                     <div className="mt-4 flex justify-between items-center">
-                      <button
-                        onClick={() => leaveGroup(g.membership_id)}
-                        className="text-red-700 hover:text-red-800 text-sm underline"
+                      <span
+                        className="inline-block"
+                        title={g.sole_admin ? 'You are the only admin of this group. Assign another admin before leaving.' : ''}
                       >
-                        Leave this group
-                      </button>
+                        <button
+                          onClick={() => leaveGroup(g)}
+                          disabled={g.sole_admin}
+                          className={`text-sm underline ${
+                            g.sole_admin
+                              ? 'text-gray-400 cursor-not-allowed'
+                              : 'text-red-700 hover:text-red-800'
+                          }`}
+                        >
+                          Leave this group
+                        </button>
+                      </span>
                     </div>
                   </div>
                 ))}

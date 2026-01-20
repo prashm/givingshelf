@@ -65,6 +65,7 @@ Rails.application.routes.draw do
     get "my_groups/requests", to: "community_groups#my_group_requests"
     get "my_groups/invites", to: "community_groups#my_group_invites"
     post "my_groups/invites/:id/accept", to: "community_groups#accept_invite"
+    patch "my_groups/memberships/:id", to: "community_groups#update_membership"
     delete "my_groups/memberships/:id", to: "community_groups#leave_group"
     delete "my_groups/requests/:id", to: "community_groups#cancel_join_request"
 
@@ -85,9 +86,6 @@ Rails.application.routes.draw do
         get :profile
         get :my_requests
         get :received_requests
-      end
-      member do
-        patch :update_community_groups
       end
     end
 

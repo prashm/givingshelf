@@ -5,10 +5,12 @@ class Api::CommunityGroupsController < ApplicationController
     :my_group_requests,
     :my_group_invites,
     :accept_invite,
+    :update_membership,
     :leave_group,
     :cancel_join_request
   ]
   before_action :set_group, only: [ :show, :request_to_join ]
+  before_action :set_membership, only: [ :update_membership, :leave_group ]
 
   def by_short_name
     group_map = group_service.get_group_by_short_name(params[:short_name])
@@ -73,9 +75,29 @@ class Api::CommunityGroupsController < ApplicationController
   end
 
   def leave_group
-    membership = Current.user.community_group_memberships.find(params[:id])
-    membership.destroy!
+    if @membership.sole_admin?
+      return render json: {
+        errors: [ "You are the only admin of #{@membership.community_group.name}. Assign another admin before leaving." ]
+      }, status: :unprocessable_entity
+    end
+    @membership.destroy!
     render json: { status: "left" }, status: :ok
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+  end
+
+  def update_membership
+    new_sub_group_id = params[:sub_group_id].present? ? params[:sub_group_id].to_i : nil
+    @membership.update!(sub_group_id: new_sub_group_id)
+    @membership.reload
+
+    render json: {
+      status: "updated",
+      membership_id: @membership.id,
+      sub_group: @membership.sub_group ? { id: @membership.sub_group.id, name: @membership.sub_group.name } : nil
+    }, status: :ok
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
   end
 
   def cancel_join_request
@@ -96,6 +118,12 @@ class Api::CommunityGroupsController < ApplicationController
     @group = CommunityGroup.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Group not found" }, status: :not_found
+  end
+
+  def set_membership
+    @membership = Current.user.community_group_memberships.find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Membership not found" }, status: :not_found
   end
 
   def group_service

@@ -406,6 +406,45 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "left", json["status"]
   end
 
+  test "leave_group returns 422 when user is sole admin of the group" do
+    user = users(:one)
+    membership = community_group_memberships(:one) # user one is admin of group one
+    sign_in_as(user)
+
+    assert membership.admin
+    assert_equal 1, CommunityGroupMembership.admins.where(community_group_id: membership.community_group_id).count
+
+    assert_no_difference "CommunityGroupMembership.count" do
+      delete "/api/my_groups/memberships/#{membership.id}"
+    end
+    assert_response :unprocessable_entity
+    assert json["errors"].join(" ").match?(/only admin/i)
+  end
+
+  test "update_membership updates sub_group for current user's membership" do
+    user = users(:one)
+    membership = community_group_memberships(:one) # user one member of group one
+    sign_in_as(user)
+
+    assert_nil membership.sub_group_id
+
+    patch "/api/my_groups/memberships/#{membership.id}", params: { sub_group_id: sub_groups(:one).id }
+    assert_response :success
+    assert_equal "updated", json["status"]
+    assert_equal sub_groups(:one).id, membership.reload.sub_group_id
+  end
+
+  test "update_membership returns 422 when sub_group does not belong to membership's group" do
+    user = users(:one)
+    membership = community_group_memberships(:one) # group one
+    sign_in_as(user)
+
+    # sub_groups(:three) belongs to group two
+    patch "/api/my_groups/memberships/#{membership.id}", params: { sub_group_id: sub_groups(:three).id }
+    assert_response :unprocessable_entity
+    assert json["errors"].join(" ").match?(/must belong to the same community group/i)
+  end
+
   test "leave_group returns 404 when membership is not owned by user" do
     user = users(:one)
     other_membership = community_group_memberships(:two) # belongs to user two
