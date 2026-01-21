@@ -1,7 +1,7 @@
 module Bookshare
   module Version
     COMPANY_NAME = "SimplifAI LLC"
-    APP_VERSION = "1.2"
+    APP_VERSION = "1.3"
     COPYRIGHT_START_YEAR = 2025
 
     def self.copyright_end_year
@@ -17,4 +17,3 @@ module Bookshare
     end
   end
 end
-

@@ -86,7 +86,7 @@ class Api::BooksController < ApplicationController
 
   def stats
     if params[:community_group_id].present?
-      unless CommunityGroup.exists?(params[:community_group_id])
+      if params[:community_group_id].to_i <= 0 || !CommunityGroup.exists?(params[:community_group_id].to_i)
         render json: { error: "Group not found" }, status: :not_found
         return
       end
