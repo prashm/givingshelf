@@ -1,0 +1,279 @@
+require "test_helper"
+require "minitest/spec"
+
+class BookServiceTest < ActiveSupport::TestCase
+  extend Minitest::Spec::DSL
+
+  def setup
+    @user = users(:one)
+    @zip_group = CommunityGroup.find_or_create_zipcode_group!
+
+    @other_group = community_groups(:one)
+    CommunityGroupMembership.find_or_create_by!(user: @user, community_group: @other_group) do |m|
+      m.admin = false
+      m.auto_joined = false
+    end
+    CommunityGroupMembership.find_or_create_by!(user: @user, community_group: @zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+  end
+
+  describe "#create_book" do
+    it "returns nil and sets error when user profile is incomplete" do
+      service = BookService.new
+      @user.stub(:profile_complete?, false) do
+        book = service.create_book(@user, {
+          title: "A Title",
+          author: "An Author",
+          condition: "good",
+          summary: "This is a test book summary that is long enough.",
+          published_year: 2020
+        })
+
+        assert_nil book
+        assert_includes service.errors.join(" "), "User profile is incomplete"
+      end
+    end
+
+    it "creates group book availabilities for selected groups" do
+      service = BookService.new
+      book = service.create_book(@user, {
+        title: "A Title",
+        author: "An Author",
+        condition: "good",
+        summary: "This is a test book summary that is long enough.",
+        published_year: 2020,
+        community_group_ids: [ @zip_group.id, @other_group.id ]
+      })
+
+      assert book, service.errors.to_sentence
+      assert GroupBookAvailability.exists?(book: book, community_group: @zip_group)
+      assert GroupBookAvailability.exists?(book: book, community_group: @other_group)
+    end
+
+    it "defaults to ZIP group when community_group_ids not provided" do
+      service = BookService.new
+      book = service.create_book(@user, {
+        title: "A Title 2",
+        author: "An Author 2",
+        condition: "good",
+        summary: "This is a test book summary that is long enough.",
+        published_year: 2020
+      })
+
+      assert book, service.errors.to_sentence
+      assert GroupBookAvailability.exists?(book: book, community_group: @zip_group)
+    end
+
+    it "rejects selecting a group the user is not a member of" do
+      outsider_group = community_groups(:two)
+      CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
+
+      service = BookService.new
+      book = service.create_book(@user, {
+        title: "A Title 3",
+        author: "An Author 3",
+        condition: "good",
+        summary: "This is a test book summary that is long enough.",
+        published_year: 2020,
+        community_group_ids: [ outsider_group.id ]
+      })
+
+      assert_nil book
+      assert_includes service.errors.join(" "), "Invalid community group selection"
+    end
+  end
+
+  describe "#update_book" do
+    it "adds and removes group book availabilities" do
+      book = books(:one)
+      GroupBookAvailability.where(book: book).delete_all
+      GroupBookAvailability.create!(book: book, community_group: @zip_group)
+
+      service = BookService.new(book)
+      ok = service.update_book(@user, { community_group_ids: [ @other_group.id ] })
+      assert ok, service.errors.to_sentence
+
+      assert_not GroupBookAvailability.exists?(book: book, community_group: @zip_group)
+      assert GroupBookAvailability.exists?(book: book, community_group: @other_group)
+    end
+
+    it "does not change group availability when community_group_ids is not provided" do
+      book = books(:one)
+      GroupBookAvailability.where(book: book).delete_all
+      GroupBookAvailability.create!(book: book, community_group: @zip_group)
+
+      service = BookService.new(book)
+      ok = service.update_book(@user, { title: "Updated Without Groups" })
+      assert ok, service.errors.to_sentence
+
+      assert GroupBookAvailability.exists?(book: book, community_group: @zip_group)
+      assert_equal 1, GroupBookAvailability.where(book: book).count
+    end
+
+    it "rejects selecting a group the user is not a member of" do
+      outsider_group = community_groups(:two)
+      CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
+
+      book = books(:one)
+      service = BookService.new(book)
+      ok = service.update_book(@user, { community_group_ids: [ outsider_group.id ] })
+      assert_not ok
+      assert_includes service.errors.join(" "), "Invalid community group selection"
+    end
+  end
+
+  describe "#remove_book" do
+    it "returns false when non-owner tries to delete" do
+      book = books(:one)
+      service = BookService.new(book)
+      ok = service.remove_book(users(:two))
+      assert_not ok
+      assert_includes service.errors.join(" "), "Not authorized"
+    end
+  end
+
+  describe "#track_book_view" do
+    it "increments view_count for non-owner but not for owner" do
+      book = books(:one)
+      book.update!(view_count: 0)
+      service = BookService.new(book)
+
+      count = service.track_book_view(users(:two))
+      assert_equal 1, count
+
+      count2 = service.track_book_view(users(:one))
+      assert_equal 1, count2
+    end
+  end
+
+  describe "#search_books" do
+    def ensure_zip_availability_for(*books)
+      books.flatten.each do |b|
+        GroupBookAvailability.find_or_create_by!(book: b, community_group: @zip_group)
+      end
+    end
+
+    it "filters by group availability when community_group_id is present" do
+      group = @other_group
+      # Make only books(:one) available in this group
+      GroupBookAvailability.where(book: books(:one), community_group: group).delete_all
+      GroupBookAvailability.where(book: books(:two), community_group: group).delete_all
+      GroupBookAvailability.create!(book: books(:one), community_group: group)
+
+      service = BookService.new
+      result = service.search_books(query_string: "", zip_code: nil, community_group_id: group.id)
+      ids = result.pluck(:id)
+      assert_includes ids, books(:one).id
+      assert_not_includes ids, books(:two).id
+    end
+
+    it "filters by sub_group_id within a community group" do
+      group = community_groups(:one)
+      sg1 = sub_groups(:one)
+      sg2 = sub_groups(:two)
+
+      # Ensure both books are available in the group
+      GroupBookAvailability.find_or_create_by!(book: books(:one), community_group: group)
+      GroupBookAvailability.find_or_create_by!(book: books(:two), community_group: group)
+
+      # Set owners' membership subgroups for the group
+      CommunityGroupMembership.find_by!(user: users(:one), community_group: group).update!(sub_group_id: sg1.id)
+      CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
+
+      service = BookService.new
+      result = service.search_books(query_string: "", zip_code: nil, community_group_id: group.id, sub_group_id: sg1.id)
+      ids = result.pluck(:id)
+      assert_includes ids, books(:one).id
+      assert_not_includes ids, books(:two).id
+    end
+
+    it "filters by query_string across title and author" do
+      ensure_zip_availability_for(books(:one), books(:two))
+
+      service = BookService.new
+      result = service.search_books(query_string: "gatsby", zip_code: nil, community_group_id: nil)
+      ids = result.pluck(:id)
+      assert_includes ids, books(:one).id
+      assert_not_includes ids, books(:two).id
+
+      result2 = service.search_books(query_string: "harper", zip_code: nil, community_group_id: nil)
+      ids2 = result2.pluck(:id)
+      assert_includes ids2, books(:two).id
+      assert_not_includes ids2, books(:one).id
+    end
+
+    it "filters by zip_code (exact match) when radius is not provided" do
+      ensure_zip_availability_for(books(:one), books(:two))
+
+      service = BookService.new
+      result = service.search_books(query_string: "", zip_code: users(:one).zip_code, radius: nil, community_group_id: nil)
+      ids = result.pluck(:id)
+      assert_includes ids, books(:one).id
+      assert_not_includes ids, books(:two).id
+    end
+
+    it "filters by radius when geocoding succeeds" do
+      ensure_zip_availability_for(books(:one), books(:two))
+
+      # Put one user at the search point and another far away.
+      users(:one).update!(latitude: 0.0, longitude: 0.0)
+      users(:two).update!(latitude: 40.0, longitude: 40.0)
+
+      fake_avs = Object.new
+      def fake_avs.geocode_zip_code(_zip) = { latitude: 0.0, longitude: 0.0 }
+      def fake_avs.errors = []
+
+      AddressVerificationService.stub(:new, fake_avs) do
+        service = BookService.new
+        result = service.search_books(query_string: "", zip_code: "12345", radius: "10", community_group_id: nil)
+        ids = result.pluck(:id)
+        assert_includes ids, books(:one).id
+        assert_not_includes ids, books(:two).id
+      end
+    end
+
+    it "falls back to exact zip_code match when geocoding fails" do
+      ensure_zip_availability_for(books(:one), books(:two))
+
+      fake_avs = Object.new
+      def fake_avs.geocode_zip_code(_zip) = nil
+      def fake_avs.errors = [ "no results" ]
+
+      AddressVerificationService.stub(:new, fake_avs) do
+        service = BookService.new
+        result = service.search_books(query_string: "", zip_code: users(:one).zip_code, radius: "10", community_group_id: nil)
+        ids = result.pluck(:id)
+        assert_includes ids, books(:one).id
+        assert_not_includes ids, books(:two).id
+      end
+    end
+
+    it "defaults to ZIP group availability when community_group_id is not provided" do
+      # Ensure only books(:one) is available in zip group
+      GroupBookAvailability.where(book: books(:one), community_group: @zip_group).delete_all
+      GroupBookAvailability.where(book: books(:two), community_group: @zip_group).delete_all
+      GroupBookAvailability.create!(book: books(:one), community_group: @zip_group)
+
+      service = BookService.new
+      result = service.search_books(query_string: "", zip_code: nil, community_group_id: nil)
+      ids = result.pluck(:id)
+      assert_includes ids, books(:one).id
+      assert_not_includes ids, books(:two).id
+    end
+  end
+
+  describe "#book_json" do
+    it "includes community_group_ids from availabilities" do
+      book = books(:one)
+      GroupBookAvailability.where(book: book).delete_all
+      GroupBookAvailability.create!(book: book, community_group: @zip_group)
+      GroupBookAvailability.create!(book: book, community_group: @other_group)
+
+      service = BookService.new(book)
+      json = service.book_json(book, @user)
+      assert_equal [ @zip_group.id, @other_group.id ].sort, Array(json[:community_group_ids]).sort
+    end
+  end
+end

@@ -1,10 +1,17 @@
 class CommunityGroup < ApplicationRecord
+  ZIPCODE_SHORT_NAME = "zipcode".freeze
+  ZIPCODE_GROUP_NAME = "ZIP Code Community".freeze
+  ZIPCODE_GROUP_DESCRIPTION = "Discover and Share Books Within Your ZIP Code".freeze
+  DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books Within This Group".freeze
+  GROUP_ADMINS_SHORT_NAME = "group-admins".freeze
+
   has_many :sub_groups, dependent: :destroy
   has_many :community_group_memberships, dependent: :destroy
   has_many :members, through: :community_group_memberships, source: :user
   has_many :admins, -> { where(community_group_memberships: { admin: true }) }, through: :community_group_memberships, source: :user
+  has_many :group_book_availabilities, dependent: :destroy
+  has_many :available_books, through: :group_book_availabilities, source: :book
 
-  DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books Within This Group".freeze
 
   before_validation :set_default_short_description
 
@@ -17,7 +24,12 @@ class CommunityGroup < ApplicationRecord
   scope :by_domain, ->(domain) { where(domain: domain) }
   scope :by_short_name, ->(short_name) { where(short_name: short_name) }
 
-  GROUP_ADMINS_SHORT_NAME = "group-admins"
+  def self.find_or_create_zipcode_group!
+    find_or_create_by!(short_name: ZIPCODE_SHORT_NAME) do |g|
+      g.name = ZIPCODE_GROUP_NAME
+      g.group_description = ZIPCODE_GROUP_DESCRIPTION
+    end
+  end
 
   def self.admin?(user)
     return false unless user
@@ -33,6 +45,10 @@ class CommunityGroup < ApplicationRecord
 
   def has_only_one_admin?
     community_group_memberships.admins.count == 1
+  end
+
+  def self.zipcode_group
+    find_by(short_name: ZIPCODE_SHORT_NAME)
   end
 
   private

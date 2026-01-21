@@ -65,7 +65,10 @@ class UserService
       }
       user_params[:address_verified] = AddressVerificationService.new.verify(address_params, address_params[:zip_code])
     end
-    user.update!(user_params)
+    ActiveRecord::Base.transaction do
+      user.update!(user_params)
+      ensure_zipcode_group_membership!
+    end
     true
   rescue => e
     @errors << e.message
@@ -131,5 +134,23 @@ class UserService
       }
     end
     result
+  end
+
+  def ensure_zipcode_group_membership!
+    zip_code = user.zip_code.to_s.strip
+    return if zip_code.blank?
+
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+
+    sub_group = SubGroup.find_or_create_by!(community_group_id: zip_group.id, name: zip_code)
+
+    membership = user.community_group_memberships.find_or_create_by!(community_group_id: zip_group.id) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+
+    return if membership.sub_group_id == sub_group.id
+
+    membership.update!(sub_group_id: sub_group.id)
   end
 end

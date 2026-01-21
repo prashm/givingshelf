@@ -406,6 +406,24 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "left", json["status"]
   end
 
+  test "leave_group returns 422 when leaving ZIP Code Community group" do
+    user = users(:one)
+    sign_in_as(user)
+
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+
+    membership = CommunityGroupMembership.find_or_create_by!(user: user, community_group: zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+
+    assert_no_difference "CommunityGroupMembership.count" do
+      delete "/api/my_groups/memberships/#{membership.id}"
+    end
+    assert_response :unprocessable_entity
+    assert json["errors"].join(" ").match?(/request not allowed/i)
+  end
+
   test "leave_group returns 422 when user is sole admin of the group" do
     user = users(:one)
     membership = community_group_memberships(:one) # user one is admin of group one

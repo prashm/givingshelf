@@ -6,6 +6,8 @@ import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageUpload from '../common/ImageUpload';
 import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
+import { parsePageFromPath } from '../../lib/textUtils';
+import * as Constants from '../../lib/constants';
 
 const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage }) => {
   const { currentUser } = useAuth();
@@ -32,6 +34,27 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
 
   const { createBook, loading, error } = useBooks();
   const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useBookForm(initialTitle ? { title: initialTitle } : {});
+
+  // Default group selections:
+  // - ZIP group checked by default
+  // - If URL is /g/:short_name and user is a member, also check that group
+  useEffect(() => {
+    if (!currentUser?.community_groups) return;
+    if (Array.isArray(formData.community_group_ids) && formData.community_group_ids.length > 0) return;
+
+    const zipGroup = currentUser.community_groups.find((g) => g.short_name === Constants.ZIPCODE_SHORT_NAME);
+    const selected = [];
+    if (zipGroup?.id) selected.push(zipGroup.id);
+
+    const parsed = parsePageFromPath(window.location.pathname);
+    if (parsed?.page === 'groupPage' && parsed.groupShortName) {
+      const fromGroup = currentUser.community_groups.find((g) => g.short_name === parsed.groupShortName);
+      if (fromGroup?.id && !selected.includes(fromGroup.id)) selected.push(fromGroup.id);
+    }
+
+    updateFormData({ community_group_ids: selected });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   // Separate crop instance for user_images
   const {
@@ -171,6 +194,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
               currentYear={currentYear}
               yearOptions={yearOptions}
               updateFormData={updateFormData}
+              communityGroups={currentUser.community_groups || []}
               onCropUserImage={handleUserImageCrop}
               imageUploadSection={
                 <ImageUpload

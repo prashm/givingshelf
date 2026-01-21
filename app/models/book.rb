@@ -1,6 +1,8 @@
 class Book < ApplicationRecord
   belongs_to :user
   has_many :book_requests, dependent: :destroy
+  has_many :group_book_availabilities, dependent: :destroy
+  has_many :available_community_groups, through: :group_book_availabilities, source: :community_group
   has_one_attached :cover_image
   has_many_attached :user_images
 

@@ -93,7 +93,8 @@ const EditBook = ({ setCurrentPage, bookId }) => {
             user_images: [], // We don't populate file objects for existing images, but we can show them
             personal_note: bookData.personal_note || '',
             pickup_method: bookData.pickup_method || '',
-            pickup_address: bookData.pickup_address || ''
+            pickup_address: bookData.pickup_address || '',
+            community_group_ids: Array.isArray(bookData.community_group_ids) ? bookData.community_group_ids : []
           });
 
           // Set current cover image if it exists
@@ -297,6 +298,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
               isEditMode={true}
               existingUserImages={existingUserImages}
               updateFormData={updateFormData}
+              communityGroups={currentUser.community_groups || []}
               onCropUserImage={handleUserImageCrop}
               onRemoveExistingImage={handleRemoveExistingImage}
             />

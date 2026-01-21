@@ -1,6 +1,7 @@
 import React from 'react';
 import BookTitleAutocomplete from './BookTitleAutocomplete';
 import MultiImageUpload from './MultiImageUpload';
+import * as Constants from '../../lib/constants';
 
 const BookForm = ({
   formData,
@@ -12,11 +13,36 @@ const BookForm = ({
   isEditMode = false,
   imageUploadSection = null,
   existingUserImages = [],
+  communityGroups = [],
   updateFormData,
   onCropUserImage,
   onCropExistingImage,
   onRemoveExistingImage,
 }) => {
+  const selectedGroupIds = Array.isArray(formData.community_group_ids)
+    ? formData.community_group_ids.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id))
+    : [];
+
+  const sortedGroups = Array.isArray(communityGroups)
+    ? [...communityGroups].sort((a, b) => {
+      const aZip = a?.short_name === Constants.ZIPCODE_SHORT_NAME;
+      const bZip = b?.short_name === Constants.ZIPCODE_SHORT_NAME;
+      if (aZip && !bZip) return -1;
+      if (!aZip && bZip) return 1;
+      return String(a?.name || '').localeCompare(String(b?.name || ''));
+    })
+    : [];
+
+  const toggleGroup = (groupId) => {
+    if (!updateFormData) return;
+    const id = parseInt(groupId, 10);
+    if (!Number.isFinite(id)) return;
+
+    const has = selectedGroupIds.includes(id);
+    const next = has ? selectedGroupIds.filter((x) => x !== id) : [...selectedGroupIds, id];
+    updateFormData({ community_group_ids: next });
+  };
+
   return (
     <>
       {/* API Cover Image Display */}
@@ -118,6 +144,43 @@ const BookForm = ({
           <p className="mt-1 text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">{validationErrors.published_year}</p>
         )}
       </div>
+
+      {/* Group availability */}
+      {sortedGroups.length > 0 && updateFormData && (
+        <div className="mt-2 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Share this book in
+          </label>
+          <div className="border border-gray-200 rounded-md p-3 max-h-52 overflow-auto space-y-2">
+            {sortedGroups.map((g) => (
+              <label key={g.id} className="flex items-center gap-2 text-sm text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={selectedGroupIds.includes(g.id)}
+                  onChange={() => toggleGroup(g.id)}
+                  style={{
+                    appearance: 'auto',
+                    WebkitAppearance: 'auto',
+                    accentColor: 'rgb(5, 150, 105)',
+                    width: '1rem',
+                    height: '1rem',
+                    cursor: 'pointer',
+                    marginTop: 0,
+                    marginRight: '0.5rem'
+                  }}
+                />
+                <span>{g.name}</span>
+                {g.short_name === Constants.ZIPCODE_SHORT_NAME && (
+                  <span className="text-xs text-gray-500">(default)</span>
+                )}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Only members of a group can see books shared there.
+          </p>
+        </div>
+      )}
 
 
       {/* User Images Upload (Multiple) */}

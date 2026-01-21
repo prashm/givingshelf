@@ -104,6 +104,10 @@ export const BookProvider = ({ children }) => {
             formData.append('book[user_images][]', stable);
           }
         }
+      } else if (key === 'community_group_ids' && Array.isArray(bookData[key])) {
+        bookData[key].forEach((id) => {
+          formData.append('book[community_group_ids][]', id);
+        });
       } else if (key === 'remove_user_image_indices' && Array.isArray(bookData[key])) {
         // Append removed image indices (only for updates)
         bookData[key].forEach((index) => {

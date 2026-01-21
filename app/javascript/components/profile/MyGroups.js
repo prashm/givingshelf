@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
+import * as Constants from '../../lib/constants';
 
 const TABS = [
   { key: 'current', label: 'Current' },
@@ -125,6 +126,10 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
   };
 
   const leaveGroup = async (group) => {
+    if (group.short_name === Constants.ZIPCODE_SHORT_NAME) {
+      window.alert(`You cannot leave this group. If you've concerns please contact support. We're here to help.`);
+      return;
+    }
     if (group.sole_admin) {
       window.alert("You are the only admin of this group. Assign another admin before leaving.");
       return;
@@ -380,9 +385,9 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                       >
                         <button
                           onClick={() => leaveGroup(g)}
-                          disabled={g.sole_admin}
+                          disabled={g.sole_admin || g.short_name === Constants.ZIPCODE_SHORT_NAME}
                           className={`text-sm underline ${
-                            g.sole_admin
+                            (g.sole_admin || g.short_name === Constants.ZIPCODE_SHORT_NAME)
                               ? 'text-gray-400 cursor-not-allowed'
                               : 'text-red-700 hover:text-red-800'
                           }`}

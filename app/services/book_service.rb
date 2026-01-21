@@ -14,6 +14,7 @@ class BookService
     # It's handled separately after saving the book.
     api_cover_image = book_params.delete(:cover_image)
     user_images = book_params.delete(:user_images)
+    community_group_ids = book_params.delete(:community_group_ids)
 
     unless user.profile_complete?
       raise "User profile is incomplete."
@@ -23,21 +24,20 @@ class BookService
     book_params[:genre] = "Other" if book_params[:genre].blank?
 
     @book = user.books.build(book_params)
-    if @book.save
-        handle_api_cover_image(api_cover_image)
-        if user_images.present?
-          Array(user_images).each do |image|
-              self.book.user_images.attach(image) if image.present?
-          end
+    ActiveRecord::Base.transaction do
+      @book.save!
+      sync_group_book_availabilities!(user, community_group_ids)
+      handle_api_cover_image(api_cover_image)
+      if user_images.present?
+        Array(user_images).each do |image|
+          self.book.user_images.attach(image) if image.present?
         end
-    else
-      @errors += @book.errors.full_messages
-      @book = nil
+      end
     end
     @book
   rescue => e
-      @errors << e.message
-      @book = nil
+    @errors << e.message
+    nil
   end
 
   def update_book(user, book_params)
@@ -47,35 +47,35 @@ class BookService
     api_cover_image = book_params.delete(:cover_image)
     user_images = book_params.delete(:user_images)
     remove_user_image_indices = book_params.delete(:remove_user_image_indices)
+    community_group_ids = book_params.delete(:community_group_ids)
 
     # Set genre to "Other" if empty
     book_params[:genre] = "Other" if book_params[:genre].blank?
 
-    if self.book.update(book_params)
+    ActiveRecord::Base.transaction do
+      self.book.update!(book_params)
+      sync_group_book_availabilities!(user, community_group_ids) unless community_group_ids.nil?
 
-        handle_api_cover_image(api_cover_image)
+      handle_api_cover_image(api_cover_image)
 
-        # Handle removed existing images
-        if remove_user_image_indices.present?
-            indices_to_remove = remove_user_image_indices.map(&:to_i)
-            existing_images = self.book.user_images.to_a
-            # Remove in reverse order to maintain correct indices
-            indices_to_remove.sort.reverse.each do |index|
-                existing_images[index].purge if existing_images[index]
-            end
+      # Handle removed existing images
+      if remove_user_image_indices.present?
+        indices_to_remove = remove_user_image_indices.map(&:to_i)
+        existing_images = self.book.user_images.to_a
+        # Remove in reverse order to maintain correct indices
+        indices_to_remove.sort.reverse.each do |index|
+          existing_images[index].purge if existing_images[index]
         end
+      end
 
-        # Add new images if any were uploaded (merge with existing)
-        if user_images.present?
-            Array(user_images).each do |image|
-                self.book.user_images.attach(image) if image.present?
-            end
+      # Add new images if any were uploaded (merge with existing)
+      if user_images.present?
+        Array(user_images).each do |image|
+          self.book.user_images.attach(image) if image.present?
         end
-        true
-    else
-      @errors += self.book.errors.full_messages
-      false
+      end
     end
+    true
   rescue => e
     @errors << e.message
     false
@@ -93,23 +93,25 @@ class BookService
   end
 
   def search_books(query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    books = Book.available.joins(:user)
+    books = Book.available.joins(:user, :group_book_availabilities)
 
     if query_string.present?
       books = books.where("books.title ILIKE :query OR books.author ILIKE :query", query: "%#{query_string}%")
     end
 
-    if zip_code.present?
-      books = books.merge(zip_code_scope(zip_code, radius))
-    end
-
-    # Filter by community group - only show books from users who are members
+    # Filter by community group availability
     if community_group_id.present?
-      books = books.joins(user: :community_group_memberships)
-                   .where(community_group_memberships: { community_group_id: community_group_id })
+      books = books.where(group_book_availabilities: { community_group_id: community_group_id })
 
-      # Note: sub_group_id filtering is not implemented as books don't have direct sub_group association
-      # If needed, this could filter by user attributes or be implemented differently
+      if sub_group_id.present?
+        # Filter by the owner's membership subgroup for this community group.
+        books = books.joins(user: :community_group_memberships)
+                     .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
+      end
+    else
+      # Default browse/search behavior: only show books available in the ZIP Code Community group.
+      books = books.where(group_book_availabilities: { community_group_id: CommunityGroup.zipcode_group.id })
+      books = books.merge(zip_code_scope(zip_code, radius)) if zip_code.present?
     end
 
     books.distinct
@@ -159,6 +161,7 @@ class BookService
       personal_note: book.personal_note,
       pickup_method: book.pickup_method,
       pickup_address: book.pickup_address,
+      community_group_ids: book.group_book_availabilities.pluck(:community_group_id),
       owner: {
         id: book.user.id,
         name: book.user.display_name,
@@ -175,6 +178,38 @@ class BookService
 
 
   private
+
+  def sync_group_book_availabilities!(user, community_group_ids)
+    zip_group = CommunityGroup.zipcode_group
+    default_ids = zip_group ? [ zip_group.id ] : []
+
+    ids =
+      if community_group_ids.nil?
+        default_ids
+      else
+        Array(community_group_ids).map(&:to_i).select { |id| id > 0 }.uniq
+      end
+
+    member_group_ids = user.community_groups.pluck(:id)
+    unless (ids - member_group_ids).empty?
+      raise "Invalid community group selection"
+    end
+
+    current_ids = self.book.group_book_availabilities.pluck(:community_group_id)
+    to_add = ids - current_ids
+    to_remove = current_ids - ids
+
+    if to_add.any?
+      GroupBookAvailability.insert_all(
+        to_add.map { |gid| { book_id: self.book.id, community_group_id: gid, created_at: Time.current, updated_at: Time.current } },
+        unique_by: "index_gba_on_book_id_and_community_group_id"
+      )
+    end
+
+    if to_remove.any?
+      self.book.group_book_availabilities.where(community_group_id: to_remove).delete_all
+    end
+  end
 
   def zip_code_scope(zip_code, radius)
     if (radius_miles = radius.to_i) > 0

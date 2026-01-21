@@ -75,6 +75,14 @@ class Api::CommunityGroupsController < ApplicationController
   end
 
   def leave_group
+    if @membership.community_group.short_name == CommunityGroup::ZIPCODE_SHORT_NAME
+      sub_group_name = @membership.sub_group&.name.presence || "this"
+      message = "Request not allowed. You're part of #{sub_group_name} community based on your profile. If you've concerns please contact support. We're here to help."
+      return render json: {
+        errors: [ message ]
+      }, status: :unprocessable_entity
+    end
+
     if @membership.sole_admin?
       return render json: {
         errors: [ "You are the only admin of #{@membership.community_group.name}. Assign another admin before leaving." ]

@@ -628,6 +628,9 @@
   .h-full {
     height: 100%;
   }
+  .max-h-52 {
+    max-height: calc(var(--spacing) * 52);
+  }
   .max-h-64 {
     max-height: calc(var(--spacing) * 64);
   }
