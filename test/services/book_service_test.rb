@@ -276,4 +276,76 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_equal [ @zip_group.id, @other_group.id ].sort, Array(json[:community_group_ids]).sort
     end
   end
+
+  describe "#community_group_stats" do
+    it "returns group-scoped shared/donated/requested counts" do
+      group = community_groups(:one)
+
+      # Ensure both books are available in the group
+      GroupBookAvailability.find_or_create_by!(book: books(:one), community_group: group)
+      GroupBookAvailability.find_or_create_by!(book: books(:two), community_group: group)
+
+      # Mark one book as donated
+      books(:two).update!(status: BookStatus::DONATED)
+
+      service = BookService.new
+      stats = service.community_group_stats(community_group_id: group.id)
+
+      assert_equal 1, stats[:books_shared]
+      assert_equal 1, stats[:books_donated]
+      assert_equal 2, stats[:books_requested]
+      assert_equal 2, stats[:members]
+    end
+
+    it "filters stats by sub_group_id (owner membership subgroup)" do
+      group = community_groups(:one)
+      sg1 = sub_groups(:one)
+      sg2 = sub_groups(:two)
+
+      # Ensure both books are available in the group
+      GroupBookAvailability.find_or_create_by!(book: books(:one), community_group: group)
+      GroupBookAvailability.find_or_create_by!(book: books(:two), community_group: group)
+
+      # Assign membership subgroups for owners
+      CommunityGroupMembership.find_by!(user: users(:one), community_group: group).update!(sub_group_id: sg1.id)
+      CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
+
+      # Mark user2's book as donated
+      books(:two).update!(status: BookStatus::DONATED)
+
+      service = BookService.new
+      stats_sg1 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg1.id)
+      stats_sg2 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg2.id)
+
+      assert_equal 1, stats_sg1[:books_shared]
+      assert_equal 0, stats_sg1[:books_donated]
+      assert_equal 1, stats_sg1[:books_requested]
+
+      assert_equal 0, stats_sg2[:books_shared]
+      assert_equal 1, stats_sg2[:books_donated]
+      assert_equal 1, stats_sg2[:books_requested]
+      assert_equal 1, stats_sg2[:members]
+    end
+
+    it "returns zero members for a sub group with no memberships" do
+      group = community_groups(:one)
+      sg1 = sub_groups(:one)
+      sg2 = sub_groups(:two)
+
+      # Put all members into sg1, leaving sg2 with zero members
+      CommunityGroupMembership.where(community_group: group).update_all(sub_group_id: sg1.id)
+
+      # Ensure books exist in the group (owned by sg1 members)
+      GroupBookAvailability.find_or_create_by!(book: books(:one), community_group: group)
+      GroupBookAvailability.find_or_create_by!(book: books(:two), community_group: group)
+
+      service = BookService.new
+      stats = service.community_group_stats(community_group_id: group.id, sub_group_id: sg2.id)
+
+      assert_equal 0, stats[:members]
+      assert_equal 0, stats[:books_shared]
+      assert_equal 0, stats[:books_donated]
+      assert_equal 0, stats[:books_requested]
+    end
+  end
 end

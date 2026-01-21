@@ -97,4 +97,33 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     assert_includes ids, books(:one).id
     assert_not_includes ids, books(:two).id
   end
+
+  test "stats uses community_group_stats when community_group_id is present" do
+    group = community_groups(:one)
+    called = { group: false, community: false }
+
+    service_stub = Object.new
+    service_stub.define_singleton_method(:community_group_stats) do |**_kwargs|
+      called[:group] = true
+      { books_shared: 1, books_donated: 0, books_requested: 2, members: 42 }
+    end
+    service_stub.define_singleton_method(:community_stats) do |**_kwargs|
+      called[:community] = true
+      { books_shared: 999, books_donated: 999, books_requested: 999, happy_readers: 999 }
+    end
+
+    BookService.stub(:new, service_stub) do
+      get stats_api_books_url, params: { community_group_id: group.id }
+      assert_response :success
+    end
+
+    assert called[:group], "Expected community_group_stats to be called"
+    assert_not called[:community], "Expected community_stats not to be called"
+
+    body = JSON.parse(response.body)
+    assert_equal 1, body["books_shared"]
+    assert_equal 0, body["books_donated"]
+    assert_equal 2, body["books_requested"]
+    assert body.key?("members"), "Expected members count to be included for group stats"
+  end
 end

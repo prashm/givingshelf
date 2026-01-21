@@ -143,6 +143,34 @@ class BookService
     }
   end
 
+  def community_group_stats(community_group_id:, sub_group_id: nil)
+    base_books = Book.joins(:user, :group_book_availabilities)
+      .where(group_book_availabilities: { community_group_id: community_group_id })
+
+    base_requests = BookRequest.joins(book: [ :user, :group_book_availabilities ])
+      .where(group_book_availabilities: { community_group_id: community_group_id })
+
+    membership_scope = CommunityGroupMembership.where(community_group_id: community_group_id)
+
+    if sub_group_id.present?
+      # Filter by the owner's membership subgroup for this community group.
+      base_books = base_books.joins(user: :community_group_memberships)
+        .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
+
+      base_requests = base_requests.joins(book: { user: :community_group_memberships })
+        .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
+
+      membership_scope = membership_scope.where(sub_group_id: sub_group_id)
+    end
+
+    {
+      books_shared: base_books.where.not(status: BookStatus::DONATED).distinct.count(:id),
+      books_donated: base_books.where(status: BookStatus::DONATED).distinct.count(:id),
+      books_requested: base_requests.distinct.count(:id),
+      members: membership_scope.distinct.count(:user_id)
+    }
+  end
+
   def book_json(book, requester = nil)
     {
       id: book.id,

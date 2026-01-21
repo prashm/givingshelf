@@ -85,7 +85,15 @@ class Api::BooksController < ApplicationController
   end
 
   def stats
-    stats = book_service.community_stats(zip_code: params[:zip_code], radius: params[:radius])
+    if params[:community_group_id].present?
+      unless CommunityGroup.exists?(params[:community_group_id])
+        render json: { error: "Group not found" }, status: :not_found
+        return
+      end
+      stats = book_service.community_group_stats(community_group_id: params[:community_group_id], sub_group_id: params[:sub_group_id])
+    else
+      stats = book_service.community_stats(zip_code: params[:zip_code], radius: params[:radius])
+    end
     render json: stats
   end
 
