@@ -16,6 +16,18 @@ class GroupMembershipRequest < ApplicationRecord
   USER_REQUESTER_TYPE = "User"
   ADMIN_REQUESTER_TYPE = "Admin"
 
+  # Ransack allowlist for ActiveAdmin search/filter
+  def self.ransackable_attributes(auth_object = nil)
+    %w[
+      id id_value community_group_id requester_id requester_type email_address
+      message status responded_at accepted_at created_at updated_at
+    ]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["community_group", "requester"]
+  end
+
   def invited?
     status == GroupMemberStatus::INVITED
   end

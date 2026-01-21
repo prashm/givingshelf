@@ -9,6 +9,18 @@ class CommunityGroupMembership < ApplicationRecord
 
   scope :admins, -> { where(admin: true) }
 
+  # Ransack allowlist for ActiveAdmin search/filter
+  def self.ransackable_attributes(auth_object = nil)
+    %w[
+      id id_value user_id community_group_id admin auto_joined sub_group_id
+      group_membership_request_id created_at updated_at
+    ]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["community_group", "group_membership_request", "sub_group", "user"]
+  end
+
   def sole_admin?
     return false unless user
     admin? && community_group.has_only_one_admin?

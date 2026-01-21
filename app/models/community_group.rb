@@ -24,6 +24,18 @@ class CommunityGroup < ApplicationRecord
   scope :by_domain, ->(domain) { where(domain: domain) }
   scope :by_short_name, ->(short_name) { where(short_name: short_name) }
 
+  # Ransack allowlist for ActiveAdmin search/filter
+  def self.ransackable_attributes(auth_object = nil)
+    %w[
+      id id_value name short_name domain group_description public
+      created_at updated_at
+    ]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["sub_groups", "community_group_memberships", "members", "admins", "group_book_availabilities", "available_books"]
+  end
+
   def self.find_or_create_zipcode_group!
     find_or_create_by!(short_name: ZIPCODE_SHORT_NAME) do |g|
       g.name = ZIPCODE_GROUP_NAME
