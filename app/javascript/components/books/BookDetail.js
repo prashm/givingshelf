@@ -436,8 +436,9 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                   ) : (
                     <button
                       onClick={openRequestModal}
-                      disabled={requestStatus === 'requesting'}
+                      disabled={requestStatus === 'requesting' || (book.can_request === false && currentUser)}
                       className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title={book.can_request === false && currentUser ? "You must be a member of at least one group this book is shared in to request it" : ""}
                     >
                       {requestStatus === 'requesting' ? 'Sending Request...' : 'Request This Book'}
                     </button>
@@ -457,6 +458,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                       {viewCount} {viewCount === 1 ? 'view' : 'views'}
                     </span>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => setCurrentPage('messages')}
@@ -464,6 +466,28 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                   >
                     Total Requests: {book.request_count ?? 0}
                   </button>
+                  {book.community_group_names && book.community_group_names.length > 0 && (
+                    <div 
+                      className="w-full bg-gray-50 py-3 px-4"
+                      title="Edit this book to change your preference"
+                    >
+                      <div className="text-gray-700 text-left">
+                        <div className="flex items-center gap-2 mb-1">
+                          <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          <div className="font-medium">Shared In:</div>
+                        </div>
+                        <div className="space-y-0.5">
+                          {book.community_group_names.map((groupName, index) => (
+                            <div key={index} className="text-sm">
+                              {groupName}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

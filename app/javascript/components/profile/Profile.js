@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, PhotoIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { useImageCrop } from '../../hooks/useImageCrop';
@@ -8,6 +8,7 @@ import VerificationBadge from '../common/VerificationBadge';
 import PrivacyPolicyModal from '../PrivacyPolicyModal';
 import TermsOfServiceModal from '../TermsOfServiceModal';
 import axios from '../../lib/axios';
+import * as Constants from '../../lib/constants';
 
 const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectReason }) => {
   const { updateProfile, checkAuthStatus } = useAuth();
@@ -137,6 +138,16 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
       setAllGroups(currentUser.community_groups);
     }
   }, [currentUser]);
+
+  // Filter out zipcode groups and check if user has any non-zipcode groups
+  const nonZipcodeGroups = useMemo(() => {
+    if (!currentUser?.community_groups) return [];
+    return currentUser.community_groups.filter(
+      group => group.short_name !== Constants.ZIPCODE_SHORT_NAME
+    );
+  }, [currentUser?.community_groups]);
+
+  const hasNonZipcodeGroups = nonZipcodeGroups.length > 0;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -731,7 +742,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
             </div>
 
             {/* Community Groups (read-only) */}
-            {currentUser.community_groups && currentUser.community_groups.length > 0 && (
+            {hasNonZipcodeGroups && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
@@ -747,7 +758,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   </button>
                 </div>
                 <div className="space-y-1 border border-gray-300 rounded-md p-4">
-                  {currentUser.community_groups.map((group) => (
+                  {nonZipcodeGroups.map((group) => (
                     <div key={group.id} className="text-gray-900 text-sm">
                       {group.sub_group ? `${group.name} — ${group.sub_group.name}` : group.name}
                       {group.auto_joined && (
@@ -899,7 +910,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               </div>
 
               {/* Community Groups */}
-              {currentUser.community_groups && currentUser.community_groups.length > 0 && (
+              {hasNonZipcodeGroups && (
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
                     <svg className="h-6 w-6 text-gray-400 max-w-[24px] max-h-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -909,7 +920,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                   <div className="flex-1">
                     <span className="text-sm font-medium text-gray-500">Community Groups</span>
                     <div className="mt-1 space-y-1">
-                      {currentUser.community_groups.map((group) => (
+                      {nonZipcodeGroups.map((group) => (
                         <div key={group.id} className="text-gray-900">
                           {group.sub_group ? `${group.name} — ${group.sub_group.name}` : group.name}
                           {group.auto_joined && (

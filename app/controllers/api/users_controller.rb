@@ -70,9 +70,13 @@ class Api::UsersController < ApplicationController
       community_groups: memberships.map { |m|
         sub_group = m.sub_group
         group = m.community_group
+        grp_name = group.name
+        if sub_group.present? && group.short_name == CommunityGroup::ZIPCODE_SHORT_NAME
+          grp_name = "#{sub_group.name} Community"
+        end
         {
           id: group.id,
-          name: group.name,
+          name: grp_name,
           short_name: group.short_name,
           public: group.public,
           auto_joined: m.auto_joined,

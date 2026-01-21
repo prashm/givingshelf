@@ -177,7 +177,7 @@ const BookForm = ({
             ))}
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            Only members of a group can see books shared there.
+            This book will only be shared in the groups you select.
           </p>
         </div>
       )}

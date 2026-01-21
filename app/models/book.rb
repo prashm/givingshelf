@@ -52,6 +52,14 @@ class Book < ApplicationRecord
     return false unless available?
     return false if user == self.user
     return false if book_requests.exists?(requester: user, status: [ BookRequest::PENDING_STATUS, BookRequest::ACCEPTED_STATUS ])
+    
+    # Check if user is in any of the groups the book is shared in
+    book_group_ids = group_book_availabilities.pluck(:community_group_id)
+    return false if book_group_ids.empty?
+    
+    user_group_ids = user.community_group_memberships.pluck(:community_group_id)
+    return false unless (book_group_ids & user_group_ids).any?
+    
     true
   end
 

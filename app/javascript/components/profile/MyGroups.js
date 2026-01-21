@@ -26,11 +26,18 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
   const [requestingJoin, setRequestingJoin] = useState(false);
   const debounceRef = useRef(null);
 
+  // Filter out zipcode groups from current groups
+  const nonZipcodeGroups = useMemo(() => {
+    return currentGroups.filter(
+      group => group.short_name !== Constants.ZIPCODE_SHORT_NAME
+    );
+  }, [currentGroups]);
+
   const counts = useMemo(() => ({
-    current: currentGroups.length,
+    current: nonZipcodeGroups.length,
     requested: requested.length,
     invites: invites.length,
-  }), [currentGroups.length, requested.length, invites.length]);
+  }), [nonZipcodeGroups.length, requested.length, invites.length]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -337,7 +344,7 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
           <>
             {activeTab === 'current' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentGroups.map((g) => (
+                {nonZipcodeGroups.map((g) => (
                   <div key={g.membership_id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>

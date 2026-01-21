@@ -275,6 +275,48 @@ class BookServiceTest < ActiveSupport::TestCase
       json = service.book_json(book, @user)
       assert_equal [ @zip_group.id, @other_group.id ].sort, Array(json[:community_group_ids]).sort
     end
+
+    it "displays zipcode group name as 'ZIP_CODE Community' in community_group_names" do
+      book = books(:one)
+      user = book.user
+      user.update!(zip_code: "12345")
+      GroupBookAvailability.where(book: book).delete_all
+      GroupBookAvailability.create!(book: book, community_group: @zip_group)
+
+      service = BookService.new(book)
+      json = service.book_json(book, @user)
+
+      assert_includes json[:community_group_names], "12345 Community"
+      assert_equal 1, json[:community_group_names].length
+    end
+
+    it "displays regular group names as-is in community_group_names" do
+      book = books(:one)
+      GroupBookAvailability.where(book: book).delete_all
+      GroupBookAvailability.create!(book: book, community_group: @other_group)
+
+      service = BookService.new(book)
+      json = service.book_json(book, @user)
+
+      assert_includes json[:community_group_names], @other_group.name
+      assert_equal 1, json[:community_group_names].length
+    end
+
+    it "displays both zipcode and regular group names correctly" do
+      book = books(:one)
+      user = book.user
+      user.update!(zip_code: "54321")
+      GroupBookAvailability.where(book: book).delete_all
+      GroupBookAvailability.create!(book: book, community_group: @zip_group)
+      GroupBookAvailability.create!(book: book, community_group: @other_group)
+
+      service = BookService.new(book)
+      json = service.book_json(book, @user)
+
+      assert_includes json[:community_group_names], "54321 Community"
+      assert_includes json[:community_group_names], @other_group.name
+      assert_equal 2, json[:community_group_names].length
+    end
   end
 
   describe "#community_group_stats" do

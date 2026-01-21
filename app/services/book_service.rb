@@ -172,6 +172,15 @@ class BookService
   end
 
   def book_json(book, requester = nil)
+    # Get community groups in one query
+    community_groups = book.available_community_groups.to_a
+    community_group_ids = []
+    community_group_names = []
+    community_groups.each do |grp|
+      community_group_ids << grp.id
+      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? "#{book.user.zip_code} Community" : grp.name)
+    end
+
     {
       id: book.id,
       title: book.title,
@@ -189,7 +198,8 @@ class BookService
       personal_note: book.personal_note,
       pickup_method: book.pickup_method,
       pickup_address: book.pickup_address,
-      community_group_ids: book.group_book_availabilities.pluck(:community_group_id),
+      community_group_ids: community_group_ids,
+      community_group_names: community_group_names,
       owner: {
         id: book.user.id,
         name: book.user.display_name,

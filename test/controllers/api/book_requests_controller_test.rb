@@ -19,6 +19,13 @@ class Api::BookRequestsControllerTest < ActionDispatch::IntegrationTest
     # But first, we need to make sure there's no existing request
     # Delete any existing request from the fixtures
     BookRequest.where(book: books(:two), requester: users(:one)).destroy_all
+    
+    # Ensure both users are in a common group (users(:one) and users(:two) are both in community_groups(:one) per fixtures)
+    group = community_groups(:one)
+    GroupBookAvailability.find_or_create_by!(book: books(:two), community_group: group)
+    # users(:one) is already in group via community_group_memberships(:one)
+    # users(:two) is already in group via community_group_memberships(:two)
+    
     post api_book_requests_url, params: {
       book_id: books(:two).id,
       message: "I would like to borrow this book please"
