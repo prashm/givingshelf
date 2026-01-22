@@ -48,7 +48,8 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
     <>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('donate')}>Donate a Book</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myBooks')}>My Books</li>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('messages')}>Messages</li>
+      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('messages')}>My Requests</li>
+      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myGroups')}>My Groups</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('profile')}>
         {currentUser.first_name || currentUser.email_address || 'Profile'}
       </li>
@@ -78,7 +79,8 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
                 <>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate')}>Donate a Book</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myBooks')}>My Books</li>
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>Messages</li>
+                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>My Requests</li>
+                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myGroups')}>My Groups</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('profile')}>
                     Profile
                   </li>

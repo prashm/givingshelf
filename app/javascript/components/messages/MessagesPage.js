@@ -138,7 +138,7 @@ const MessagesPage = ({ setCurrentPage }) => {
     <div className="container mx-auto py-8 px-4 max-w-5xl">
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Messages</h2>
+          <h2 className="text-2xl font-bold">My Book Requests</h2>
           <button
             onClick={() => setCurrentPage('browse')}
             className="text-sm text-emerald-700 hover:text-emerald-900"

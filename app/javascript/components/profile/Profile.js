@@ -948,7 +948,7 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
                 </button>
                 
                 <button
-                  onClick={() => setCurrentPage('myRequests')}
+                  onClick={() => setCurrentPage('messages')}
                   className="p-4 bg-green-50 rounded-lg text-center hover:bg-green-100 transition-colors"
                 >
                   <div className="text-2xl mb-2">🔍</div>

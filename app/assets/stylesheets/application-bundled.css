@@ -457,6 +457,9 @@
       max-width: 96rem;
     }
   }
+  .m-0 {
+    margin: calc(var(--spacing) * 0);
+  }
   .mx-2 {
     margin-inline: calc(var(--spacing) * 2);
   }
@@ -645,6 +648,9 @@
   }
   .max-h-\[90vh\] {
     max-height: 90vh;
+  }
+  .min-h-0 {
+    min-height: calc(var(--spacing) * 0);
   }
   .min-h-\[300px\] {
     min-height: 300px;
@@ -1224,6 +1230,9 @@
   }
   .pt-6 {
     padding-top: calc(var(--spacing) * 6);
+  }
+  .pr-2 {
+    padding-right: calc(var(--spacing) * 2);
   }
   .pr-3 {
     padding-right: calc(var(--spacing) * 3);
