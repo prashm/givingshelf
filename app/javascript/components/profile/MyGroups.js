@@ -39,6 +39,11 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
     invites: invites.length,
   }), [nonZipcodeGroups.length, requested.length, invites.length]);
 
+  const showAlertAndReload = (message) => {
+    window.alert(message);
+    window.location.reload();
+  };
+
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -134,11 +139,11 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
 
   const leaveGroup = async (group) => {
     if (group.short_name === Constants.ZIPCODE_SHORT_NAME) {
-      window.alert(`You cannot leave this group. If you've concerns please contact support. We're here to help.`);
+      showAlertAndReload(`You cannot leave this group. If you've concerns please contact support. We're here to help.`);
       return;
     }
     if (group.sole_admin) {
-      window.alert("You are the only admin of this group. Assign another admin before leaving.");
+      showAlertAndReload("You are the only admin of this group. Assign another admin before leaving.");
       return;
     }
 
@@ -153,7 +158,7 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
       await loadAll();
     } catch (e) {
       const message = e?.response?.data?.errors?.join(', ') || e?.response?.data?.error || 'Failed to leave group';
-      window.alert(message);
+      showAlertAndReload(message);
     }
   };
 
@@ -173,7 +178,7 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
       await checkAuthStatus();
     } catch (e) {
       const message = e?.response?.data?.errors?.join(', ') || e?.response?.data?.error || 'Failed to update sub-group';
-      window.alert(message);
+      showAlertAndReload(message);
     } finally {
       setUpdatingSubGroupMembershipId(null);
     }
@@ -186,9 +191,14 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
   };
 
   const acceptInvite = async (inviteId) => {
-    await axios.post(`/api/my_groups/invites/${inviteId}/accept`, {}, { withCredentials: true });
-    await loadAll();
-    setActiveTab('current');
+    try {
+      await axios.post(`/api/my_groups/invites/${inviteId}/accept`, {}, { withCredentials: true });
+      await loadAll();
+      setActiveTab('current');
+    } catch (e) {
+      const message = e?.response?.data?.error || e?.response?.data?.errors?.join(', ') || 'Failed to accept invitation';
+      showAlertAndReload(message);
+    }
   };
 
   if (!currentUser) {

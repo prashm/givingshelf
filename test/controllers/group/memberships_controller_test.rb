@@ -129,5 +129,54 @@ module Group
       assert_equal "Invite revoked.", flash[:notice]
       assert_equal GroupMemberStatus::REJECTED, request.reload.status
     end
+
+    test "GET index with invites tab excludes accepted invitations" do
+      sign_in_as(@group_admin_user)
+
+      # Create a pending invitation
+      pending_email = "pending_invite_#{SecureRandom.hex(6)}@example.com"
+      pending_request = GroupMembershipRequest.create!(
+        community_group: @group,
+        requester: @group_admin_user,
+        requester_type: "Admin",
+        status: GroupMemberStatus::INVITED,
+        email_address: pending_email
+      )
+
+      # Create an accepted invitation
+      accepted_email = "accepted_invite_#{SecureRandom.hex(6)}@example.com"
+      accepted_user = User.create!(
+        email_address: accepted_email,
+        password_digest: BCrypt::Password.create("password123!"),
+        verified: true
+      )
+      accepted_request = GroupMembershipRequest.create!(
+        community_group: @group,
+        requester: @group_admin_user,
+        requester_type: "Admin",
+        status: GroupMemberStatus::INVITED,
+        email_address: accepted_email
+      )
+
+      # Accept the invitation by creating membership and updating status
+      delivery = Minitest::Mock.new
+      delivery.expect(:deliver_later, true)
+      CommunityGroupMailer.stub(:invite_accepted, delivery) do
+        CommunityGroupService.new(@group).add_user_to_group_from_request(accepted_user, accepted_request)
+      end
+      delivery.verify
+
+      assert_equal GroupMemberStatus::ACCEPTED, accepted_request.reload.status
+
+      # View the invites tab
+      get group_admin_memberships_path(@group, tab: "invites")
+      assert_response :success
+
+      # Verify pending invitation appears
+      assert_includes response.body, pending_email
+
+      # Verify accepted invitation does NOT appear
+      assert_not_includes response.body, accepted_email
+    end
   end
 end

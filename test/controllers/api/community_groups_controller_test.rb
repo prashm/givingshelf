@@ -342,7 +342,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
-  test "accept_invite returns already_member when user already belongs to group" do
+  test "accept_invite returns already_member when user already belongs to group. Sets request to accepted." do
     group = community_groups(:one)
     user = users(:two) # already member of group one
 
@@ -358,7 +358,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     post "/api/my_groups/invites/#{req.id}/accept"
     assert_response :unprocessable_entity
     assert_equal "already a member", json["error"]
-    assert_equal GroupMemberStatus::INVITED, req.reload.status
+    assert_equal GroupMemberStatus::ACCEPTED, req.reload.status
   end
 
   test "accept_invite creates membership and marks request accepted" do

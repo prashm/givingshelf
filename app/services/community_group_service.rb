@@ -166,7 +166,7 @@ class CommunityGroupService
         status: GroupMemberStatus::ACCEPTED,
         accepted_at: Time.current,
         responded_at: Time.current
-      ) if membership_request.requested?
+      )
       raise "already a member"
     end
 
