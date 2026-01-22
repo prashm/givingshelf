@@ -265,11 +265,11 @@ class CommunityGroupService
       return "member"
     end
 
-    if GroupMembershipRequest.requested.exists?(community_group: group, requester: user, requester_type: "User")
+    if user.join_request_for(group).present?
       return "requested"
     end
 
-    if GroupMembershipRequest.invited.exists?(community_group: group, email_address: user.email_address)
+    if user.invitation_request_for(group).present?
       return "invited"
     end
 

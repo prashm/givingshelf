@@ -27,7 +27,7 @@ class UserService
 
       # Skip validations for incomplete profile
       user.save!(validate: false)
-      # Note: auto_join_groups_by_domain! is called via after_create callback
+      # Note: auto_join_group_by_domain! is called via after_create callback
     end
 
     user

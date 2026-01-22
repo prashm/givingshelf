@@ -45,8 +45,8 @@ class User < ApplicationRecord
     ]
   end
 
-  after_create :auto_join_groups_after_creation
-  after_update :auto_join_groups_if_email_changed, if: :saved_change_to_email_address?
+  after_create :auto_join_group_by_domain_after_creation
+  after_update :auto_join_group_by_domain_if_email_changed, if: :saved_change_to_email_address?
   after_update :recalculate_trust_score, if: :saved_change_to_profile_fields?
   before_save :geocode_coordinates, if: :should_geocode_coordinates?
 
@@ -196,23 +196,26 @@ class User < ApplicationRecord
     first_name.present? || last_name.present? || zip_code.present? || phone.present?
   end
 
-  def auto_join_groups_by_domain!
-    return unless email_address.present?
-
-    eligible_groups.each do |group|
-      # Check if user is already a member
-      unless community_group_memberships.exists?(community_group: group)
-        community_group_memberships.create!(
-          community_group: group,
-          admin: false,
-          auto_joined: true
-        )
-      end
-    end
+  def invitation_request_for(group)
+    GroupMembershipRequest.invited.find_by(community_group: group, email_address: email_address)
   end
 
-  def eligible_groups
-    CommunityGroup.by_domain(email_address.split("@").last)
+  def join_request_for(group)
+    GroupMembershipRequest.requested.find_by(community_group: group,
+    requester: self, requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE)
+  end
+
+  def auto_join_group_by_domain!
+    return unless email_address.present?
+    group = CommunityGroup.by_domain(email_address.split("@").last).first
+    if group
+      community_group_memberships.create!(
+        community_group: group,
+        admin: false,
+        auto_joined: true
+      )
+      invitation_request_for(group)&.accept
+    end
   end
 
   def password_reset_token
@@ -242,13 +245,13 @@ class User < ApplicationRecord
     end
   end
 
-  def auto_join_groups_after_creation
-    auto_join_groups_by_domain!
+  def auto_join_group_by_domain_after_creation
+    auto_join_group_by_domain!
     calculate_trust_score! # Recalculate trust score after auto-join
   end
 
-  def auto_join_groups_if_email_changed
-    auto_join_groups_by_domain!
+  def auto_join_group_by_domain_if_email_changed
+    auto_join_group_by_domain!
     calculate_trust_score! # Recalculate trust score after auto-join
   end
 end

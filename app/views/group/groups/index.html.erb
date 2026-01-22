@@ -26,9 +26,9 @@
     <% if @groups && @groups.any? %>
       <div class="space-y-4">
         <% @groups.each do |group| %>
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <div class="flex justify-between items-start mb-4">
-            <div>
+        <div class="bg-white rounded-lg shadow-md p-6 h-80 flex flex-col overflow-hidden">
+          <div class="flex justify-between items-start mb-4 flex-shrink-0">
+            <div class="flex-1">
               <h3 class="text-xl font-semibold"><%= group.name %></h3>
               <% if group.group_description.present? %>
                 <p class="text-gray-600"><%= group.group_description %></p>
@@ -44,20 +44,54 @@
                 <%= link_to "#{group.community_group_memberships.size} members", group_admin_memberships_path(group), class: "text-emerald-600 hover:text-emerald-700 underline" %>
               </div>
             </div>
-            <div class="flex gap-2">
-              <%= link_to "Edit", group_admin_path(group), class: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700" %>
-              <%= button_to "Delete", group_admin_path(group), method: :delete, class: "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700", form: { data: { turbo_confirm: "Are you sure you want to delete this group and all its memberships? This action cannot be undone." } } %>
+            <div class="relative flex-shrink-0 ml-4">
+              <details class="inline-block text-left">
+                <summary class="cursor-pointer select-none inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-gray-100 text-gray-600">
+                  <span class="text-xl">⋯</span>
+                </summary>
+                <div class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg p-1 z-10">
+                  <%= link_to "/g/#{group.short_name}", target: "_blank", class: "flex items-center w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-700" do %>
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    <span>View</span>
+                  <% end %>
+                  <%= link_to group_admin_path(group), class: "flex items-center w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-700" do %>
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    <span>Edit</span>
+                  <% end %>
+                  <%= link_to group_admin_memberships_path(group), class: "flex items-center w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-700" do %>
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>Manage Members</span>
+                  <% end %>
+                  <%= form_with url: group_admin_path(group), method: :delete, local: true, class: "m-0", data: { turbo_confirm: "Are you sure you want to delete this group and all its memberships? This action cannot be undone." } do |form| %>
+                    <%= form.button type: :submit, class: "flex items-center w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50 rounded" do %>
+                      <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                      <span>Delete</span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </details>
             </div>
           </div>
           
           <% if group.sub_groups.any? %>
-            <div class="mt-4">
-              <h4 class="font-medium mb-2">Sub Groups:</h4>
-              <ul class="list-disc list-inside">
-                <% group.sub_groups.each do |sg| %>
-                  <li><%= sg.name %></li>
-                <% end %>
-              </ul>
+            <div class="mt-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+              <h4 class="font-medium mb-2 flex-shrink-0">Sub Groups:</h4>
+              <div class="overflow-y-auto flex-1 pr-2">
+                <ul class="list-disc list-inside">
+                  <% group.sub_groups.each do |sg| %>
+                    <li><%= sg.name %></li>
+                  <% end %>
+                </ul>
+              </div>
             </div>
           <% end %>
         </div>
