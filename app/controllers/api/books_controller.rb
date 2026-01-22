@@ -1,5 +1,6 @@
 class Api::BooksController < ApplicationController
   before_action :require_authentication, except: [ :index, :show, :search, :track_view, :stats ]
+  before_action :resume_session, only: [ :show, :track_view ]
   before_action :set_book, only: [ :show, :update, :destroy, :track_view ]
 
   include ApiCursorPagination

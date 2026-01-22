@@ -438,7 +438,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
                       onClick={openRequestModal}
                       disabled={requestStatus === 'requesting' || (book.can_request === false && currentUser)}
                       className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title={book.can_request === false && currentUser ? "You must be a member of at least one group this book is shared in to request it" : ""}
+                      title={book.can_request === false && currentUser && book.can_request_reason ? book.can_request_reason : ""}
                     >
                       {requestStatus === 'requesting' ? 'Sending Request...' : 'Request This Book'}
                     </button>

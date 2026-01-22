@@ -19,6 +19,37 @@ class BookServiceTest < ActiveSupport::TestCase
     end
   end
 
+  private
+
+  def setup_book_for_request_test(book, groups: [], status: BookStatus::AVAILABLE)
+    BookRequest.where(book: book).destroy_all
+    GroupBookAvailability.where(book: book).delete_all
+    groups.each { |group| GroupBookAvailability.create!(book: book, community_group: group) }
+    book.update!(status: status)
+    book
+  end
+
+  def add_user_to_group(user, group, auto_joined: false)
+    CommunityGroupMembership.find_or_create_by!(user: user, community_group: group) do |m|
+      m.admin = false
+      m.auto_joined = auto_joined
+    end
+  end
+
+  def remove_user_from_group(user, group)
+    CommunityGroupMembership.where(user: user, community_group: group).delete_all
+  end
+
+  def create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+    BookRequest.create!(
+      book: book,
+      requester: requester,
+      owner: book.user,
+      message: "Test message that is long enough",
+      status: status
+    )
+  end
+
   describe "#create_book" do
     it "returns nil and sets error when user profile is incomplete" do
       service = BookService.new
@@ -264,12 +295,122 @@ class BookServiceTest < ActiveSupport::TestCase
     end
   end
 
+  describe "#book_can_be_requested_by?" do
+    it "returns false when user is nil" do
+      book = books(:one)
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(nil)
+      assert_not result
+      assert_nil service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns false when book is not available" do
+      book = setup_book_for_request_test(books(:one), status: BookStatus::DONATED)
+      requester = users(:two)
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert_not result
+      assert_nil service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns false when user is the owner" do
+      book = books(:one)
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(book.user)
+      assert_not result
+      assert_nil service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns false with reason when user has pending request" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+      create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert_not result
+      assert_equal "You have a pending or accepted request for this book", service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns false with reason when user has accepted request" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+      create_book_request(book, requester, status: BookRequest::ACCEPTED_STATUS)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert_not result
+      assert_equal "You have a pending or accepted request for this book", service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns false with reason when book has no groups" do
+      book = setup_book_for_request_test(books(:one), groups: [])
+      requester = users(:two)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert_not result
+      assert_equal "This book is not shared in any groups", service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns false with reason when user is not in any of the book's groups" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      remove_user_from_group(requester, @other_group)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert_not result
+      assert_equal "You are not a member of any groups this book is shared in", service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns true when user can request the book" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert result
+      assert_nil service.book_cannot_be_requested_by_reason
+    end
+
+    it "returns true when book is in zipcode group and user is in zipcode group" do
+      book = setup_book_for_request_test(books(:one), groups: [@zip_group])
+      requester = users(:two)
+      add_user_to_group(requester, @zip_group, auto_joined: true)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert result
+      assert_nil service.book_cannot_be_requested_by_reason
+    end
+
+    it "prioritizes pending request reason over group membership reason" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+      create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+      remove_user_from_group(requester, @other_group)
+
+      service = BookService.new(book)
+      result = service.book_can_be_requested_by?(requester)
+      assert_not result
+      assert_equal "You have a pending or accepted request for this book", service.book_cannot_be_requested_by_reason
+    end
+  end
+
   describe "#book_json" do
+    def setup_book_groups(book, groups)
+      GroupBookAvailability.where(book: book).delete_all
+      groups.each { |group| GroupBookAvailability.create!(book: book, community_group: group) }
+    end
+
     it "includes community_group_ids from availabilities" do
       book = books(:one)
-      GroupBookAvailability.where(book: book).delete_all
-      GroupBookAvailability.create!(book: book, community_group: @zip_group)
-      GroupBookAvailability.create!(book: book, community_group: @other_group)
+      setup_book_groups(book, [@zip_group, @other_group])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -278,10 +419,8 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "displays zipcode group name as 'ZIP_CODE Community' in community_group_names" do
       book = books(:one)
-      user = book.user
-      user.update!(zip_code: "12345")
-      GroupBookAvailability.where(book: book).delete_all
-      GroupBookAvailability.create!(book: book, community_group: @zip_group)
+      book.user.update!(zip_code: "12345")
+      setup_book_groups(book, [@zip_group])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -292,8 +431,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "displays regular group names as-is in community_group_names" do
       book = books(:one)
-      GroupBookAvailability.where(book: book).delete_all
-      GroupBookAvailability.create!(book: book, community_group: @other_group)
+      setup_book_groups(book, [@other_group])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -304,11 +442,8 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "displays both zipcode and regular group names correctly" do
       book = books(:one)
-      user = book.user
-      user.update!(zip_code: "54321")
-      GroupBookAvailability.where(book: book).delete_all
-      GroupBookAvailability.create!(book: book, community_group: @zip_group)
-      GroupBookAvailability.create!(book: book, community_group: @other_group)
+      book.user.update!(zip_code: "54321")
+      setup_book_groups(book, [@zip_group, @other_group])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -316,6 +451,64 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_includes json[:community_group_names], "54321 Community"
       assert_includes json[:community_group_names], @other_group.name
       assert_equal 2, json[:community_group_names].length
+    end
+
+    it "includes can_request and can_request_reason when requester can request" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+
+      service = BookService.new(book)
+      json = service.book_json(book, requester)
+
+      assert json[:can_request]
+      assert_nil json[:can_request_reason]
+    end
+
+    it "includes can_request and can_request_reason when requester has pending request" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+      create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+
+      service = BookService.new(book)
+      json = service.book_json(book, requester)
+
+      assert_not json[:can_request]
+      assert_equal "You have a pending or accepted request for this book", json[:can_request_reason]
+    end
+
+    it "includes can_request and can_request_reason when book has no groups" do
+      book = setup_book_for_request_test(books(:one), groups: [])
+      requester = users(:two)
+
+      service = BookService.new(book)
+      json = service.book_json(book, requester)
+
+      assert_not json[:can_request]
+      assert_equal "This book is not shared in any groups", json[:can_request_reason]
+    end
+
+    it "includes can_request and can_request_reason when requester is not in book's groups" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      requester = users(:two)
+      remove_user_from_group(requester, @other_group)
+
+      service = BookService.new(book)
+      json = service.book_json(book, requester)
+
+      assert_not json[:can_request]
+      assert_equal "You are not a member of any groups this book is shared in", json[:can_request_reason]
+    end
+
+    it "includes can_request and can_request_reason when requester is nil" do
+      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+
+      service = BookService.new(book)
+      json = service.book_json(book, nil)
+
+      assert_not json[:can_request]
+      assert_nil json[:can_request_reason]
     end
   end
 

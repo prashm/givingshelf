@@ -2,7 +2,7 @@ require "open-uri"
 
 class BookService
   attr_accessor :book
-  attr_reader :errors
+  attr_reader :errors, :book_cannot_be_requested_by_reason
 
   def initialize(book = nil)
     @book = book
@@ -171,6 +171,32 @@ class BookService
     }
   end
 
+  def book_can_be_requested_by?(user)
+    @book_cannot_be_requested_by_reason = nil
+    return false if user.nil?
+    return false unless book.available?
+    return false if user == book.user
+    if book.book_requests.exists?(requester: user, status: [ BookRequest::PENDING_STATUS, BookRequest::ACCEPTED_STATUS ])
+      raise "You have a pending or accepted request for this book"
+    end
+
+    # Check if user is in any of the groups the book is shared in
+    book_group_ids = book.group_book_availabilities.pluck(:community_group_id)
+    if book_group_ids.empty?
+      raise "This book is not shared in any groups"
+    end
+
+    user_group_ids = user.community_group_memberships.pluck(:community_group_id)
+    if !(book_group_ids & user_group_ids).any?
+      raise "You are not a member of any groups this book is shared in"
+    end
+
+    true
+  rescue => e
+    @book_cannot_be_requested_by_reason = e.message
+    false
+  end
+
   def book_json(book, requester = nil)
     # Get community groups in one query
     community_groups = book.available_community_groups.to_a
@@ -181,7 +207,7 @@ class BookService
       community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? "#{book.user.zip_code} Community" : grp.name)
     end
 
-    {
+    result = {
       id: book.id,
       title: book.title,
       author: book.author,
@@ -210,8 +236,12 @@ class BookService
       request_count: book.book_requests.count,
       created_at: book.created_at,
       updated_at: book.updated_at,
-      can_request: book.can_be_requested_by?(requester)
+      can_request: book_can_be_requested_by?(requester)
     }
+    if @book_cannot_be_requested_by_reason.present?
+      result[:can_request_reason] = @book_cannot_be_requested_by_reason
+    end
+    result
   end
 
 

@@ -15,8 +15,13 @@ class BookRequestService
       raise "User profile is incomplete."
     end
 
-    unless book.can_be_requested_by?(requester)
-      raise "Cannot request this book"
+    book_service = BookService.new(book)
+    unless book_service.book_can_be_requested_by?(requester)
+      reason = "Cannot request this book"
+      if book_service.book_cannot_be_requested_by_reason.present?
+        reason = "#{reason}: #{book_service.book_cannot_be_requested_by_reason}"
+      end
+      raise reason
     end
 
     @book_request = requester.book_requests.build(book: book, message: message)
