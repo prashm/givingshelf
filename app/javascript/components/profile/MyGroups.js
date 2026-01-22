@@ -371,7 +371,7 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                               }}
                             >
                               <option value="">None</option>
-                              {g.sub_groups.map((sg) => (
+                              {g.sub_groups.slice().sort((a, b) => a.name.localeCompare(b.name)).map((sg) => (
                                 <option key={sg.id} value={sg.id}>{sg.name}</option>
                               ))}
                             </select>

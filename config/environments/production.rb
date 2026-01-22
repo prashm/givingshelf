@@ -58,7 +58,7 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
+  config.action_mailer.default_url_options = { host: "booksharecommunity.org", protocol: "https" }
 
   # Configure AWS SES SMTP settings
   config.action_mailer.smtp_settings = {

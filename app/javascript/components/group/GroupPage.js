@@ -158,7 +158,7 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
                     onChange={handleSubGroupChange}
                   >
                     <option value="">All</option>
-                    {group.sub_groups.map((sg) => (
+                    {group.sub_groups.slice().sort((a, b) => a.name.localeCompare(b.name)).map((sg) => (
                       <option key={sg.id} value={sg.id}>{sg.name}</option>
                     ))}
                   </select>
