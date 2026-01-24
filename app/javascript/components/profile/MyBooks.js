@@ -139,9 +139,22 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook, fromProf
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+        {/* Filter Select */}
+        <div className="mb-6">
+          <label htmlFor="filter-select" className="block text-sm font-medium text-gray-700 mb-2">
+            Filter by Status
+          </label>
+          <select
+            id="filter-select"
+            value={filter}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Convert to number if it's not 'all', otherwise keep as string
+              setFilter(value === 'all' ? 'all' : parseInt(value, 10));
+            }}
+            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            style={{ appearance: 'auto' }}
+          >
             {[
               { key: 'all', label: 'All Books', count: myBooks.length },
               ...statuses.map(status => ({
@@ -150,21 +163,11 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook, fromProf
                 count: myBooks.filter(b => b.status === status.value).length
               }))
             ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${filter === tab.key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {tab.label}
-                <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs">
-                  {tab.count}
-                </span>
-              </button>
+              <option key={tab.key} value={tab.key}>
+                {tab.label} ({tab.count})
+              </option>
             ))}
-          </nav>
+          </select>
         </div>
 
         {/* Books Grid */}
