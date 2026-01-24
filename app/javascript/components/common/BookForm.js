@@ -18,6 +18,7 @@ const BookForm = ({
   onCropUserImage,
   onCropExistingImage,
   onRemoveExistingImage,
+  openSuggestionsOnLoad = false,
 }) => {
   const selectedGroupIds = Array.isArray(formData.community_group_ids)
     ? formData.community_group_ids.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id))
@@ -77,6 +78,7 @@ const BookForm = ({
           onChange={(value) => onInputChange({ target: { name: 'title', value } })}
           onBookSelect={onBookSelect}
           placeholder="Start typing a book title to search..."
+          openSuggestionsOnLoad={openSuggestionsOnLoad}
         />
         {validationErrors.title && (
           <p className="mt-1 text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">{validationErrors.title}</p>

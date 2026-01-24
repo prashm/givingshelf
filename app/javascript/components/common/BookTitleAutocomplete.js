@@ -7,12 +7,16 @@ const BookTitleAutocomplete = ({
   onChange, 
   onBookSelect, 
   placeholder = "Start typing a book title...",
-  disabled = false 
+  disabled = false,
+  openSuggestionsOnLoad = false,
 }) => {
   const [inputValue, setInputValue] = useState(value || '');
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef(null);
   const containerRef = useRef(null);
+  const justSelectedRef = useRef(false);
+  const isInitialMountRef = useRef(true);
+  const userHasInteractedRef = useRef(false);
   
   const {
     suggestions,
@@ -26,19 +30,44 @@ const BookTitleAutocomplete = ({
   // Update input value when external value changes and trigger search if needed
   useEffect(() => {
     const newValue = value || '';
-    setInputValue(newValue);
-    // Trigger search if value is set externally and has at least 2 characters
-    if (newValue.length >= 2) {
+    
+    // On initial mount: either open suggestions (e.g. "Donate a Similar Book") or just set value
+    if (isInitialMountRef.current) {
+      setInputValue(newValue);
+      isInitialMountRef.current = false;
+      if (openSuggestionsOnLoad && newValue.length >= 2) {
+        userHasInteractedRef.current = true;
+        searchBooks(newValue);
+      } else {
+        hideSuggestions();
+      }
+      return;
+    }
+    
+    // If a book was just selected, don't trigger search
+    if (justSelectedRef.current) {
+      setInputValue(newValue);
+      justSelectedRef.current = false;
+      hideSuggestions();
+      return;
+    }
+    
+    // Only trigger search if user has interacted (typed something)
+    // This prevents auto-searching when value is set programmatically
+    if (userHasInteractedRef.current && newValue.length >= 2) {
+      setInputValue(newValue);
       searchBooks(newValue);
     } else {
+      setInputValue(newValue);
       hideSuggestions();
     }
-  }, [value, searchBooks, hideSuggestions]);
+  }, [value, searchBooks, hideSuggestions, openSuggestionsOnLoad]);
 
   // Handle input change
   const handleInputChange = (e) => {
     const newValue = e.target.value;
     setInputValue(newValue);
+    userHasInteractedRef.current = true;
     onChange(newValue);
     
     if (newValue.length >= 2) {
@@ -52,6 +81,7 @@ const BookTitleAutocomplete = ({
   const handleBookSelect = (book) => {
     setInputValue(book.title);
     selectBook(book);
+    justSelectedRef.current = true; // Mark that we just selected a book
     onChange(book.title);
     onBookSelect(book);
     hideSuggestions();
@@ -122,7 +152,8 @@ const BookTitleAutocomplete = ({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (inputValue.length >= 2) {
+            // Only show suggestions on focus if user has typed something
+            if (userHasInteractedRef.current && inputValue.length >= 2) {
               searchBooks(inputValue);
             }
           }}

@@ -196,6 +196,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
               updateFormData={updateFormData}
               communityGroups={currentUser.community_groups || []}
               onCropUserImage={handleUserImageCrop}
+              openSuggestionsOnLoad={!!initialTitle}
               imageUploadSection={
                 <ImageUpload
                   formData={formData}
@@ -216,7 +217,13 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
             <div className="flex gap-4 pt-4">
               <button
                 type="button"
-                onClick={() => setCurrentPage(previousPage || 'browse')}
+                onClick={() => {
+                  // If user navigated to donate via navbar while already on Add Book,
+                  // previousPage becomes 'donate' and Cancel would no-op. Always go
+                  // somewhere sensible when cancelling.
+                  const target = (previousPage && previousPage !== 'donate') ? previousPage : 'browse';
+                  setCurrentPage(target);
+                }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 Cancel
