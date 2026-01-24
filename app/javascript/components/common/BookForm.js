@@ -137,6 +137,7 @@ const BookForm = ({
           onChange={onInputChange}
           className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${validationErrors.published_year ? 'border-red-300' : 'border-gray-300'
             }`}
+          style={{ appearance: 'auto' }}
         >
           {yearOptions.map(year => (
             <option key={year} value={year}>{year}</option>
@@ -194,12 +195,12 @@ const BookForm = ({
             if (updateFormData) {
               updateFormData({ user_images: newImages });
             } else {
-              onInputChange({ 
-                target: { 
-                  name: 'user_images', 
-                  value: null, 
-                  files: newImages 
-                } 
+              onInputChange({
+                target: {
+                  name: 'user_images',
+                  value: null,
+                  files: newImages
+                }
               });
             }
           }}
@@ -209,12 +210,12 @@ const BookForm = ({
             if (updateFormData) {
               updateFormData({ user_images: newImages });
             } else {
-              onInputChange({ 
-                target: { 
-                  name: 'user_images', 
-                  value: null, 
-                  files: newImages 
-                } 
+              onInputChange({
+                target: {
+                  name: 'user_images',
+                  value: null,
+                  files: newImages
+                }
               });
             }
           }}
@@ -241,6 +242,7 @@ const BookForm = ({
           value={formData.condition}
           onChange={onInputChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          style={{ appearance: 'auto' }}
         >
           <option value="excellent">Excellent - Like new, minimal wear</option>
           <option value="good">Good - Light wear, still in good shape</option>
@@ -332,6 +334,7 @@ const BookForm = ({
             }
           }}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          style={{ appearance: 'auto' }}
         >
           <option value="">Select pickup method...</option>
           <option value="meet_in_person">Meet in person</option>
