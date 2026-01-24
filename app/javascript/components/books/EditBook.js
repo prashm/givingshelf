@@ -270,8 +270,8 @@ const EditBook = ({ setCurrentPage, bookId }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Cover Image Display */}
-            {currentCoverImage && (
+            {/* Cover Image Display - Only show if no new cover image from search */}
+            {currentCoverImage && !formData.cover_image && (
               <div className="mb-6">
                 <div className="flex justify-center">
                   <img

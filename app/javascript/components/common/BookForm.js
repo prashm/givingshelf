@@ -344,7 +344,7 @@ const BookForm = ({
       </div>
 
       {/* Pickup Address - Conditional (not shown for "meet in person") */}
-      {formData.pickup_method && formData.pickup_method !== 'meet_in_person' && (
+      {formData.pickup_method && (
         <div>
           <label htmlFor="pickup_address" className="block text-sm font-medium text-gray-700 mb-2">
             Pickup Address
