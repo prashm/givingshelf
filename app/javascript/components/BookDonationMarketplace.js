@@ -168,6 +168,11 @@ const BookDonationMarketplace = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, currentUser, authLoading, zipCodeDetected]);
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [currentPage]);
+
   // Handle browser history navigation
   useEffect(() => {
     // Set initial state based on URL
