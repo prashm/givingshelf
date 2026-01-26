@@ -19,6 +19,11 @@ class BookServiceTest < ActiveSupport::TestCase
     end
   end
 
+  def teardown
+    CommunityGroupMembership.delete_all
+    GroupBookAvailability.delete_all
+  end
+
   private
 
   def setup_book_for_request_test(book, groups: [], status: BookStatus::AVAILABLE)
@@ -322,7 +327,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false with reason when user has pending request" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
       create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
@@ -334,7 +339,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false with reason when user has accepted request" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
       create_book_request(book, requester, status: BookRequest::ACCEPTED_STATUS)
@@ -356,7 +361,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false with reason when user is not in any of the book's groups" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       remove_user_from_group(requester, @other_group)
 
@@ -367,7 +372,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns true when user can request the book" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
 
@@ -378,7 +383,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns true when book is in zipcode group and user is in zipcode group" do
-      book = setup_book_for_request_test(books(:one), groups: [@zip_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @zip_group ])
       requester = users(:two)
       add_user_to_group(requester, @zip_group, auto_joined: true)
 
@@ -389,7 +394,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "prioritizes pending request reason over group membership reason" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
       create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
@@ -410,7 +415,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "includes community_group_ids from availabilities" do
       book = books(:one)
-      setup_book_groups(book, [@zip_group, @other_group])
+      setup_book_groups(book, [ @zip_group, @other_group ])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -420,7 +425,7 @@ class BookServiceTest < ActiveSupport::TestCase
     it "displays zipcode group name as 'ZIP_CODE Community' in community_group_names" do
       book = books(:one)
       book.user.update!(zip_code: "12345")
-      setup_book_groups(book, [@zip_group])
+      setup_book_groups(book, [ @zip_group ])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -431,7 +436,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "displays regular group names as-is in community_group_names" do
       book = books(:one)
-      setup_book_groups(book, [@other_group])
+      setup_book_groups(book, [ @other_group ])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -443,7 +448,7 @@ class BookServiceTest < ActiveSupport::TestCase
     it "displays both zipcode and regular group names correctly" do
       book = books(:one)
       book.user.update!(zip_code: "54321")
-      setup_book_groups(book, [@zip_group, @other_group])
+      setup_book_groups(book, [ @zip_group, @other_group ])
 
       service = BookService.new(book)
       json = service.book_json(book, @user)
@@ -454,7 +459,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "includes can_request and can_request_reason when requester can request" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
 
@@ -466,7 +471,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "includes can_request and can_request_reason when requester has pending request" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
       create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
@@ -490,7 +495,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "includes can_request and can_request_reason when requester is not in book's groups" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
       requester = users(:two)
       remove_user_from_group(requester, @other_group)
 
@@ -502,7 +507,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "includes can_request and can_request_reason when requester is nil" do
-      book = setup_book_for_request_test(books(:one), groups: [@other_group])
+      book = setup_book_for_request_test(books(:one), groups: [ @other_group ])
 
       service = BookService.new(book)
       json = service.book_json(book, nil)

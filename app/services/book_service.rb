@@ -92,8 +92,8 @@ class BookService
     false
   end
 
-  def search_books(query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    books = Book.available.joins(:user, :group_book_availabilities)
+  def search_books(base_scope: Book.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+    books = base_scope.joins(:user, :group_book_availabilities)
 
     if query_string.present?
       books = books.where("books.title ILIKE :query OR books.author ILIKE :query", query: "%#{query_string}%")
@@ -125,50 +125,28 @@ class BookService
     self.book.view_count
   end
 
-  def community_stats(zip_code: nil, radius: nil)
-    base_books = Book.joins(:user)
-    base_requests = BookRequest.joins(book: :user)
-
-    if zip_code.present?
-      scope = zip_code_scope(zip_code, radius)
-      base_books = base_books.merge(scope)
-      base_requests = base_requests.merge(scope)
-    end
-
-    {
-      books_shared: base_books.where.not(status: BookStatus::DONATED).count,
-      books_donated: base_books.where(status: BookStatus::DONATED).count,
-      books_requested: base_requests.count,
-      happy_readers: base_requests.completed.distinct.count(:requester_id)
-    }
-  end
-
-  def community_group_stats(community_group_id:, sub_group_id: nil)
-    base_books = Book.joins(:user, :group_book_availabilities)
-      .where(group_book_availabilities: { community_group_id: community_group_id })
-
-    base_requests = BookRequest.joins(book: [ :user, :group_book_availabilities ])
-      .where(group_book_availabilities: { community_group_id: community_group_id })
-
-    membership_scope = CommunityGroupMembership.where(community_group_id: community_group_id)
-
-    if sub_group_id.present?
-      # Filter by the owner's membership subgroup for this community group.
-      base_books = base_books.joins(user: :community_group_memberships)
-        .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
-
-      base_requests = base_requests.joins(book: { user: :community_group_memberships })
-        .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
-
-      membership_scope = membership_scope.where(sub_group_id: sub_group_id)
-    end
+  def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+    base_books = search_books(base_scope: Book, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
+    base_requests = BookRequest.joins(:book).merge(base_books)
 
     {
       books_shared: base_books.where.not(status: BookStatus::DONATED).distinct.count(:id),
       books_donated: base_books.where(status: BookStatus::DONATED).distinct.count(:id),
       books_requested: base_requests.distinct.count(:id),
-      members: membership_scope.distinct.count(:user_id)
+      happy_readers: base_requests.completed.distinct.count(:requester_id)
     }
+  end
+
+  def community_group_stats(community_group_id:, sub_group_id: nil)
+    community_stats = community_stats(community_group_id: community_group_id, sub_group_id: sub_group_id)
+
+    membership_scope = CommunityGroupMembership.where(community_group_id: community_group_id)
+    if sub_group_id.present?
+      # Filter by the owner's membership subgroup for this community group.
+      membership_scope = membership_scope.where(sub_group_id: sub_group_id)
+    end
+
+    community_stats.merge(members: membership_scope.distinct.count(:user_id))
   end
 
   def book_can_be_requested_by?(user)
