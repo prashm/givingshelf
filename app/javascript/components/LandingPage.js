@@ -215,12 +215,12 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
         </div>
       </div>
 
-      {/* Why BookShare Community Section */}
+      {/* Why GivingShelf Community Section */}
       <div className="min-h-screen flex items-center justify-center bg-emerald-50 py-16" style={{ backgroundImage: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-12">
-              Why BookShare Community?
+              Why GivingShelf Community?
             </h2>
             <div className="grid md:grid-cols-1 gap-6">
               {/* 100% Free Card */}

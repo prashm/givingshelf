@@ -10,7 +10,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-LOG_DIR="/home/ubuntu/bookshare/logs/docker"
+LOG_DIR="/home/ubuntu/givingshelf/logs/docker"
 SCRIPT_PATH="/usr/local/bin/tail-docker-logs.sh"
 SERVICE_NAME="tail-docker-logs.service"
 
@@ -41,7 +41,7 @@ cat > "$SCRIPT_PATH" << 'SCRIPT_EOF'
 #!/bin/bash
 # Tail Docker container logs to files for CloudWatch monitoring
 
-LOG_DIR="/home/ubuntu/bookshare/logs/docker"
+LOG_DIR="/home/ubuntu/givingshelf/logs/docker"
 
 # Function to tail a container's logs
 tail_container() {
@@ -59,9 +59,9 @@ tail_container() {
 }
 
 # Start tailing each container in background
-tail_container bookshare-web "${LOG_DIR}/rails-web.log" &
-tail_container bookshare-worker "${LOG_DIR}/rails-worker.log" &
-tail_container bookshare-nginx "${LOG_DIR}/nginx.log" &
+tail_container givingshelf-web "${LOG_DIR}/rails-web.log" &
+tail_container givingshelf-worker "${LOG_DIR}/rails-worker.log" &
+tail_container givingshelf-nginx "${LOG_DIR}/nginx.log" &
 
 # Wait for all background processes
 wait

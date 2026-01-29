@@ -33,7 +33,7 @@ class CommunityGroup < ApplicationRecord
   end
 
   def self.ransackable_associations(auth_object = nil)
-    ["sub_groups", "community_group_memberships", "members", "admins", "group_book_availabilities", "available_books"]
+    [ "sub_groups", "community_group_memberships", "members", "admins", "group_book_availabilities", "available_books" ]
   end
 
   def self.find_or_create_zipcode_group!

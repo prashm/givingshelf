@@ -6,7 +6,7 @@ class OtpMailer < ApplicationMailer
 
     mail(
       to: @user.email_address,
-      subject: "Your BookShare Community verification code"
+      subject: "Your GivingShelf Community verification code"
     )
   end
 end

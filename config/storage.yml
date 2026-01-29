@@ -12,10 +12,10 @@ amazon:
   access_key_id: <%= ENV['AWS_ACCESS_KEY'] %>
   secret_access_key: <%= ENV['AWS_SECRET_KEY'] %>
   region: us-west-2
-  bucket: bookshare-<%= Rails.env %>
+  bucket: givingshelf-<%= Rails.env %>
   public: true
 
 amazon_production:
   service: S3
   region: us-west-2
-  bucket: bookshare-prod
+  bucket: givingshelf-prod

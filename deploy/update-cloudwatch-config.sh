@@ -14,8 +14,8 @@ CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 REPO_CONFIG=""
 
 # Find the JSON config file in the repo (prefer JSON, fallback to TOML)
-if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.json" ]; then
-  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.json"
+if [ -f "/home/ubuntu/givingshelf/deploy/cloudwatch-config.json" ]; then
+  REPO_CONFIG="/home/ubuntu/givingshelf/deploy/cloudwatch-config.json"
 elif [ -f "./deploy/cloudwatch-config.json" ]; then
   REPO_CONFIG="./deploy/cloudwatch-config.json"
 elif [ -f "$(dirname $0)/cloudwatch-config.json" ]; then
@@ -65,13 +65,13 @@ echo "✓ Added cwagent to adm and ubuntu groups"
 # Ensure Docker log directory exists and has proper permissions
 echo ""
 echo "Ensuring Docker log directory exists..."
-mkdir -p /home/ubuntu/bookshare/logs/docker
-chown ubuntu:ubuntu /home/ubuntu/bookshare/logs/docker
-chmod 755 /home/ubuntu/bookshare/logs/docker
+mkdir -p /home/ubuntu/givingshelf/logs/docker
+chown ubuntu:ubuntu /home/ubuntu/givingshelf/logs/docker
+chmod 755 /home/ubuntu/givingshelf/logs/docker
 
 # Ensure log files are readable by cwagent
 for log_file in rails-web.log rails-worker.log nginx.log; do
-  log_path="/home/ubuntu/bookshare/logs/docker/${log_file}"
+  log_path="/home/ubuntu/givingshelf/logs/docker/${log_file}"
   if [ -f "$log_path" ]; then
     chmod 644 "$log_path"
     chown ubuntu:ubuntu "$log_path"

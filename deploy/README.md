@@ -1,13 +1,13 @@
 # Deployment Scripts
 
-This directory contains scripts for setting up and deploying the Bookshare application on EC2.
+This directory contains scripts for setting up and deploying the Givingshelf application on EC2.
 
 ## Initial EC2 Setup
 
 When setting up a **new EC2 instance**, run the comprehensive setup script:
 
 ```bash
-cd /home/ubuntu/bookshare
+cd /home/ubuntu/givingshelf
 sudo bash deploy/setup-ec2.sh
 ```
 
@@ -55,10 +55,10 @@ Updates the CloudWatch agent configuration from the repo (uses JSON format) and 
 
 After setup, you'll see these log groups in CloudWatch:
 
-- `/aws/ec2/bookshare/syslog` - System logs
-- `/aws/ec2/bookshare/rails/web` - Rails web server logs
-- `/aws/ec2/bookshare/rails/worker` - Rails background job logs
-- `/aws/ec2/bookshare/nginx` - Nginx access/error logs
+- `/aws/ec2/givingshelf/syslog` - System logs
+- `/aws/ec2/givingshelf/rails/web` - Rails web server logs
+- `/aws/ec2/givingshelf/rails/worker` - Rails background job logs
+- `/aws/ec2/givingshelf/nginx` - Nginx access/error logs
 
 ## CloudWatch Metrics
 
@@ -88,7 +88,7 @@ sudo tail -f /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
 ### Check Docker Log Tailing
 ```bash
 sudo systemctl status tail-docker-logs
-ls -lh /home/ubuntu/bookshare/logs/docker/
+ls -lh /home/ubuntu/givingshelf/logs/docker/
 ```
 
 ### Verify Logs are Being Sent
@@ -97,7 +97,7 @@ ls -lh /home/ubuntu/bookshare/logs/docker/
 sudo tail -50 /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log | grep -i error
 
 # Check if log files exist and have content
-tail -20 /home/ubuntu/bookshare/logs/docker/rails-web.log
+tail -20 /home/ubuntu/givingshelf/logs/docker/rails-web.log
 ```
 
 ## Deployment Integration

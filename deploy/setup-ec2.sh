@@ -17,7 +17,7 @@ if [ -L "${BASH_SOURCE[0]}" ]; then
 else
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
-BOOKSHARE_DIR="/home/ubuntu/bookshare"
+GIVINGSHELF_DIR="/home/ubuntu/givingshelf"
 
 echo "=========================================="
 echo "EC2 Setup Script"
@@ -29,14 +29,14 @@ echo "  2. Setup Docker log tailing for CloudWatch"
 echo "  3. Configure all monitoring"
 echo ""
 
-# Check if we're in the bookshare directory
-if [ ! -f "${BOOKSHARE_DIR}/docker-compose.production.yml" ]; then
-  echo "Error: Could not find bookshare directory at ${BOOKSHARE_DIR}"
-  echo "Please ensure you're running this from the bookshare directory"
+# Check if we're in the givingshelf directory
+if [ ! -f "${GIVINGSHELF_DIR}/docker-compose.production.yml" ]; then
+  echo "Error: Could not find givingshelf directory at ${GIVINGSHELF_DIR}"
+  echo "Please ensure you're running this from the givingshelf directory"
   exit 1
 fi
 
-cd "${BOOKSHARE_DIR}"
+cd "${GIVINGSHELF_DIR}"
 
 # Step 1: Install CloudWatch Agent
 echo "Step 1: Installing CloudWatch Agent..."
@@ -83,11 +83,11 @@ echo "2. Verify Docker log tailing is running:"
 echo "   sudo systemctl status tail-docker-logs"
 echo ""
 echo "3. Check log files are being created:"
-echo "   ls -lh /home/ubuntu/bookshare/logs/docker/"
+echo "   ls -lh /home/ubuntu/givingshelf/logs/docker/"
 echo ""
 echo "4. View logs in CloudWatch Console:"
-echo "   - /aws/ec2/bookshare/rails/web"
-echo "   - /aws/ec2/bookshare/rails/worker"
-echo "   - /aws/ec2/bookshare/nginx"
+echo "   - /aws/ec2/givingshelf/rails/web"
+echo "   - /aws/ec2/givingshelf/rails/worker"
+echo "   - /aws/ec2/givingshelf/nginx"
 echo ""
 

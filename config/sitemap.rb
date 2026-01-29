@@ -1,5 +1,5 @@
 # Set the host name for URL generation
-SitemapGenerator::Sitemap.default_host = "https://booksharecommunity.org"
+SitemapGenerator::Sitemap.default_host = "https://givingshelf.net"
 
 # Set the sitemap path
 SitemapGenerator::Sitemap.public_path = "public/"

@@ -58,13 +58,13 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "booksharecommunity.org", protocol: "https" }
+  config.action_mailer.default_url_options = { host: "givingshelf.net", protocol: "https" }
 
   # Configure AWS SES SMTP settings
   config.action_mailer.smtp_settings = {
     address: ENV.fetch("SMTP_ADDRESS", "email-smtp.us-west-2.amazonaws.com"),
     port: 587,
-    domain: "booksharecommunity.org",
+    domain: "givingshelf.net",
     user_name: ENV.fetch("SMTP_USER_NAME", "test"),
     password: ENV.fetch("SMTP_PASSWORD", "test"),
     authentication: :plain,

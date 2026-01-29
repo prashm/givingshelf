@@ -15,7 +15,7 @@ if [ -z "$INSTANCE_ID" ]; then
 fi
 
 REGION=$(aws configure get region || echo "us-west-2")
-ALARM_PREFIX="bookshare-ec2"
+ALARM_PREFIX="givingshelf-ec2"
 
 echo "Creating CloudWatch alarms for instance: $INSTANCE_ID"
 echo "Region: $REGION"

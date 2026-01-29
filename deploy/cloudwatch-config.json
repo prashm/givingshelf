@@ -9,25 +9,25 @@
         "collect_list": [
           {
             "file_path": "/var/log/syslog",
-            "log_group_name": "/aws/ec2/bookshare/syslog",
+            "log_group_name": "/aws/ec2/givingshelf/syslog",
             "log_stream_name": "{instance_id}",
             "retention_in_days": 7
           },
           {
-            "file_path": "/home/ubuntu/bookshare/logs/docker/rails-web.log",
-            "log_group_name": "/aws/ec2/bookshare/rails/web",
+            "file_path": "/home/ubuntu/givingshelf/logs/docker/rails-web.log",
+            "log_group_name": "/aws/ec2/givingshelf/rails/web",
             "log_stream_name": "{instance_id}",
             "retention_in_days": 30
           },
           {
-            "file_path": "/home/ubuntu/bookshare/logs/docker/rails-worker.log",
-            "log_group_name": "/aws/ec2/bookshare/rails/worker",
+            "file_path": "/home/ubuntu/givingshelf/logs/docker/rails-worker.log",
+            "log_group_name": "/aws/ec2/givingshelf/rails/worker",
             "log_stream_name": "{instance_id}",
             "retention_in_days": 30
           },
           {
-            "file_path": "/home/ubuntu/bookshare/logs/docker/nginx.log",
-            "log_group_name": "/aws/ec2/bookshare/nginx",
+            "file_path": "/home/ubuntu/givingshelf/logs/docker/nginx.log",
+            "log_group_name": "/aws/ec2/givingshelf/nginx",
             "log_stream_name": "{instance_id}",
             "retention_in_days": 30
           }

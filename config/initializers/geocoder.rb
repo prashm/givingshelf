@@ -7,7 +7,7 @@ Geocoder.configure(
 
   # Nominatim requires a user agent (required by their usage policy)
   http_headers: {
-    "User-Agent" => "BookShare Community App (noreply@booksharecommunity.org)"
+    "User-Agent" => "GivingShelf App (noreply@givingshelf.net)"
   },
 
   # Timeout for geocoding service

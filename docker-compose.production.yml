@@ -6,8 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: bookshare-web
-    container_name: bookshare-web
+    image: givingshelf-web
+    container_name: givingshelf-web
     env_file:
       - .env
     environment:
@@ -26,14 +26,14 @@ services:
       - rails_storage:/rails/storage
       - rails_logs:/rails/log
     networks:
-      - bookshare
+      - givingshelf
 
   # ------------------------
   # DELAYED JOB WORKER
   # ------------------------
   worker:
-    image: bookshare-web
-    container_name: bookshare-worker
+    image: givingshelf-web
+    container_name: givingshelf-worker
     env_file:
       - .env
     environment:
@@ -49,13 +49,13 @@ services:
     restart: unless-stopped
     command: bin/jobs
     networks:
-      - bookshare
+      - givingshelf
   # ------------------------
   # POSTGRES DATABASE
   # ------------------------
   db:
     image: postgres:15
-    container_name: bookshare-postgres
+    container_name: givingshelf-postgres
     restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -64,7 +64,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - bookshare
+      - givingshelf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -76,20 +76,20 @@ services:
   # ------------------------
   redis:
     image: redis:7
-    container_name: bookshare-redis
+    container_name: givingshelf-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
-      - bookshare
+      - givingshelf
 
   # ------------------------
   # NGINX REVERSE PROXY
   # ------------------------
   nginx:
     image: nginx:stable-alpine
-    container_name: bookshare-nginx
+    container_name: givingshelf-nginx
     depends_on:
       web:
         condition: service_started
@@ -102,19 +102,19 @@ services:
       - ./deploy/nginx/certbot:/etc/letsencrypt
       - ./deploy/nginx/www:/var/www/certbot
     networks:
-      - bookshare
+      - givingshelf
 
   # ------------------------
   # CERTBOT (SSL CERTIFICATES)
   # ------------------------
   certbot:
     image: certbot/certbot
-    container_name: bookshare-certbot
+    container_name: givingshelf-certbot
     volumes:
       - ./deploy/nginx/certbot:/etc/letsencrypt
       - ./deploy/nginx/www:/var/www/certbot
     networks:
-      - bookshare
+      - givingshelf
     # This service runs on-demand, not as a persistent service
     profiles:
       - certbot
@@ -128,5 +128,5 @@ volumes:
   postgres_data:
 
 networks:
-  bookshare:
+  givingshelf:
     driver: bridge

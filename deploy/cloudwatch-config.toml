@@ -50,7 +50,7 @@
       file_path = "/var/log/syslog"
       from_beginning = true
       log_group_class = ""
-      log_group_name = "/aws/ec2/bookshare/syslog"
+      log_group_name = "/aws/ec2/givingshelf/syslog"
       log_stream_name = "{instance_id}"
       pipe = false
       retention_in_days = 7
@@ -59,10 +59,10 @@
     # Docker container logs (captured by tail-docker-logs service)
     [[inputs.logfile.file_config]]
       deployment_environment = ""
-      file_path = "/home/ubuntu/bookshare/logs/docker/rails-web.log"
+      file_path = "/home/ubuntu/givingshelf/logs/docker/rails-web.log"
       from_beginning = false
       log_group_class = ""
-      log_group_name = "/aws/ec2/bookshare/rails/web"
+      log_group_name = "/aws/ec2/givingshelf/rails/web"
       log_stream_name = "{instance_id}"
       pipe = false
       retention_in_days = 30
@@ -70,10 +70,10 @@
 
     [[inputs.logfile.file_config]]
       deployment_environment = ""
-      file_path = "/home/ubuntu/bookshare/logs/docker/rails-worker.log"
+      file_path = "/home/ubuntu/givingshelf/logs/docker/rails-worker.log"
       from_beginning = false
       log_group_class = ""
-      log_group_name = "/aws/ec2/bookshare/rails/worker"
+      log_group_name = "/aws/ec2/givingshelf/rails/worker"
       log_stream_name = "{instance_id}"
       pipe = false
       retention_in_days = 30
@@ -81,10 +81,10 @@
 
     [[inputs.logfile.file_config]]
       deployment_environment = ""
-      file_path = "/home/ubuntu/bookshare/logs/docker/nginx.log"
+      file_path = "/home/ubuntu/givingshelf/logs/docker/nginx.log"
       from_beginning = false
       log_group_class = ""
-      log_group_name = "/aws/ec2/bookshare/nginx"
+      log_group_name = "/aws/ec2/givingshelf/nginx"
       log_stream_name = "{instance_id}"
       pipe = false
       retention_in_days = 30

@@ -1,4 +1,4 @@
-module Bookshare
+module GivingShelf
   module Version
     COMPANY_NAME = "SimplifAI LLC"
     APP_VERSION = "1.3.2"

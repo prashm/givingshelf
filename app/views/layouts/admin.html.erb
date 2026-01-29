@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Admin - BookShare Community</title>
+    <title>Admin - GivingShelf Community</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -302,9 +302,9 @@
       <div class="admin-navbar-inner">
         <div class="admin-navbar-brand" onclick="window.location='/'">
           <div class="admin-navbar-logo-wrap">
-            <img src="/bsc-icon.png" alt="BookShare Community" style="height: 100%; width: 100%; object-fit: contain;" />
+            <img src="/bsc-icon.png" alt="GivingShelf Community" style="height: 100%; width: 100%; object-fit: contain;" />
           </div>
-          <div class="admin-navbar-title">BookShare Community</div>
+          <div class="admin-navbar-title">GivingShelf Community</div>
         </div>
 
         <div class="admin-navbar-right">
@@ -320,8 +320,8 @@
     </main>
 
     <footer class="admin-footer">
-      <div>© <%= Bookshare::Version.copyright_year %> <%= Bookshare::Version::COMPANY_NAME %>. All rights reserved.</div>
-      <div class="admin-footer-version">Version <%= Bookshare::Version::APP_VERSION %></div>
+      <div>© <%= Givingshelf::Version.copyright_year %> <%= Givingshelf::Version::COMPANY_NAME %>. All rights reserved.</div>
+      <div class="admin-footer-version">Version <%= Givingshelf::Version::APP_VERSION %></div>
     </footer>
   </body>
 </html>

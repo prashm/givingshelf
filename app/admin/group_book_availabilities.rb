@@ -34,8 +34,8 @@ ActiveAdmin.register GroupBookAvailability do
 
   form do |f|
     f.inputs "Group Book Availability Details" do
-      f.input :book, collection: Book.all.map { |b| ["#{b.title} by #{b.author}", b.id] }
-      f.input :community_group, collection: CommunityGroup.all.map { |g| [g.name, g.id] }
+      f.input :book, collection: Book.all.map { |b| [ "#{b.title} by #{b.author}", b.id ] }
+      f.input :community_group, collection: CommunityGroup.all.map { |g| [ g.name, g.id ] }
     end
     f.actions
   end

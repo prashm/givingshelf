@@ -11,34 +11,34 @@
         url = url.gsub(/^https:\/\/www\./, 'https://')
         # For query parameters (like ?search=), use base URL
         if url.include?('?search=')
-          return "https://booksharecommunity.org/"
+          return "https://givingshelf.net/"
         end
         url
       end
       
       # If this is a book detail page, use book-specific meta tags
       if defined?(@book) && @book.present?
-        page_title = content_for(:title) || "#{@book.title} by #{@book.author} - BookShare Community"
+        page_title = content_for(:title) || "#{@book.title} by #{@book.author} - GivingShelf"
         page_description = content_for(:description) || @book.summary
         page_url = content_for(:url) || "#{request.protocol}#{request.host}/books/#{@book.id}"
         # Use book cover image if available, otherwise default
         if @book.cover_image.attached?
           page_image = content_for(:image) || rails_blob_url(@book.cover_image, only_path: false)
         else
-          page_image = content_for(:image) || "https://booksharecommunity.org/bsc-icon.png"
+          page_image = content_for(:image) || "https://givingshelf.net/bsc-icon.png"
         end
-        canonical_url = content_for(:canonical) || "https://booksharecommunity.org/books/#{@book.id}"
+        canonical_url = content_for(:canonical) || "https://givingshelf.net/books/#{@book.id}"
       else
-        page_title = content_for(:title) || "Donate Books for Free | BookShare Community - Share. Discover. Connect."
-        page_description = content_for(:description) || "Donate books for free in your local community. BookShare Community helps you donate used books, discover free books from neighbors, and share the joy of reading. 100% free book donation and sharing platform."
+        page_title = content_for(:title) || "Donate Books for Free | GivingShelf - Share. Discover. Connect."
+        page_description = content_for(:description) || "Donate books for free in your local community. GivingShelf helps you donate used books, discover free books from neighbors, and share the joy of reading. 100% free book donation and sharing platform."
         # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
         current_url = request.url
         # Remove query parameters for canonical URL
         canonical_url = content_for(:canonical) || normalize_canonical_url(current_url.split('?').first)
         page_url = content_for(:url) || normalize_canonical_url(current_url)
-        page_image = content_for(:image) || "https://booksharecommunity.org/bsc-icon.png"
+        page_image = content_for(:image) || "https://givingshelf.net/bsc-icon.png"
       end
-      base_url = "https://booksharecommunity.org"
+      base_url = "https://givingshelf.net"
     %>
     <title><%= page_title %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -55,7 +55,7 @@
     <meta property="og:description" content="<%= page_description %>">
     <meta property="og:url" content="<%= page_url %>">
     <meta property="og:image" content="<%= page_image %>">
-    <meta property="og:site_name" content="BookShare Community">
+    <meta property="og:site_name" content="GivingShelf">
     
     <%# Twitter Card meta tags %>
     <meta name="twitter:card" content="summary">
@@ -90,7 +90,7 @@
         "@graph" => [
           {
             "@type" => "Organization",
-            "name" => "BookShare Community",
+            "name" => "GivingShelf",
             "url" => base_url,
             "logo" => "#{base_url}/bsc-icon.png",
             "description" => "A community platform for sharing and discovering books. Donate used books and find great reads from neighbors.",
@@ -126,7 +126,7 @@
       # Add WebSite schema
       structured_data["@graph"] << {
         "@type" => "WebSite",
-        "name" => "BookShare Community",
+        "name" => "GivingShelf",
         "url" => base_url,
         "description" => page_description
       }
@@ -139,7 +139,7 @@
           "description" => "Free book donation and sharing service for local communities. Donate books, discover free books, and share books with neighbors.",
           "provider" => {
             "@type" => "Organization",
-            "name" => "BookShare Community"
+            "name" => "GivingShelf"
           },
           "areaServed" => {
             "@type" => "Country",
@@ -155,10 +155,10 @@
 
     <%= stylesheet_link_tag "application-bundled", "data-turbo-track": "reload" %>
     <script>
-      window.BookshareAppMeta = {
-        companyName: "<%= j(Bookshare::Version::COMPANY_NAME) %>",
-        appVersion: "<%= j(Bookshare::Version::APP_VERSION) %>",
-        copyrightYear: "<%= j(Bookshare::Version.copyright_year) %>"
+      window.GivingShelfAppMeta = {
+        companyName: "<%= j(GivingShelf::Version::COMPANY_NAME) %>",
+        appVersion: "<%= j(GivingShelf::Version::APP_VERSION) %>",
+        copyrightYear: "<%= j(GivingShelf::Version.copyright_year) %>"
       };
     </script>
     <%= javascript_include_tag "application-webpack", "data-turbo-track": "reload" %>

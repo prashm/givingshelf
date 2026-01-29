@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "BookShare Community <noreply@booksharecommunity.org>"
+  default from: "GivingShelf Community <noreply@givingshelf.net>"
   layout "mailer"
 end

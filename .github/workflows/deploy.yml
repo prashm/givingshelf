@@ -28,7 +28,7 @@ jobs:
       - name: Deploy
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@44.250.51.11 << 'EOF'
-            cd /home/ubuntu/bookshare
+            cd /home/ubuntu/givingshelf
             
             # Check disk space before starting deployment
             echo "Checking disk space..."
@@ -50,11 +50,11 @@ jobs:
             git reset --hard origin/${{ github.event.workflow_run.head_branch }}
             
             # fetch secrets
-            sudo /usr/local/bin/fetch-bookshare-secrets.sh
+            sudo /usr/local/bin/fetch-givingshelf-secrets.sh
             
             # create sym link to the .env file
             rm -f .env
-            ln -s /etc/bookshare/.env.production .env
+            ln -s /etc/givingshelf/.env.production .env
             sudo chmod 644 .env
 
             # Clean up old Docker images before building new ones
@@ -75,7 +75,7 @@ jobs:
             echo "Waiting for database to be ready..."
             timeout=60
             counter=0
-            while [ "$(docker inspect -f '{{.State.Health.Status}}' bookshare-postgres 2>/dev/null)" != "healthy" ]; do
+            while [ "$(docker inspect -f '{{.State.Health.Status}}' givingshelf-postgres 2>/dev/null)" != "healthy" ]; do
               if [ $counter -ge $timeout ]; then
                 echo "Database failed to become ready within $timeout seconds"
                 docker compose -f docker-compose.production.yml ps
@@ -97,7 +97,7 @@ jobs:
             # precompile assets if necessary  
             docker compose -f docker-compose.production.yml exec web bundle exec rails assets:precompile
 
-            # restart bookshare service
-            sudo systemctl restart bookshare.service
+            # restart givingshelf service
+            sudo systemctl restart givingshelf.service
           EOF
   

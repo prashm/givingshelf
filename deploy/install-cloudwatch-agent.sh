@@ -63,14 +63,14 @@ fi
 echo "✓ CloudWatch Agent installed"
 echo ""
 
-# Check for config file in bookshare directory or standard location
+# Check for config file in givingshelf directory or standard location
 # CloudWatch agent expects JSON format (which it translates to TOML internally)
 CONFIG_FILE="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 REPO_CONFIG=""
 
 # Check for JSON config (preferred format)
-if [ -f "/home/ubuntu/bookshare/deploy/cloudwatch-config.json" ]; then
-  REPO_CONFIG="/home/ubuntu/bookshare/deploy/cloudwatch-config.json"
+if [ -f "/home/ubuntu/givingshelf/deploy/cloudwatch-config.json" ]; then
+  REPO_CONFIG="/home/ubuntu/givingshelf/deploy/cloudwatch-config.json"
 elif [ -f "./deploy/cloudwatch-config.json" ]; then
   REPO_CONFIG="./deploy/cloudwatch-config.json"
 elif [ -f "$(dirname $0)/cloudwatch-config.json" ]; then

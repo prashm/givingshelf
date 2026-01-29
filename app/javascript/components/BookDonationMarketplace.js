@@ -17,13 +17,13 @@ import GroupPage from './group/GroupPage';
 import WelcomeModal from './WelcomeModal';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import TermsOfServiceModal from './TermsOfServiceModal';
-import { 
-  MagnifyingGlassIcon, 
-  ArrowUpTrayIcon, 
-  UserIcon, 
-  ChatBubbleLeftRightIcon, 
-  MapPinIcon, 
-  ShieldCheckIcon 
+import {
+  MagnifyingGlassIcon,
+  ArrowUpTrayIcon,
+  UserIcon,
+  ChatBubbleLeftRightIcon,
+  MapPinIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import axios from '../lib/axios';
 import { parsePageFromPath } from '../lib/textUtils';
@@ -32,7 +32,7 @@ import { parsePageFromPath } from '../lib/textUtils';
 const BookDonationMarketplace = () => {
   const { currentUser, loading: authLoading } = useAuth();
   const { books, fetchBooks, searchBooks, loading } = useBooks();
-  
+
   // Initialize page state from URL
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
@@ -58,7 +58,7 @@ const BookDonationMarketplace = () => {
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [groupShortName, setGroupShortName] = useState(null);
-  
+
   // Detect route on mount and set group short name if on group page
   useEffect(() => {
     const { groupShortName: shortName } = parsePageFromPath(window.location.pathname);
@@ -66,7 +66,7 @@ const BookDonationMarketplace = () => {
       setGroupShortName(shortName);
     }
   }, []); // Only run once on mount
-  
+
   // Sync page state with URL on initial load (in case URL changed before component mounted)
   useEffect(() => {
     const { page: expectedPage, groupShortName: shortName } = parsePageFromPath(window.location.pathname);
@@ -105,7 +105,7 @@ const BookDonationMarketplace = () => {
             const response = await axios.get('/api/location/detect_zip', {
               withCredentials: true
             });
-            
+
             if (response.data.zip_code) {
               setZipCode(response.data.zip_code);
               setZipCodeDetected(true);
@@ -135,7 +135,7 @@ const BookDonationMarketplace = () => {
                   params: { latitude, longitude },
                   withCredentials: true
                 });
-                
+
                 if (response.data.zip_code) {
                   setZipCode(response.data.zip_code);
                   setZipCodeDetected(true);
@@ -212,7 +212,7 @@ const BookDonationMarketplace = () => {
   const setCurrentPage = (page, extraState = {}) => {
     // Track previous page before updating
     setPreviousPage(currentPage);
-    
+
     if (extraState.selectedBook) {
       setSelectedBook(extraState.selectedBook);
     }
@@ -240,7 +240,7 @@ const BookDonationMarketplace = () => {
     }
 
     _setPageState(page);
-    
+
     // Update URL based on page
     let url = window.location.pathname;
     if (page === 'browse') {
@@ -254,7 +254,7 @@ const BookDonationMarketplace = () => {
     }
     // Don't update URL if we're on a group page and navigating to another group page
     // (preserve the current URL)
-    
+
     window.history.pushState({ page, ...extraState }, '', url);
   };
 
@@ -264,22 +264,22 @@ const BookDonationMarketplace = () => {
       setSearchResults(books);
     }
   }, [books]);
-  
+
   const handleSearch = (searchRadius = null) => {
     // Use searchBooks from context which handles zip code filtering on backend
     if (zipCode) {
       searchBooks(searchQuery, zipCode, false, searchRadius);
     } else {
       // If no zip code, filter locally
-    const query = searchQuery.toLowerCase();
-    const results = Array.isArray(books) ? books.filter(book => 
-      book.title.toLowerCase().includes(query) || 
-      book.author.toLowerCase().includes(query)
-    ) : [];
-    setSearchResults(results);
+      const query = searchQuery.toLowerCase();
+      const results = Array.isArray(books) ? books.filter(book =>
+        book.title.toLowerCase().includes(query) ||
+        book.author.toLowerCase().includes(query)
+      ) : [];
+      setSearchResults(results);
     }
   };
-  
+
   const handleBookSelect = (book, source = 'browse') => {
     setSelectedBook(book);
     setBookDetailSource(source);
@@ -290,21 +290,21 @@ const BookDonationMarketplace = () => {
     }
     setCurrentPage('bookDetails', extraState);
   };
-  
+
   const handleEditBook = (bookId) => {
     setEditingBookId(bookId);
     setCurrentPage('editBook', { editingBookId: bookId });
   };
-  
+
   const handleDonateBook = (bookData) => {
     // This will be handled by the BookContext
     setCurrentPage('browse');
   };
-  
+
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <LandingPage 
+        return <LandingPage
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onOpenLoginModal={handleOpenLoginModal}
@@ -312,26 +312,26 @@ const BookDonationMarketplace = () => {
       case 'login':
       case 'signup':
         // Login/signup is handled via modal (useEffect will open modal and redirect to home)
-        return <LandingPage 
+        return <LandingPage
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'donate':
-        return <AddBook 
+        return <AddBook
           setCurrentPage={setCurrentPage}
           setRedirectReason={setRedirectReason}
           initialTitle={donateInitialTitle}
           previousPage={previousPage}
         />;
       case 'editBook':
-        return <EditBook 
+        return <EditBook
           setCurrentPage={setCurrentPage}
           bookId={editingBookId}
         />;
       case 'bookDetails':
-        return <BookDetail 
-          book={selectedBook} 
+        return <BookDetail
+          book={selectedBook}
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onEditBook={handleEditBook}
@@ -340,8 +340,8 @@ const BookDonationMarketplace = () => {
           sourcePage={bookDetailSource}
         />;
       case 'browse':
-        return <BookList 
-          books={searchResults} 
+        return <BookList
+          books={searchResults}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           zipCode={zipCode}
@@ -353,7 +353,7 @@ const BookDonationMarketplace = () => {
           onOpenLoginModal={handleOpenLoginModal}
         />;
       case 'messages':
-        return <MessagesPage 
+        return <MessagesPage
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
         />;
@@ -366,23 +366,23 @@ const BookDonationMarketplace = () => {
           />
         );
       case 'profile':
-        return <Profile 
-          currentUser={currentUser} 
+        return <Profile
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
           redirectReason={redirectReason}
           clearRedirectReason={() => setRedirectReason(null)}
         />;
       case 'myBooks':
-        return <MyBooks 
-          currentUser={currentUser} 
+        return <MyBooks
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
           onViewBook={(book) => handleBookSelect(book, 'myBooks')}
           fromProfile={previousPage === 'profile'}
         />;
       case 'myRequests':
-        return <MyRequests 
-          currentUser={currentUser} 
+        return <MyRequests
+          currentUser={currentUser}
           setCurrentPage={setCurrentPage}
         />;
       case 'myGroups':
@@ -404,14 +404,14 @@ const BookDonationMarketplace = () => {
           onOpenLoginModal={handleOpenLoginModal}
         />;
       default:
-        return <LandingPage 
+        return <LandingPage
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onOpenLoginModal={handleOpenLoginModal}
         />;
     }
   };
-  
+
   const { logout } = useAuth();
 
   const handleLoginSuccess = (profileIncomplete) => {
@@ -455,8 +455,8 @@ const BookDonationMarketplace = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar 
-        currentUser={currentUser} 
+      <Navbar
+        currentUser={currentUser}
         setCurrentPage={setCurrentPage}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}
@@ -467,16 +467,16 @@ const BookDonationMarketplace = () => {
       <main className="flex-grow bg-gray-50">
         {renderPage()}
       </main>
-      <Footer 
+      <Footer
         setCurrentPage={setCurrentPage}
         onOpenPrivacyModal={() => setIsPrivacyModalOpen(true)}
         onOpenTermsModal={() => setIsTermsModalOpen(true)}
       />
-      <PrivacyPolicyModal 
+      <PrivacyPolicyModal
         isOpen={isPrivacyModalOpen}
         onClose={() => setIsPrivacyModalOpen(false)}
       />
-      <TermsOfServiceModal 
+      <TermsOfServiceModal
         isOpen={isTermsModalOpen}
         onClose={() => setIsTermsModalOpen(false)}
       />
@@ -486,7 +486,7 @@ const BookDonationMarketplace = () => {
 
 // Simple Footer Component
 const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
-  const meta = (typeof window !== 'undefined' && window.BookshareAppMeta) ? window.BookshareAppMeta : {};
+  const meta = (typeof window !== 'undefined' && window.GivingshelfAppMeta) ? window.GivingshelfAppMeta : {};
   const companyName = meta.companyName || 'SimplifAI LLC';
   const appVersion = meta.appVersion || '';
   const copyrightYear = meta.copyrightYear || `${new Date().getFullYear()}`;
@@ -495,8 +495,8 @@ const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
     <footer className="bg-gray-800 text-white py-8">
       <div className="container mx-auto px-4 text-center">
         <div className="flex items-center justify-center mb-4">
-          <img src="/bsc-icon.png" alt="BookShare Community" className="h-8 w-8 mr-2" />
-          <span className="text-xl font-semibold">BookShare Community</span>
+          <img src="/bsc-icon.png" alt="GivingShelf Community" className="h-8 w-8 mr-2" />
+          <span className="text-xl font-semibold">GivingShelf Community</span>
         </div>
         <p className="text-gray-300 mb-4">
           Connecting book lovers through the joy of sharing literature.

@@ -16,7 +16,7 @@ SSH into your EC2 instance and run:
 
 ```bash
 # The installation script will automatically use the config file from your repo
-cd /home/ubuntu/bookshare
+cd /home/ubuntu/givingshelf
 sudo bash deploy/install-cloudwatch-agent.sh
 ```
 
@@ -97,7 +97,7 @@ First, get your instance ID and optionally create an SNS topic for notifications
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 
 # Create SNS topic (optional, for email notifications)
-SNS_TOPIC_ARN=$(aws sns create-topic --name bookshare-alerts --query 'TopicArn' --output text)
+SNS_TOPIC_ARN=$(aws sns create-topic --name givingshelf-alerts --query 'TopicArn' --output text)
 aws sns subscribe --topic-arn $SNS_TOPIC_ARN --protocol email --notification-endpoint your-email@example.com
 
 # Create alarms

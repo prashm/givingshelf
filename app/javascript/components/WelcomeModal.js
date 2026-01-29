@@ -18,41 +18,41 @@ const WelcomeModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const modalContent = (
-    <div 
-      style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0, 
-        zIndex: 9999, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: '1rem',
         pointerEvents: 'auto'
       }}
     >
       {/* Backdrop */}
-      <div 
-        style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
           backdropFilter: 'blur(4px)',
           zIndex: 1
         }}
         onClick={onClose}
       />
-      
+
       {/* Modal */}
-      <div 
+      <div
         className="relative rounded-lg shadow-xl w-full max-w-lg p-8"
-        style={{ 
-          position: 'relative', 
+        style={{
+          position: 'relative',
           zIndex: 2,
           backgroundColor: '#ffffff',
           borderRadius: '0.5rem',
@@ -73,12 +73,12 @@ const WelcomeModal = ({ isOpen, onClose }) => {
 
         {/* Logo/Icon */}
         <div className="flex justify-center mb-6">
-          <img src="/bsc-icon.png" alt="BookShare Community" className="h-16 w-16" />
+          <img src="/bsc-icon.png" alt="GivingShelf Community" className="h-16 w-16" />
         </div>
 
         {/* Main Heading */}
         <h1 className="text-4xl font-bold text-gray-900 text-center mb-4">
-          Welcome to BookShare Community
+          Welcome to GivingShelf Community
         </h1>
 
         {/* Tagline */}
@@ -112,7 +112,7 @@ const WelcomeModal = ({ isOpen, onClose }) => {
   if (typeof document !== 'undefined' && document.body) {
     return createPortal(modalContent, document.body);
   }
-  
+
   return modalContent;
 };
 

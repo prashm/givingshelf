@@ -1,10 +1,10 @@
 # SSL Certificate Setup Guide
 
-This guide walks through setting up SSL certificates for booksharecommunity.org using Let's Encrypt.
+This guide walks through setting up SSL certificates for givingshelf.net using Let's Encrypt.
 
 ## Prerequisites
 
-1. DNS must be configured and propagated (booksharecommunity.org must resolve to your EC2 IP)
+1. DNS must be configured and propagated (givingshelf.net must resolve to your EC2 IP)
 2. Ports 80 and 443 must be open in your EC2 security group
 3. The domain must be accessible via HTTP before requesting certificates
 
@@ -20,7 +20,7 @@ Or check the AWS Console → EC2 → Your Instance → Public IPv4 address
 ## Step 2: Configure DNS in Namecheap
 
 1. Log into your Namecheap account
-2. Go to **Domain List** → Click **Manage** for `booksharecommunity.org`
+2. Go to **Domain List** → Click **Manage** for `givingshelf.net`
 3. Navigate to **Advanced DNS** tab
 4. Add/Update A Record:
    - **Type**: A Record
@@ -40,9 +40,9 @@ Wait 5-30 minutes for DNS to propagate, then verify:
 
 ```bash
 # On your local machine or EC2
-dig booksharecommunity.org
+dig givingshelf.net
 # or
-nslookup booksharecommunity.org
+nslookup givingshelf.net
 ```
 
 Verify it resolves to your EC2 IP address before proceeding.
@@ -61,14 +61,14 @@ In AWS Console:
 On your EC2 instance, navigate to the project directory and run:
 
 ```bash
-cd ~/bookshare
+cd ~/givingshelf
 
 # Request certificate for both root domain and www subdomain
 docker compose -f docker-compose.production.yml --profile certbot run --rm certbot certonly \
   --webroot \
   -w /var/www/certbot \
-  -d booksharecommunity.org \
-  -d www.booksharecommunity.org \
+  -d givingshelf.net \
+  -d www.givingshelf.net \
   --email your-email@example.com \
   --agree-tos \
   --non-interactive
@@ -76,7 +76,7 @@ docker compose -f docker-compose.production.yml --profile certbot run --rm certb
 
 Replace `your-email@example.com` with your actual email address.
 
-Certificates will be saved to: `/etc/letsencrypt/live/booksharecommunity.org/`
+Certificates will be saved to: `/etc/letsencrypt/live/givingshelf.net/`
 
 ## Step 6: Enable HTTPS in Nginx Configuration
 
@@ -84,7 +84,7 @@ After obtaining certificates, you need to enable the HTTPS server block in nginx
 
 1. Edit `deploy/nginx/nginx.conf` on your EC2 instance:
    ```bash
-   nano ~/bookshare/deploy/nginx/nginx.conf
+   nano ~/givingshelf/deploy/nginx/nginx.conf
    ```
 
 2. **Uncomment the HTTPS server block** (remove `#` from lines 53-102):
@@ -102,7 +102,7 @@ After obtaining certificates, you need to enable the HTTPS server block in nginx
 **Alternative: Manual editing steps:**
 
 ```bash
-cd ~/bookshare
+cd ~/givingshelf
 
 # Create a script to enable HTTPS
 cat > enable-https.sh << 'EOF'
@@ -170,13 +170,13 @@ docker compose -f docker-compose.production.yml restart nginx
 Test from your local machine:
 
 ```bash
-curl -I https://booksharecommunity.org
+curl -I https://givingshelf.net
 ```
 
 You should see a 200 OK response. Also verify HTTP redirects to HTTPS:
 
 ```bash
-curl -I http://booksharecommunity.org
+curl -I http://givingshelf.net
 ```
 
 Should show a 301 redirect to HTTPS.
@@ -190,7 +190,7 @@ Certificates expire in 90 days. Set up automatic renewal via cron:
 crontab -e
 
 # Add this line to run renewal weekly (every Monday at 3 AM)
-0 3 * * 1 cd /home/ubuntu/bookshare && ./deploy/nginx/renew-certificates.sh >> /var/log/certbot-renewal.log 2>&1
+0 3 * * 1 cd /home/ubuntu/givingshelf && ./deploy/nginx/renew-certificates.sh >> /var/log/certbot-renewal.log 2>&1
 ```
 
 Or create a systemd timer (recommended):
@@ -204,8 +204,8 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/ubuntu/bookshare
-ExecStart=/home/ubuntu/bookshare/deploy/nginx/renew-certificates.sh
+WorkingDirectory=/home/ubuntu/givingshelf
+ExecStart=/home/ubuntu/givingshelf/deploy/nginx/renew-certificates.sh
 ```
 
 Create `/etc/systemd/system/certbot-renewal.timer`:
@@ -232,20 +232,20 @@ sudo systemctl start certbot-renewal.timer
 Test that renewal works without actually renewing:
 
 ```bash
-cd ~/bookshare
+cd ~/givingshelf
 docker compose -f docker-compose.production.yml --profile certbot run --rm certbot renew --dry-run
 ```
 
 ## Troubleshooting
 
 ### Certificate request fails
-- Ensure DNS has propagated (check with `dig booksharecommunity.org`)
+- Ensure DNS has propagated (check with `dig givingshelf.net`)
 - Verify port 80 is open and accessible
 - Check nginx is running and serving the `/.well-known/acme-challenge/` location
 
 ### Nginx fails to start after enabling HTTPS
 - Check certificate paths are correct in nginx.conf
-- Verify certificates exist: `ls -la deploy/nginx/certbot/live/booksharecommunity.org/`
+- Verify certificates exist: `ls -la deploy/nginx/certbot/live/givingshelf.net/`
 - Check nginx logs: `docker compose -f docker-compose.production.yml logs nginx`
 
 ### Renewal fails
@@ -257,5 +257,5 @@ docker compose -f docker-compose.production.yml --profile certbot run --rm certb
 
 - Let's Encrypt Documentation: https://letsencrypt.org/docs/
 - Certbot Documentation: https://eff-certbot.readthedocs.io/
-- SSL Labs Test: https://www.ssllabs.com/ssltest/analyze.html?d=booksharecommunity.org
+- SSL Labs Test: https://www.ssllabs.com/ssltest/analyze.html?d=givingshelf.net
 
