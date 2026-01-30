@@ -1,4 +1,6 @@
-class BookRequest < ApplicationRecord
+class ItemRequest < ApplicationRecord
+  self.table_name = "item_requests"
+
   # Status constants
   PENDING_STATUS = 0
   ACCEPTED_STATUS = 1
@@ -7,34 +9,34 @@ class BookRequest < ApplicationRecord
   COMPLETED_STATUS = 4
 
   belongs_to :requester, class_name: "User"
-  belongs_to :book
+  belongs_to :item
   belongs_to :owner, class_name: "User"
   has_many :messages, dependent: :destroy
 
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
   validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS ] }
-  validates :requester_id, uniqueness: { scope: :book_id, message: "has already requested this book" }
-  validate :requester_cannot_request_own_book
-  validate :book_must_be_available, on: :create
+  validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
+  validate :requester_cannot_request_own_item
+  validate :item_must_be_available, on: :create
 
   scope :pending, -> { where(status: PENDING_STATUS) }
   scope :accepted, -> { where(status: ACCEPTED_STATUS) }
   scope :completed, -> { where(status: COMPLETED_STATUS) }
   scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
   scope :for_user, ->(user) { where(requester: user) }
-  scope :for_book_owner, ->(user) { where(owner: user) }
+  scope :for_item_owner, ->(user) { where(owner: user) }
   scope :recent, -> { order(created_at: :desc) }
 
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
     %w[
-      id id_value requester_id book_id owner_id status message
+      id id_value requester_id item_id owner_id status message
       created_at updated_at
     ]
   end
 
   def self.ransackable_associations(auth_object = nil)
-    [ "book", "owner", "requester", "messages" ]
+    [ "item", "owner", "requester", "messages" ]
   end
 
   before_validation :set_default_status, on: :create
@@ -44,9 +46,9 @@ class BookRequest < ApplicationRecord
 
   def accept!
     update!(status: ACCEPTED_STATUS)
-    book.update!(status: BookStatus::REQUESTED)
-    # Mark all other requests for this book as In Review
-    book.book_requests.where.not(id: id).update_all(status: IN_REVIEW_STATUS)
+    item.update!(status: ShareableItemStatus::REQUESTED)
+    # Mark all other requests for this item as In Review
+    item.item_requests.where.not(id: id).update_all(status: IN_REVIEW_STATUS)
   end
 
   def decline!
@@ -56,7 +58,7 @@ class BookRequest < ApplicationRecord
   def complete!
     raise "Can only complete an accepted request" unless accepted?
     update!(status: COMPLETED_STATUS)
-    book.update!(status: BookStatus::DONATED)
+    item.update!(status: ShareableItemStatus::DONATED)
   end
 
   def pending?
@@ -80,7 +82,7 @@ class BookRequest < ApplicationRecord
   end
 
   def can_update_status?
-    status == ACCEPTED_STATUS || !book.book_requests.exists?(status: ACCEPTED_STATUS)
+    status == ACCEPTED_STATUS || !item.item_requests.exists?(status: ACCEPTED_STATUS)
   end
 
   def mark_as_in_review!
@@ -94,25 +96,26 @@ class BookRequest < ApplicationRecord
   end
 
   def set_owner
-    self.owner ||= book.user if book.present?
+    self.owner ||= item.user if item.present?
   end
 
-
-  def requester_cannot_request_own_book
-    if requester == book.user
-      errors.add(:base, "You cannot request your own book")
+  def requester_cannot_request_own_item
+    if requester == item.user
+      errors.add(:base, "You cannot request your own item")
     end
   end
 
-  def book_must_be_available
-    unless book.available?
-      errors.add(:base, "This book is not available for request")
+  def item_must_be_available
+    unless item.available?
+      errors.add(:base, "This item is not available for request")
     end
   end
-
 
   def notify_status_change
     # In a real app, you'd send an email notification here
     Rails.logger.info "Status change notification sent to #{requester.email_address}"
   end
 end
+
+# Backward compatibility alias
+BookRequest = ItemRequest

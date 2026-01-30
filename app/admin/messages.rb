@@ -1,11 +1,11 @@
 ActiveAdmin.register Message do
-  permit_params :book_request_id, :user_id, :content, :read_at
+  permit_params :item_request_id, :user_id, :content, :read_at
 
   index do
     selectable_column
     id_column
-    column :book_request do |message|
-      link_to "Request ##{message.book_request_id}", admin_book_request_path(message.book_request)
+    column :item_request do |message|
+      link_to "Request ##{message.item_request_id}", admin_item_request_path(message.item_request)
     end
     column :user do |message|
       link_to message.user.email_address, admin_user_path(message.user)
@@ -41,7 +41,7 @@ ActiveAdmin.register Message do
 
   form do |f|
     f.inputs "Message Details" do
-      f.input :book_request, collection: BookRequest.all.map { |br| [ "Book: #{br.book.title} - Requester: #{br.requester.email_address}", br.id ] }
+      f.input :item_request, collection: ItemRequest.all.map { |ir| [ "#{ir.item.type}: #{ir.item.title} - Requester: #{ir.requester.email_address}", ir.id ] }
       f.input :user, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :content
       f.input :read_at, as: :date_time_picker

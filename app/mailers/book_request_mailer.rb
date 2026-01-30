@@ -1,13 +1,14 @@
 # app/mailers/book_request_mailer.rb
 class BookRequestMailer < ApplicationMailer
-    def new_request_notification(book_request)
-      @book_request = book_request
-      @book = book_request.book
-      @requester = book_request.requester
+  def new_request_notification(item_request)
+    @item_request = item_request
+    @item = item_request.item
+    @requester = item_request.requester
 
-      mail(
-        to: @book.user.email_address,
-        subject: "New Book Request: #{@book.title}"
-      )
-    end
+    item_type = @item.type.downcase
+    mail(
+      to: @item.user.email_address,
+      subject: "New #{item_type.capitalize} Request: #{@item.title}"
+    )
+  end
 end

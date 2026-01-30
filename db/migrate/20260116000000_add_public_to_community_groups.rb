@@ -4,4 +4,3 @@ class AddPublicToCommunityGroups < ActiveRecord::Migration[8.0]
     add_index :community_groups, :public
   end
 end
-

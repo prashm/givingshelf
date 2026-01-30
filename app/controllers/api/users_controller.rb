@@ -29,12 +29,12 @@ class Api::UsersController < ApplicationController
   end
 
   def my_requests
-    @requests = Current.user.book_requests.includes(:book, :requester).recent
+    @requests = Current.user.item_requests.includes(:item, :requester).recent
     render json: @requests.map { |request| request_json(request) }
   end
 
   def received_requests
-    @requests = BookRequest.for_book_owner(Current.user).includes(:book, :requester).recent
+    @requests = ItemRequest.for_item_owner(Current.user).includes(:item, :requester).recent
     render json: @requests.map { |request| request_json(request) }
   end
 
@@ -89,18 +89,37 @@ class Api::UsersController < ApplicationController
   end
 
   def request_json(request)
+    item = request.item
+    item_data = case item.type
+    when "Book"
+                  {
+                    id: item.id,
+                    title: item.title,
+                    author: item.author,
+                    cover_image_url: item.cover_image.attached? ? rails_blob_url(item.cover_image) : nil
+                  }
+    when "Toy"
+                  {
+                    id: item.id,
+                    title: item.title,
+                    brand: item.brand,
+                    cover_image_url: item.cover_image.attached? ? rails_blob_url(item.cover_image) : nil
+                  }
+    else
+                  {
+                    id: item.id,
+                    title: item.title,
+                    cover_image_url: item.cover_image.attached? ? rails_blob_url(item.cover_image) : nil
+                  }
+    end
+
     {
       id: request.id,
       status: request.status,
       message: request.message,
       created_at: request.created_at,
       updated_at: request.updated_at,
-      book: {
-        id: request.book.id,
-        title: request.book.title,
-        author: request.book.author,
-        cover_image_url: request.book.cover_image.attached? ? rails_blob_url(request.book.cover_image) : nil
-      },
+      item: item_data,
       requester: {
         id: request.requester.id,
         name: request.requester.display_name,

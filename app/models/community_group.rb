@@ -9,8 +9,12 @@ class CommunityGroup < ApplicationRecord
   has_many :community_group_memberships, dependent: :destroy
   has_many :members, through: :community_group_memberships, source: :user
   has_many :admins, -> { where(community_group_memberships: { admin: true }) }, through: :community_group_memberships, source: :user
-  has_many :group_book_availabilities, dependent: :destroy
-  has_many :available_books, through: :group_book_availabilities, source: :book
+  has_many :group_item_availabilities, dependent: :destroy
+  has_many :available_items, through: :group_item_availabilities, source: :item
+  has_many :available_books, -> { where(type: "Book") }, through: :group_item_availabilities, source: :item
+  has_many :available_toys, -> { where(type: "Toy") }, through: :group_item_availabilities, source: :item
+  # Backward compatibility alias
+  has_many :group_book_availabilities, class_name: "GroupItemAvailability", foreign_key: "community_group_id", dependent: :destroy
 
 
   before_validation :set_default_short_description

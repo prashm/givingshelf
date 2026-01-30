@@ -5,13 +5,15 @@
     <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
   </head>
   <body>
-    <h2>New Book Request</h2>
-    <p>Hello <%= @book.user.display_name %>,</p>
+    <% item_type = @item.type.downcase %>
+    <% item_description = @item.is_a?(Book) ? "#{@item.title} by #{@item.author}" : "#{@item.title} (#{@item.brand})" %>
+    <h2>New <%= item_type.capitalize %> Request</h2>
+    <p>Hello <%= @item.user.display_name %>,</p>
     
-    <p><%= @requester.display_name %> has requested your book "<%= @book.title %>" by <%= @book.author %>.</p>
+    <p><%= @requester.display_name %> has requested your <%= item_type %> "<%= item_description %>".</p>
     
     <h3>Request Message:</h3>
-    <p><%= @book_request.message %></p>
+    <p><%= @item_request.message %></p>
     
     <h3>Requester Details:</h3>
     <ul>

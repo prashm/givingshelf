@@ -81,6 +81,18 @@ Rails.application.routes.draw do
       end
     end
 
+    resources :toys, only: [ :index, :show, :create, :update, :destroy ] do
+      collection do
+        get :search
+        get :my_toys
+        get :stats
+      end
+      member do
+        post :track_view
+        get :user_request
+      end
+    end
+
     resources :users, only: [ :show, :update ] do
       collection do
         get :profile

@@ -5,9 +5,14 @@ class User < ApplicationRecord
   has_secure_password
   has_one_attached :profile_picture
   has_many :sessions, class_name: "Session", foreign_key: "user_id", dependent: :destroy
-  has_many :books, dependent: :destroy
-  has_many :book_requests, class_name: "BookRequest", foreign_key: "requester_id", dependent: :destroy
-  has_many :received_book_requests, class_name: "BookRequest", foreign_key: "owner_id", dependent: :destroy
+  has_many :items, dependent: :destroy
+  has_many :books, -> { where(type: "Book") }, class_name: "Item", foreign_key: "user_id", dependent: :destroy
+  has_many :toys, -> { where(type: "Toy") }, class_name: "Item", foreign_key: "user_id", dependent: :destroy
+  has_many :item_requests, class_name: "ItemRequest", foreign_key: "requester_id", dependent: :destroy
+  has_many :received_item_requests, class_name: "ItemRequest", foreign_key: "owner_id", dependent: :destroy
+  # Backward compatibility aliases
+  has_many :book_requests, class_name: "ItemRequest", foreign_key: "requester_id", dependent: :destroy
+  has_many :received_book_requests, class_name: "ItemRequest", foreign_key: "owner_id", dependent: :destroy
   has_many :messages, dependent: :destroy
   has_many :community_group_memberships, dependent: :destroy
   has_many :community_groups, through: :community_group_memberships

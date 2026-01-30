@@ -10,9 +10,9 @@ class Api::BooksController < ApplicationController
   end
 
   def my_books
-    @books = Current.user.books.includes(:book_requests).recent
+    @books = Current.user.books.includes(:item_requests).recent
     render json: {
-      statuses: BookStatus.data,
+      statuses: ShareableItemStatus.data,
       books: @books.map { |book| my_book_json(book) }
     }
   end
@@ -68,7 +68,7 @@ class Api::BooksController < ApplicationController
       return
     end
 
-    request = @book.book_requests.find_by(requester: Current.user, status: [ BookRequest::PENDING_STATUS, BookRequest::ACCEPTED_STATUS ])
+    request = @book.item_requests.find_by(requester: Current.user, status: [ ItemRequest::PENDING_STATUS, ItemRequest::ACCEPTED_STATUS ])
 
     if request
       render json: {
@@ -121,7 +121,7 @@ class Api::BooksController < ApplicationController
       author: book.author,
       condition: book.condition,
       status: book.status,
-      status_display: BookStatus.display_status(book.status),
+      status_display: ShareableItemStatus.display_status(book.status),
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       created_at: book.created_at
     }
@@ -133,7 +133,7 @@ class Api::BooksController < ApplicationController
     validate_and_setup_page_params(params[:page])
 
     if @errors.blank?
-      paginated_books = paginate(books.select("books.*, books.id as book_id"), "books.id", "book_id")
+      paginated_books = paginate(books.select("items.*, items.id as item_id"), "items.id", "item_id")
       # Build API response with pagination metadata
       response = {
         status: "Success",

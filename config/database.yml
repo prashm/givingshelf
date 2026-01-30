@@ -20,9 +20,8 @@ test:
 
 bookshare:
   <<: *default
-  database: <%= ENV.fetch("BOOKSHARE_DB_NAME", "bookshare_production") %>
-  host: <%= ENV.fetch("BOOKSHARE_DB_HOST", "localhost") %>
-  username: <%= ENV.fetch("BOOKSHARE_DB_USERNAME", "bookshare_user") %>
+  database: <%= ENV.fetch("BOOKSHARE_DB_NAME", "bookshare_dev") %>
+  username: <%= ENV.fetch("BOOKSHARE_DB_USERNAME", "bs_user") %>
   password: <%= ENV.fetch("BOOKSHARE_DB_PASSWORD", "") %>
 
 # Store production database in the storage/ directory, which by default

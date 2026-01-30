@@ -9,7 +9,7 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
   @@redis_available = nil
 
   def subscribed
-    @book_request = BookRequest.find(params[:book_request_id])
+    @book_request = ItemRequest.find(params[:book_request_id])
 
     unless can_access_chat?
       reject

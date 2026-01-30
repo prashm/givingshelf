@@ -49,44 +49,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
-  create_table "book_requests", force: :cascade do |t|
-    t.integer "book_id", null: false
-    t.datetime "created_at", null: false
-    t.text "message"
-    t.bigint "owner_id", null: false
-    t.integer "requester_id", null: false
-    t.integer "status", default: 0, null: false
-    t.datetime "updated_at", null: false
-    t.index ["book_id", "requester_id"], name: "index_book_requests_on_book_id_and_requester_id", unique: true
-    t.index ["book_id"], name: "index_book_requests_on_book_id"
-    t.index ["owner_id"], name: "index_book_requests_on_owner_id"
-    t.index ["requester_id"], name: "index_book_requests_on_requester_id"
-    t.index ["status"], name: "index_book_requests_on_status"
-  end
-
-  create_table "books", force: :cascade do |t|
-    t.string "author"
-    t.string "condition"
-    t.string "cover_image"
-    t.datetime "created_at", null: false
-    t.text "details"
-    t.string "genre"
-    t.string "isbn"
-    t.text "meta"
-    t.text "personal_note"
-    t.text "pickup_address"
-    t.string "pickup_method"
-    t.integer "published_year"
-    t.integer "status", default: 0, null: false
-    t.text "summary"
-    t.string "title"
-    t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
-    t.integer "view_count", default: 0, null: false
-    t.index ["status"], name: "index_books_on_status"
-    t.index ["user_id"], name: "index_books_on_user_id"
-  end
-
   create_table "community_group_memberships", force: :cascade do |t|
     t.boolean "admin", default: false, null: false
     t.boolean "auto_joined", default: false, null: false
@@ -117,14 +79,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
     t.index ["short_name"], name: "index_community_groups_on_short_name", unique: true
   end
 
-  create_table "group_book_availabilities", force: :cascade do |t|
-    t.bigint "book_id", null: false
+  create_table "group_item_availabilities", force: :cascade do |t|
     t.bigint "community_group_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "item_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["book_id", "community_group_id"], name: "index_gba_on_book_id_and_community_group_id", unique: true
-    t.index ["book_id"], name: "index_group_book_availabilities_on_book_id"
-    t.index ["community_group_id"], name: "index_group_book_availabilities_on_community_group_id"
+    t.index ["community_group_id"], name: "index_group_item_availabilities_on_community_group_id"
+    t.index ["item_id", "community_group_id"], name: "index_gia_on_item_id_and_community_group_id", unique: true
+    t.index ["item_id"], name: "index_group_item_availabilities_on_item_id"
   end
 
   create_table "group_membership_requests", force: :cascade do |t|
@@ -148,15 +110,56 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
     t.index ["status"], name: "index_group_membership_requests_on_status"
   end
 
+  create_table "item_requests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "item_id", null: false
+    t.text "message"
+    t.bigint "owner_id", null: false
+    t.bigint "requester_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["item_id", "requester_id"], name: "index_item_requests_on_item_id_and_requester_id", unique: true
+    t.index ["item_id"], name: "index_item_requests_on_item_id"
+    t.index ["owner_id"], name: "index_item_requests_on_owner_id"
+    t.index ["requester_id"], name: "index_item_requests_on_requester_id"
+    t.index ["status"], name: "index_item_requests_on_status"
+  end
+
+  create_table "items", force: :cascade do |t|
+    t.string "age_range"
+    t.string "brand"
+    t.string "condition"
+    t.string "cover_image"
+    t.datetime "created_at", null: false
+    t.text "details"
+    t.string "genre"
+    t.string "isbn"
+    t.text "meta"
+    t.text "personal_note"
+    t.text "pickup_address"
+    t.string "pickup_method"
+    t.integer "published_year"
+    t.integer "status", default: 0, null: false
+    t.text "summary"
+    t.string "title"
+    t.string "type", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.integer "view_count", default: 0, null: false
+    t.index ["status"], name: "index_items_on_status"
+    t.index ["type"], name: "index_items_on_type"
+    t.index ["user_id"], name: "index_items_on_user_id"
+  end
+
   create_table "messages", force: :cascade do |t|
-    t.bigint "book_request_id", null: false
     t.text "content"
     t.datetime "created_at", null: false
+    t.bigint "item_request_id", null: false
     t.datetime "read_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["book_request_id", "created_at"], name: "index_messages_on_book_request_id_and_created_at"
-    t.index ["book_request_id"], name: "index_messages_on_book_request_id"
+    t.index ["item_request_id", "created_at"], name: "index_messages_on_item_request_id_and_created_at"
+    t.index ["item_request_id"], name: "index_messages_on_item_request_id"
     t.index ["user_id"], name: "index_messages_on_user_id"
   end
 
@@ -184,7 +187,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
     t.boolean "suspicious_activity", default: false, null: false
     t.datetime "updated_at", null: false
     t.string "user_agent"
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["device_fingerprint"], name: "index_user_sessions_on_device_fingerprint"
     t.index ["suspicious_activity"], name: "index_user_sessions_on_suspicious_activity"
     t.index ["user_id"], name: "index_user_sessions_on_user_id"
@@ -219,19 +222,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
-  add_foreign_key "book_requests", "books"
-  add_foreign_key "book_requests", "users", column: "owner_id"
-  add_foreign_key "book_requests", "users", column: "requester_id"
-  add_foreign_key "books", "users"
   add_foreign_key "community_group_memberships", "community_groups"
   add_foreign_key "community_group_memberships", "group_membership_requests"
   add_foreign_key "community_group_memberships", "sub_groups"
   add_foreign_key "community_group_memberships", "users"
-  add_foreign_key "group_book_availabilities", "books"
-  add_foreign_key "group_book_availabilities", "community_groups"
+  add_foreign_key "group_item_availabilities", "community_groups"
+  add_foreign_key "group_item_availabilities", "items"
   add_foreign_key "group_membership_requests", "community_groups"
   add_foreign_key "group_membership_requests", "users", column: "requester_id"
-  add_foreign_key "messages", "book_requests"
+  add_foreign_key "item_requests", "items"
+  add_foreign_key "item_requests", "users", column: "owner_id"
+  add_foreign_key "item_requests", "users", column: "requester_id"
+  add_foreign_key "items", "users"
+  add_foreign_key "messages", "item_requests"
   add_foreign_key "messages", "users"
   add_foreign_key "sub_groups", "community_groups"
   add_foreign_key "user_sessions", "users"

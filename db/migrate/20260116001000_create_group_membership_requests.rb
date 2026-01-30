@@ -34,4 +34,3 @@ class CreateGroupMembershipRequests < ActiveRecord::Migration[8.0]
               name: "index_gmr_unique_invited_by_email_and_group"
   end
 end
-

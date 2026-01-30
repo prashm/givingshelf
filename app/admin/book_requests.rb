@@ -1,11 +1,20 @@
-ActiveAdmin.register BookRequest do
-  permit_params :requester_id, :book_id, :owner_id, :status, :message
+ActiveAdmin.register ItemRequest do
+  permit_params :requester_id, :item_id, :owner_id, :status, :message
 
   index do
     selectable_column
     id_column
-    column :book do |request|
-      link_to request.book.title, admin_book_path(request.book)
+    column :item do |request|
+      item = request.item
+      link_text = case item.type
+      when "Book"
+                    "#{item.title} by #{item.author}"
+      when "Toy"
+                    "#{item.title} (#{item.brand})"
+      else
+                    item.title
+      end
+      link_to link_text, (item.is_a?(Book) ? admin_book_path(item) : admin_toy_path(item))
     end
     column :requester do |request|
       link_to request.requester.email_address, admin_user_path(request.requester)
@@ -21,32 +30,41 @@ ActiveAdmin.register BookRequest do
     actions
   end
 
-  filter :book
+  filter :item
   filter :requester
   filter :owner
   filter :status, as: :select, collection: {
-    "Pending" => BookRequest::PENDING_STATUS,
-    "Accepted" => BookRequest::ACCEPTED_STATUS,
-    "Declined" => BookRequest::DECLINED_STATUS,
-    "In Review" => BookRequest::IN_REVIEW_STATUS,
-    "Completed" => BookRequest::COMPLETED_STATUS
+    "Pending" => ItemRequest::PENDING_STATUS,
+    "Accepted" => ItemRequest::ACCEPTED_STATUS,
+    "Declined" => ItemRequest::DECLINED_STATUS,
+    "In Review" => ItemRequest::IN_REVIEW_STATUS,
+    "Completed" => ItemRequest::COMPLETED_STATUS
   }
   filter :created_at
 
-  show do |book_request|
+  show do |item_request|
     attributes_table do
       row :id
-      row :book do
-        link_to book_request.book.title, admin_book_path(book_request.book)
+      row :item do
+        item = item_request.item
+        link_text = case item.type
+        when "Book"
+                      "#{item.title} by #{item.author}"
+        when "Toy"
+                      "#{item.title} (#{item.brand})"
+        else
+                      item.title
+        end
+        link_to link_text, (item.is_a?(Book) ? admin_book_path(item) : admin_toy_path(item))
       end
       row :requester do
-        link_to book_request.requester.email_address, admin_user_path(book_request.requester)
+        link_to item_request.requester.email_address, admin_user_path(item_request.requester)
       end
       row :owner do
-        link_to book_request.owner.email_address, admin_user_path(book_request.owner)
+        link_to item_request.owner.email_address, admin_user_path(item_request.owner)
       end
       row :status do
-        BookRequestService.new.display_status(book_request.status)
+        ItemRequestService.new.display_status(item_request.status)
       end
       row :message
       row :created_at
@@ -54,7 +72,7 @@ ActiveAdmin.register BookRequest do
     end
 
     panel "Messages" do
-      table_for book_request.messages.order(created_at: :desc) do
+      table_for item_request.messages.order(created_at: :desc) do
         column :user do |message|
           link_to message.user.email_address, admin_user_path(message.user)
         end
@@ -66,16 +84,16 @@ ActiveAdmin.register BookRequest do
   end
 
   form do |f|
-    f.inputs "Book Request Details" do
-      f.input :book, collection: Book.all.map { |b| [ "#{b.title} by #{b.author}", b.id ] }
+    f.inputs "Item Request Details" do
+      f.input :item, collection: Item.all.map { |i| [ "#{i.type}: #{i.title}", i.id ] }
       f.input :requester, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :owner, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :status, as: :select, collection: {
-        "Pending" => BookRequest::PENDING_STATUS,
-        "Accepted" => BookRequest::ACCEPTED_STATUS,
-        "Declined" => BookRequest::DECLINED_STATUS,
-        "In Review" => BookRequest::IN_REVIEW_STATUS,
-        "Completed" => BookRequest::COMPLETED_STATUS
+        "Pending" => ItemRequest::PENDING_STATUS,
+        "Accepted" => ItemRequest::ACCEPTED_STATUS,
+        "Declined" => ItemRequest::DECLINED_STATUS,
+        "In Review" => ItemRequest::IN_REVIEW_STATUS,
+        "Completed" => ItemRequest::COMPLETED_STATUS
       }
       f.input :message
     end

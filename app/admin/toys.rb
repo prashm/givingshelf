@@ -1,5 +1,5 @@
-ActiveAdmin.register Book do
-  permit_params :title, :author, :summary, :condition, :isbn, :genre, :published_year,
+ActiveAdmin.register Toy do
+  permit_params :title, :brand, :age_range, :summary, :condition,
                 :status, :view_count, :personal_note, :pickup_method, :pickup_address,
                 :user_id
 
@@ -7,14 +7,14 @@ ActiveAdmin.register Book do
     selectable_column
     id_column
     column :title
-    column :author
-    column :genre
+    column :brand
+    column :age_range
     column :condition
-    column :status do |book|
-      ShareableItemStatus.display_status(book.status)
+    column :status do |toy|
+      ShareableItemStatus.display_status(toy.status)
     end
-    column :user do |book|
-      link_to book.user.email_address, admin_user_path(book.user)
+    column :user do |toy|
+      link_to toy.user.email_address, admin_user_path(toy.user)
     end
     column :view_count
     column :created_at
@@ -22,8 +22,8 @@ ActiveAdmin.register Book do
   end
 
   filter :title
-  filter :author
-  filter :genre
+  filter :brand
+  filter :age_range
   filter :condition
   filter :status, as: :select, collection: ShareableItemStatus.collection
   filter :user
@@ -33,17 +33,15 @@ ActiveAdmin.register Book do
     attributes_table do
       row :id
       row :title
-      row :author
+      row :brand
+      row :age_range
       row :summary
       row :condition
-      row :isbn
-      row :genre
-      row :published_year
-      row :status do |book|
-        BookStatus.display_status(book.status)
+      row :status do |toy|
+        ShareableItemStatus.display_status(toy.status)
       end
-      row :user do |book|
-        link_to book.user.email_address, admin_user_path(book.user)
+      row :user do |toy|
+        link_to toy.user.email_address, admin_user_path(toy.user)
       end
       row :view_count
       row :personal_note
@@ -55,15 +53,13 @@ ActiveAdmin.register Book do
   end
 
   form do |f|
-    f.inputs "Book Details" do
+    f.inputs "Toy Details" do
       f.input :user, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :title
-      f.input :author
+      f.input :brand
+      f.input :age_range
       f.input :summary
       f.input :condition, as: :select, collection: %w[excellent good fair poor]
-      f.input :isbn
-      f.input :genre
-      f.input :published_year
       f.input :status, as: :select, collection: ShareableItemStatus.collection
       f.input :view_count
       f.input :personal_note

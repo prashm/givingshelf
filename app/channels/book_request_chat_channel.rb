@@ -1,6 +1,6 @@
 class BookRequestChatChannel < ApplicationCable::Channel
   def subscribed
-    @book_request = BookRequest.find(params[:book_request_id])
+    @book_request = ItemRequest.find(params[:book_request_id])
 
     unless can_access_chat?
       reject
@@ -15,7 +15,7 @@ class BookRequestChatChannel < ApplicationCable::Channel
   end
 
   def receive(data)
-    @book_request = BookRequest.find(params[:book_request_id])
+    @book_request = ItemRequest.find(params[:book_request_id])
 
     unless can_access_chat?
       transmit({ type: "error", message: "Not authorized" })
@@ -53,7 +53,7 @@ class BookRequestChatChannel < ApplicationCable::Channel
   end
 
   def typing(data)
-    @book_request = BookRequest.find(params[:book_request_id])
+    @book_request = ItemRequest.find(params[:book_request_id])
 
     unless can_access_chat?
       transmit({ type: "error", message: "Not authorized" })

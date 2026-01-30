@@ -3,41 +3,41 @@ class Api::BookRequestsController < ApplicationController
   before_action :set_book_request, only: [ :show, :update, :destroy, :messages ]
 
   def index
-    book_requests = book_request_service.requests_for_user(Current.user, params[:type])
-    render json: book_requests.map { |req| book_request_service.request_json(req) }
+    item_requests = item_request_service.requests_for_user(Current.user, params[:type])
+    render json: item_requests.map { |req| item_request_service.request_json(req) }
   end
 
   def show
-    unless @book_request.requester == Current.user || @book_request.book.owner?(Current.user)
+    unless @book_request.requester == Current.user || @book_request.item.owner?(Current.user)
       render json: { error: "Not authorized" }, status: :forbidden
     else
-      render json: book_request_service.request_json(@book_request)
+      render json: item_request_service.request_json(@book_request)
     end
   end
 
   def create
-    book_request = book_request_service.create_request(Current.user, params[:book_id], params[:message])
-    if book_request
-      render json: book_request_service.request_json(book_request), status: :created
+    item_request = item_request_service.create_request(Current.user, params[:book_id] || params[:item_id], params[:message])
+    if item_request
+      render json: item_request_service.request_json(item_request), status: :created
     else
-      Rails.logger.error "Book request creation failed: #{book_request_service.errors.join(', ')}"
-      render json: { errors: book_request_service.errors }, status: :unprocessable_entity
+      Rails.logger.error "Item request creation failed: #{item_request_service.errors.join(', ')}"
+      render json: { errors: item_request_service.errors }, status: :unprocessable_entity
     end
   end
 
   def update
-    if book_request_service.update_request(Current.user, params[:action_type])
-      render json: book_request_service.request_json(book_request_service.book_request)
+    if item_request_service.update_request(Current.user, params[:action_type])
+      render json: item_request_service.request_json(item_request_service.item_request)
     else
-      render json: { errors: book_request_service.errors }, status: :unprocessable_entity
+      render json: { errors: item_request_service.errors }, status: :unprocessable_entity
     end
   end
 
   def destroy
-    if book_request_service.cancel_request(Current.user)
+    if item_request_service.cancel_request(Current.user)
       render json: { message: "Request cancelled successfully" }
     else
-      render json: { errors: book_request_service.errors }, status: :unprocessable_entity
+      render json: { errors: item_request_service.errors }, status: :unprocessable_entity
     end
   end
 
@@ -71,11 +71,11 @@ class Api::BookRequestsController < ApplicationController
 
   private
 
-  def book_request_service
-    @book_request_service ||= BookRequestService.new(@book_request)
+  def item_request_service
+    @item_request_service ||= ItemRequestService.new(@book_request)
   end
 
   def set_book_request
-    @book_request = BookRequest.find(params[:id])
+    @book_request = ItemRequest.find(params[:id])
   end
 end

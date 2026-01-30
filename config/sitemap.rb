@@ -19,4 +19,12 @@ SitemapGenerator::Sitemap.create do
         priority: 0.8,
         changefreq: "weekly"
   end
+
+  # Add all available toys
+  Toy.available.find_each do |toy|
+    add "/toys/#{toy.id}",
+        lastmod: toy.updated_at,
+        priority: 0.8,
+        changefreq: "weekly"
+  end
 end
