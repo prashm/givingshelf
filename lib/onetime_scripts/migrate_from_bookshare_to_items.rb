@@ -10,14 +10,23 @@
 # Optional:
 #   OnetimeScripts::MigrateFromBookshareToItems.run!(dry_run: true)
 #
+# Image migration (user profile_picture, item cover_image and user_images):
+#   Bookshare uses S3; blob keys are the same (S3 object key = blob.key).
+#   Set BOOKSHARE_S3_BUCKET to the Bookshare S3 bucket name. Optional:
+#   BOOKSHARE_AWS_REGION (default: us-east-1),
+#   BOOKSHARE_AWS_ACCESS_KEY_ID, BOOKSHARE_AWS_SECRET_ACCESS_KEY (default: env/default credential chain).
+#   Alternatively set BOOKSHARE_STORAGE_ROOT to a disk path for local/copy migration.
+#   If neither is set, image migration is skipped.
+#
 module OnetimeScripts
   class MigrateFromBookshareToItems
-    def self.run!(dry_run: false)
-      new(dry_run: dry_run).run!
+    def self.run!(dry_run: false, bookshare_s3_bucket: nil)
+      new(dry_run: dry_run, bookshare_s3_bucket: bookshare_s3_bucket).run!
     end
 
-    def initialize(dry_run:)
+    def initialize(dry_run:, bookshare_s3_bucket:)
       @dry_run = dry_run
+      @bookshare_s3_bucket = bookshare_s3_bucket
       @user_map = {} # bookshare_user_id => givingshelf_user_id
       @group_map = {} # bookshare_group_id => givingshelf_group_id
       @book_map = {} # bookshare_book_id => givingshelf_item_id
@@ -32,8 +41,10 @@ module OnetimeScripts
       puts "dry_run=#{@dry_run}"
 
       migrate_users!
+      migrate_user_attachments!
       migrate_community_groups!
       migrate_books_to_items!
+      migrate_item_attachments!
       migrate_group_book_availabilities!
       migrate_book_requests!
       migrate_messages!
@@ -200,9 +211,6 @@ module OnetimeScripts
           author: bs_book.author,
           condition: bs_book.condition,
           summary: bs_book.summary,
-          details: bs_book.details,
-          meta: bs_book.meta,
-          cover_image: bs_book.cover_image,
           isbn: bs_book.isbn,
           genre: bs_book.genre,
           published_year: bs_book.published_year,
@@ -220,12 +228,165 @@ module OnetimeScripts
 
         gs_item.save!(validate: false)
         @book_map[bs_book.id] = gs_item.id
-
-        # TODO: Migrate Active Storage attachments if needed
-        # This would require copying blobs and attachments from Bookshare DB
       end
 
       puts "-- Book migration complete"
+    end
+
+    def migrate_user_attachments!
+      return unless bookshare_storage_configured?
+      puts ""
+      puts "-- Migrating user profile_picture attachments"
+
+      # Attachments in Bookshare DB: record_type may be "User" or "Bookshare::User"
+      bs_attachments = Bookshare::ActiveStorageAttachment.where(
+        record_type: [ "User", "Bookshare::User" ],
+        name: "profile_picture"
+      ).to_a
+      puts "Found #{bs_attachments.length} user profile_picture attachment(s)"
+
+      migrated = 0
+      skipped = 0
+      bs_attachments.each do |bs_att|
+        gs_user_id = @user_map[bs_att.record_id]
+        unless gs_user_id
+          skipped += 1
+          next
+        end
+        if @dry_run
+          migrated += 1
+          next
+        end
+        gs_user = User.find_by(id: gs_user_id)
+        next unless gs_user
+        next if gs_user.profile_picture.attached?
+        bs_blob = Bookshare::ActiveStorageBlob.find_by(id: bs_att.blob_id)
+        next unless bs_blob
+        io = read_bookshare_blob_io(bs_blob)
+        unless io
+          puts "  Skip user #{gs_user_id} profile_picture: blob file not found (key=#{bs_blob.key})"
+          skipped += 1
+          next
+        end
+        gs_user.profile_picture.attach(
+          io: io,
+          filename: bs_blob.filename,
+          content_type: bs_blob.content_type
+        )
+        migrated += 1
+      end
+      puts "Migrated: #{migrated}, Skipped: #{skipped}"
+      puts "-- User attachments complete"
+    end
+
+    def migrate_item_attachments!
+      return unless bookshare_storage_configured?
+      puts ""
+      puts "-- Migrating item attachments (cover_image, user_images)"
+
+      # record_type in Bookshare may be "Book" or "Bookshare::Book"
+      bs_attachments = Bookshare::ActiveStorageAttachment.where(
+        record_type: [ "Book", "Bookshare::Book" ],
+        name: [ "cover_image", "user_images" ]
+      ).order(:record_id, :name, :id).to_a
+      puts "Found #{bs_attachments.length} item attachment(s)"
+
+      migrated = 0
+      skipped = 0
+      bs_attachments.each do |bs_att|
+        gs_item_id = @book_map[bs_att.record_id]
+        unless gs_item_id
+          skipped += 1
+          next
+        end
+        if @dry_run
+          migrated += 1
+          next
+        end
+        gs_item = Item.find_by(id: gs_item_id)
+        next unless gs_item
+        bs_blob = Bookshare::ActiveStorageBlob.find_by(id: bs_att.blob_id)
+        next unless bs_blob
+        io = read_bookshare_blob_io(bs_blob)
+        unless io
+          puts "  Skip item #{gs_item_id} #{bs_att.name} (key=#{bs_blob.key}): blob file not found"
+          skipped += 1
+          next
+        end
+        if bs_att.name == "cover_image"
+          next if gs_item.cover_image.attached?
+          gs_item.cover_image.attach(
+            io: io,
+            filename: bs_blob.filename,
+            content_type: bs_blob.content_type
+          )
+        else
+          gs_item.user_images.attach(
+            io: io,
+            filename: bs_blob.filename,
+            content_type: bs_blob.content_type
+          )
+        end
+        migrated += 1
+      end
+      puts "Migrated: #{migrated}, Skipped: #{skipped}"
+      puts "-- Item attachments complete"
+    end
+
+    # True when Bookshare storage is configured (S3 bucket or disk root). When false, attachment steps are no-ops.
+    def bookshare_storage_configured?
+      @bookshare_storage_configured ||= begin
+        s3_ok = bookshare_s3_bucket.to_s.strip.present?
+        root = ENV["BOOKSHARE_STORAGE_ROOT"].to_s.strip
+        root = nil if root.empty?
+        root_ok = root && File.directory?(root)
+        if root && !File.directory?(root)
+          puts "  WARNING: BOOKSHARE_STORAGE_ROOT=#{root} is not a directory; disk fallback disabled."
+        end
+        unless s3_ok || root_ok
+          puts "  (Set BOOKSHARE_S3_BUCKET or BOOKSHARE_STORAGE_ROOT to migrate user/item images)"
+        end
+        s3_ok || root_ok
+      end
+    end
+
+    def bookshare_storage_root
+      @bookshare_storage_root ||= begin
+        root = ENV["BOOKSHARE_STORAGE_ROOT"].to_s.strip
+        root = nil if root.empty?
+        root = nil if root && !File.directory?(root)
+        root
+      end
+    end
+
+    def bookshare_s3_client
+      @bookshare_s3_client ||= begin
+        return nil if bookshare_s3_bucket.nil?
+        require "aws-sdk-s3"
+        opts = { region: ENV.fetch("AWS_REGION", "us-west-2") }
+        if ENV["AWS_ACCESS_KEY"].to_s.strip.present?
+          opts[:access_key_id] = ENV["AWS_ACCESS_KEY"].strip
+          opts[:secret_access_key] = ENV["AWS_SECRET_KEY"].to_s.strip
+        end
+        Aws::S3::Client.new(opts)
+      end
+    end
+
+    def bookshare_s3_bucket
+      @bookshare_s3_bucket ||= ENV["BOOKSHARE_S3_BUCKET"].to_s.strip.presence
+    end
+
+    # Reads blob from Bookshare storage. Tries S3 first (same key as blob.key), then disk.
+    # Returns a StringIO or nil if not found.
+    def read_bookshare_blob_io(bs_blob)
+      key = bs_blob.key
+
+      if bookshare_s3_bucket && bookshare_s3_client
+        resp = bookshare_s3_client.get_object(bucket: bookshare_s3_bucket, key: key)
+        StringIO.new(resp.body.read)
+      else
+        raise "Bookshare storage not configured"
+      end
     end
 
     def migrate_group_book_availabilities!

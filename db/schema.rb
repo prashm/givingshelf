@@ -127,14 +127,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
 
   create_table "items", force: :cascade do |t|
     t.string "age_range"
+    t.string "author"
     t.string "brand"
     t.string "condition"
-    t.string "cover_image"
     t.datetime "created_at", null: false
-    t.text "details"
     t.string "genre"
     t.string "isbn"
-    t.text "meta"
     t.text "personal_note"
     t.text "pickup_address"
     t.string "pickup_method"

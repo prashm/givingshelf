@@ -91,15 +91,6 @@ class ItemRequestService
   end
 
   def request_json(request)
-    item_json = case request.item.type
-    when "Book"
-                  BookService.new.book_json(request.item)
-    when "Toy"
-                  ToyService.new.toy_json(request.item)
-    else
-                  {}
-    end
-
     {
       id: request.id,
       status: request.status,
@@ -107,7 +98,6 @@ class ItemRequestService
       message: request.message,
       created_at: request.created_at,
       updated_at: request.updated_at,
-      item: item_json,
       can_update_status: request.can_update_status?,
       requester: {
         id: request.requester.id,
@@ -115,7 +105,18 @@ class ItemRequestService
         location: request.requester.location,
         verified: request.requester.verified?
       }
-    }
+    }.merge(item_map(request.item))
+  end
+
+  def item_map(item)
+    case item.type
+    when "Book"
+      { book: BookService.new.book_json(item) }
+    when "Toy"
+      { toy: ToyService.new.toy_json(item) }
+    else
+      { item: item.as_json }
+    end
   end
 
   def display_status(status)
