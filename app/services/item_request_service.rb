@@ -3,6 +3,9 @@ class ItemRequestService
   attr_accessor :item_request
   attr_reader :errors
 
+  alias_method :book_request, :item_request
+  alias_method :book_request=, :item_request=
+
   def initialize(item_request = nil)
     @item_request = item_request
     @errors = []
@@ -140,6 +143,3 @@ class ItemRequestService
     BookRequestNotificationJob.perform_later(self.item_request)
   end
 end
-
-# Backward compatibility alias
-BookRequestService = ItemRequestService

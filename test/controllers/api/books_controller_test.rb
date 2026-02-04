@@ -7,7 +7,7 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get show" do
-    get api_book_url(books(:one))
+    get api_book_url(items(:one))
     assert_response :success
   end
 
@@ -34,46 +34,46 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
 
     book_id = JSON.parse(response.body)["id"]
-    assert GroupBookAvailability.exists?(book_id: book_id, community_group_id: zip_group.id)
+    assert GroupItemAvailability.exists?(item_id: book_id, community_group_id: zip_group.id)
   end
 
   test "should update book" do
     sign_in_as(users(:one))
-    patch api_book_url(books(:one)), params: { book: { title: "Updated Title" } }
+    patch api_book_url(items(:one)), params: { book: { title: "Updated Title" } }
     assert_response :success
   end
 
   test "should destroy book" do
     sign_in_as(users(:one))
-    delete api_book_url(books(:one))
+    delete api_book_url(items(:one))
     assert_response :success
   end
 
   test "should search books" do
     zip_group = CommunityGroup.find_or_create_zipcode_group!
-    GroupBookAvailability.find_or_create_by!(book: books(:one), community_group: zip_group)
+    GroupItemAvailability.find_or_create_by!(item: items(:one), community_group: zip_group)
 
     get search_api_books_url, params: { query: "Gatsby", zip_code: "12345" }
     assert_response :success
 
     data = JSON.parse(response.body)["data"] || []
     ids = data.map { |b| b["id"] }
-    assert_includes ids, books(:one).id
+    assert_includes ids, items(:one).id
   end
 
   test "search with community_group_id only returns books available in that group" do
     group = community_groups(:one)
 
-    GroupBookAvailability.create!(book: books(:one), community_group: group)
-    GroupBookAvailability.where(book: books(:two), community_group: group).delete_all
+    GroupItemAvailability.create!(item: items(:one), community_group: group)
+    GroupItemAvailability.where(item: items(:two), community_group: group).delete_all
 
     get search_api_books_url, params: { query: "", zip_code: "12345", community_group_id: group.id }
     assert_response :success
 
     data = JSON.parse(response.body)["data"] || []
     ids = data.map { |b| b["id"] }
-    assert_includes ids, books(:one).id
-    assert_not_includes ids, books(:two).id
+    assert_includes ids, items(:one).id
+    assert_not_includes ids, items(:two).id
   end
 
   test "search with sub_group_id filters by owners membership subgroup" do
@@ -82,8 +82,8 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     sg2 = sub_groups(:two)
 
     # Ensure availabilities exist in group
-    GroupBookAvailability.find_or_create_by!(book: books(:one), community_group: group)
-    GroupBookAvailability.find_or_create_by!(book: books(:two), community_group: group)
+    GroupItemAvailability.find_or_create_by!(item: items(:one), community_group: group)
+    GroupItemAvailability.find_or_create_by!(item: items(:two), community_group: group)
 
     # Assign membership subgroups for owners
     CommunityGroupMembership.find_by!(user: users(:one), community_group: group).update!(sub_group_id: sg1.id)
@@ -94,8 +94,8 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
 
     data = JSON.parse(response.body)["data"] || []
     ids = data.map { |b| b["id"] }
-    assert_includes ids, books(:one).id
-    assert_not_includes ids, books(:two).id
+    assert_includes ids, items(:one).id
+    assert_not_includes ids, items(:two).id
   end
 
   test "stats uses community_group_stats when community_group_id is present" do

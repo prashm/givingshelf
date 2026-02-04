@@ -90,7 +90,11 @@ class ItemService
     items = base_scope.joins(:user, :group_item_availabilities)
 
     if query_string.present?
-      items = items.where("items.title ILIKE :query", query: "%#{query_string}%")
+      # Search title and author (author is used by Book; Toy has nil author)
+      items = items.where(
+        "items.title ILIKE :query OR items.author ILIKE :query",
+        query: "%#{ActiveRecord::Base.sanitize_sql_like(query_string)}%"
+      )
     end
 
     # Filter by community group availability

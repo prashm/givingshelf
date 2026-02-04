@@ -2,14 +2,14 @@
 
 one:
   requester: two
-  book: one
+  item: one
   owner: one
   status: 0
   message: "I would love to read this book! Please consider my request."
 
 two:
   requester: one
-  book: two
+  item: two
   owner: two
   status: 0
   message: "This looks like an interesting read. I'm very interested in borrowing it."

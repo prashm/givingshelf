@@ -1,6 +1,8 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+# Items table (STI). type: Book for book fixtures.
+# Reference as items(:one), items(:two) in tests.
 
 one:
+  type: Book
   user: one
   title: "The Great Gatsby"
   author: "F. Scott Fitzgerald"
@@ -11,6 +13,7 @@ one:
   status: 0
 
 two:
+  type: Book
   user: two
   title: "To Kill a Mockingbird"
   author: "Harper Lee"

@@ -23,7 +23,7 @@ ActiveAdmin.register ItemRequest do
       link_to request.owner.email_address, admin_user_path(request.owner)
     end
     column :status do |request|
-      BookRequestService.new.display_status(request.status)
+      ItemRequestService.new.display_status(request.status)
     end
     column :message
     column :created_at

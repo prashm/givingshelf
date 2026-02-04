@@ -13,6 +13,8 @@ class ItemRequest < ApplicationRecord
   belongs_to :owner, class_name: "User"
   has_many :messages, dependent: :destroy
 
+  alias_method :book, :item
+
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
   validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
