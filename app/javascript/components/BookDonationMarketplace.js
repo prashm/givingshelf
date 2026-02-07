@@ -495,11 +495,10 @@ const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
     <footer className="bg-gray-800 text-white py-8">
       <div className="container mx-auto px-4 text-center">
         <div className="flex items-center justify-center mb-4">
-          <img src="/bsc-icon.png" alt="GivingShelf Community" className="h-8 w-8 mr-2" />
-          <span className="text-xl font-semibold">GivingShelf Community</span>
+          <img src="/gs-logo.png" alt="GivingShelf" className="h-24 w-96 mr-2" />
         </div>
         <p className="text-gray-300 mb-4">
-          Connecting book lovers through the joy of sharing literature.
+          Connecting communities through local giving.
         </p>
         <div className="flex justify-center gap-6 mb-4 text-sm">
           <button

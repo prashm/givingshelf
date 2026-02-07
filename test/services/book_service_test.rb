@@ -55,11 +55,12 @@ class BookServiceTest < ActiveSupport::TestCase
     )
   end
 
-  describe "#create_book" do
+  describe "#create_item" do
     it "returns nil and sets error when user profile is incomplete" do
       service = BookService.new
       @user.stub(:profile_complete?, false) do
-        book = service.create_book(@user, {
+        book = service.create_item(@user, {
+          type: Book.name,
           title: "A Title",
           author: "An Author",
           condition: "good",
@@ -74,7 +75,8 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "creates group book availabilities for selected groups" do
       service = BookService.new
-      book = service.create_book(@user, {
+      book = service.create_item(@user, {
+        type: Book.name,
         title: "A Title",
         author: "An Author",
         condition: "good",
@@ -90,7 +92,8 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "defaults to ZIP group when community_group_ids not provided" do
       service = BookService.new
-      book = service.create_book(@user, {
+      book = service.create_item(@user, {
+        type: Book.name,
         title: "A Title 2",
         author: "An Author 2",
         condition: "good",
@@ -107,7 +110,8 @@ class BookServiceTest < ActiveSupport::TestCase
       CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
 
       service = BookService.new
-      book = service.create_book(@user, {
+      book = service.create_item(@user, {
+        type: Book.name,
         title: "A Title 3",
         author: "An Author 3",
         condition: "good",
@@ -121,14 +125,14 @@ class BookServiceTest < ActiveSupport::TestCase
     end
   end
 
-  describe "#update_book" do
+  describe "#update_item" do
     it "adds and removes group book availabilities" do
       book = items(:one)
       GroupItemAvailability.where(item: book).delete_all
       GroupItemAvailability.create!(item: book, community_group: @zip_group)
 
       service = BookService.new(book)
-      ok = service.update_book(@user, { community_group_ids: [ @other_group.id ] })
+      ok = service.update_item(@user, { community_group_ids: [ @other_group.id ] })
       assert ok, service.errors.to_sentence
 
       assert_not GroupItemAvailability.exists?(item: book, community_group: @zip_group)
@@ -141,7 +145,7 @@ class BookServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.create!(item: book, community_group: @zip_group)
 
       service = BookService.new(book)
-      ok = service.update_book(@user, { title: "Updated Without Groups" })
+      ok = service.update_item(@user, { title: "Updated Without Groups" })
       assert ok, service.errors.to_sentence
 
       assert GroupItemAvailability.exists?(item: book, community_group: @zip_group)
@@ -154,40 +158,40 @@ class BookServiceTest < ActiveSupport::TestCase
 
       book = items(:one)
       service = BookService.new(book)
-      ok = service.update_book(@user, { community_group_ids: [ outsider_group.id ] })
+      ok = service.update_item(@user, { community_group_ids: [ outsider_group.id ] })
       assert_not ok
       assert_includes service.errors.join(" "), "Invalid community group selection"
     end
   end
 
-  describe "#remove_book" do
+  describe "#remove_item" do
     it "returns false when non-owner tries to delete" do
       book = items(:one)
       service = BookService.new(book)
-      ok = service.remove_book(users(:two))
+      ok = service.remove_item(users(:two))
       assert_not ok
       assert_includes service.errors.join(" "), "Not authorized"
     end
   end
 
-  describe "#track_book_view" do
+  describe "#track_item_view" do
     it "increments view_count for non-owner but not for owner" do
       book = items(:one)
       book.update!(view_count: 0)
       service = BookService.new(book)
 
-      count = service.track_book_view(users(:two))
+      count = service.track_item_view(users(:two))
       assert_equal 1, count
 
-      count2 = service.track_book_view(users(:one))
+      count2 = service.track_item_view(users(:one))
       assert_equal 1, count2
     end
   end
 
-  describe "#search_books" do
-    def ensure_zip_availability_for(*books)
-      books.flatten.each do |b|
-        GroupItemAvailability.find_or_create_by!(item: b, community_group: @zip_group)
+  describe "#search_items" do
+    def ensure_zip_availability_for(*items)
+      items.flatten.each do |i|
+        GroupItemAvailability.find_or_create_by!(item: i, community_group: @zip_group)
       end
     end
 
@@ -199,7 +203,7 @@ class BookServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.create!(item: items(:one), community_group: group)
 
       service = BookService.new
-      result = service.search_books(query_string: "", zip_code: nil, community_group_id: group.id)
+      result = service.search_items(query_string: "", zip_code: nil, community_group_id: group.id)
       ids = result.pluck(:id)
       assert_includes ids, items(:one).id
       assert_not_includes ids, items(:two).id
@@ -219,7 +223,7 @@ class BookServiceTest < ActiveSupport::TestCase
       CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
 
       service = BookService.new
-      result = service.search_books(query_string: "", zip_code: nil, community_group_id: group.id, sub_group_id: sg1.id)
+      result = service.search_items(query_string: "", zip_code: nil, community_group_id: group.id, sub_group_id: sg1.id)
       ids = result.pluck(:id)
       assert_includes ids, items(:one).id
       assert_not_includes ids, items(:two).id
@@ -229,12 +233,12 @@ class BookServiceTest < ActiveSupport::TestCase
       ensure_zip_availability_for(items(:one), items(:two))
 
       service = BookService.new
-      result = service.search_books(query_string: "gatsby", zip_code: nil, community_group_id: nil)
+      result = service.search_items(query_string: "gatsby", zip_code: nil, community_group_id: nil)
       ids = result.pluck(:id)
       assert_includes ids, items(:one).id
       assert_not_includes ids, items(:two).id
 
-      result2 = service.search_books(query_string: "harper", zip_code: nil, community_group_id: nil)
+      result2 = service.search_items(query_string: "harper", zip_code: nil, community_group_id: nil)
       ids2 = result2.pluck(:id)
       assert_includes ids2, items(:two).id
       assert_not_includes ids2, items(:one).id
@@ -244,7 +248,7 @@ class BookServiceTest < ActiveSupport::TestCase
       ensure_zip_availability_for(items(:one), items(:two))
 
       service = BookService.new
-      result = service.search_books(query_string: "", zip_code: users(:one).zip_code, radius: nil, community_group_id: nil)
+      result = service.search_items(query_string: "", zip_code: users(:one).zip_code, radius: nil, community_group_id: nil)
       ids = result.pluck(:id)
       assert_includes ids, items(:one).id
       assert_not_includes ids, items(:two).id
@@ -263,7 +267,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
       AddressVerificationService.stub(:new, fake_avs) do
         service = BookService.new
-        result = service.search_books(query_string: "", zip_code: "12345", radius: "10", community_group_id: nil)
+        result = service.search_items(query_string: "", zip_code: "12345", radius: "10", community_group_id: nil)
         ids = result.pluck(:id)
         assert_includes ids, items(:one).id
         assert_not_includes ids, items(:two).id
@@ -279,7 +283,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
       AddressVerificationService.stub(:new, fake_avs) do
         service = BookService.new
-        result = service.search_books(query_string: "", zip_code: users(:one).zip_code, radius: "10", community_group_id: nil)
+        result = service.search_items(query_string: "", zip_code: users(:one).zip_code, radius: "10", community_group_id: nil)
         ids = result.pluck(:id)
         assert_includes ids, items(:one).id
         assert_not_includes ids, items(:two).id
@@ -293,37 +297,37 @@ class BookServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.create!(item: items(:one), community_group: @zip_group)
 
       service = BookService.new
-      result = service.search_books(query_string: "", zip_code: nil, community_group_id: nil)
+      result = service.search_items(query_string: "", zip_code: nil, community_group_id: nil)
       ids = result.pluck(:id)
       assert_includes ids, items(:one).id
       assert_not_includes ids, items(:two).id
     end
   end
 
-  describe "#book_can_be_requested_by?" do
+  describe "#item_can_be_requested_by?" do
     it "returns false when user is nil" do
       book = items(:one)
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(nil)
+      result = service.item_can_be_requested_by?(nil)
       assert_not result
-      assert_nil service.book_cannot_be_requested_by_reason
+      assert_nil service.item_cannot_be_requested_by_reason
     end
 
     it "returns false when book is not available" do
       book = setup_book_for_request_test(items(:one), status: BookStatus::DONATED)
       requester = users(:two)
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_nil service.book_cannot_be_requested_by_reason
+      assert_nil service.item_cannot_be_requested_by_reason
     end
 
     it "returns false when user is the owner" do
       book = items(:one)
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(book.user)
+      result = service.item_can_be_requested_by?(book.user)
       assert_not result
-      assert_nil service.book_cannot_be_requested_by_reason
+      assert_nil service.item_cannot_be_requested_by_reason
     end
 
     it "returns false with reason when user has pending request" do
@@ -333,9 +337,9 @@ class BookServiceTest < ActiveSupport::TestCase
       create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You have a pending or accepted request for this item", service.book_cannot_be_requested_by_reason
+      assert_equal "You have a pending or accepted request for this item", service.item_cannot_be_requested_by_reason
     end
 
     it "returns false with reason when user has accepted request" do
@@ -345,9 +349,9 @@ class BookServiceTest < ActiveSupport::TestCase
       create_book_request(book, requester, status: BookRequest::ACCEPTED_STATUS)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You have a pending or accepted request for this item", service.book_cannot_be_requested_by_reason
+      assert_equal "You have a pending or accepted request for this item", service.item_cannot_be_requested_by_reason
     end
 
     it "returns false with reason when book has no groups" do
@@ -355,9 +359,9 @@ class BookServiceTest < ActiveSupport::TestCase
       requester = users(:two)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "This item is not shared in any groups", service.book_cannot_be_requested_by_reason
+      assert_equal "This item is not shared in any groups", service.item_cannot_be_requested_by_reason
     end
 
     it "returns false with reason when user is not in any of the book's groups" do
@@ -366,9 +370,9 @@ class BookServiceTest < ActiveSupport::TestCase
       remove_user_from_group(requester, @other_group)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You are not a member of any groups this item is shared in", service.book_cannot_be_requested_by_reason
+      assert_equal "You are not a member of any groups this item is shared in", service.item_cannot_be_requested_by_reason
     end
 
     it "returns true when user can request the book" do
@@ -377,9 +381,9 @@ class BookServiceTest < ActiveSupport::TestCase
       add_user_to_group(requester, @other_group)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert result
-      assert_nil service.book_cannot_be_requested_by_reason
+      assert_nil service.item_cannot_be_requested_by_reason
     end
 
     it "returns true when book is in zipcode group and user is in zipcode group" do
@@ -388,9 +392,9 @@ class BookServiceTest < ActiveSupport::TestCase
       add_user_to_group(requester, @zip_group, auto_joined: true)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert result
-      assert_nil service.book_cannot_be_requested_by_reason
+      assert_nil service.item_cannot_be_requested_by_reason
     end
 
     it "prioritizes pending request reason over group membership reason" do
@@ -401,9 +405,9 @@ class BookServiceTest < ActiveSupport::TestCase
       remove_user_from_group(requester, @other_group)
 
       service = BookService.new(book)
-      result = service.book_can_be_requested_by?(requester)
+      result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You have a pending or accepted request for this item", service.book_cannot_be_requested_by_reason
+      assert_equal "You have a pending or accepted request for this item", service.item_cannot_be_requested_by_reason
     end
   end
 
@@ -418,7 +422,7 @@ class BookServiceTest < ActiveSupport::TestCase
       setup_book_groups(book, [ @zip_group, @other_group ])
 
       service = BookService.new(book)
-      json = service.book_json(book, @user)
+      json = service.item_detail_map(book, @user)
       assert_equal [ @zip_group.id, @other_group.id ].sort, Array(json[:community_group_ids]).sort
     end
 
@@ -428,7 +432,7 @@ class BookServiceTest < ActiveSupport::TestCase
       setup_book_groups(book, [ @zip_group ])
 
       service = BookService.new(book)
-      json = service.book_json(book, @user)
+      json = service.item_detail_map(book, @user)
 
       assert_includes json[:community_group_names], "12345 Community"
       assert_equal 1, json[:community_group_names].length
@@ -439,7 +443,7 @@ class BookServiceTest < ActiveSupport::TestCase
       setup_book_groups(book, [ @other_group ])
 
       service = BookService.new(book)
-      json = service.book_json(book, @user)
+      json = service.item_detail_map(book, @user)
 
       assert_includes json[:community_group_names], @other_group.name
       assert_equal 1, json[:community_group_names].length
@@ -451,7 +455,7 @@ class BookServiceTest < ActiveSupport::TestCase
       setup_book_groups(book, [ @zip_group, @other_group ])
 
       service = BookService.new(book)
-      json = service.book_json(book, @user)
+      json = service.item_detail_map(book, @user)
 
       assert_includes json[:community_group_names], "54321 Community"
       assert_includes json[:community_group_names], @other_group.name
@@ -464,7 +468,7 @@ class BookServiceTest < ActiveSupport::TestCase
       add_user_to_group(requester, @other_group)
 
       service = BookService.new(book)
-      json = service.book_json(book, requester)
+      json = service.item_detail_map(book, requester)
 
       assert json[:can_request]
       assert_nil json[:can_request_reason]
@@ -477,7 +481,7 @@ class BookServiceTest < ActiveSupport::TestCase
       create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
 
       service = BookService.new(book)
-      json = service.book_json(book, requester)
+      json = service.item_detail_map(book, requester)
 
       assert_not json[:can_request]
       assert_equal "You have a pending or accepted request for this item", json[:can_request_reason]
@@ -488,7 +492,7 @@ class BookServiceTest < ActiveSupport::TestCase
       requester = users(:two)
 
       service = BookService.new(book)
-      json = service.book_json(book, requester)
+      json = service.item_detail_map(book, requester)
 
       assert_not json[:can_request]
       assert_equal "This item is not shared in any groups", json[:can_request_reason]
@@ -500,7 +504,7 @@ class BookServiceTest < ActiveSupport::TestCase
       remove_user_from_group(requester, @other_group)
 
       service = BookService.new(book)
-      json = service.book_json(book, requester)
+      json = service.item_detail_map(book, requester)
 
       assert_not json[:can_request]
       assert_equal "You are not a member of any groups this item is shared in", json[:can_request_reason]
@@ -510,7 +514,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
 
       service = BookService.new(book)
-      json = service.book_json(book, nil)
+      json = service.item_detail_map(book, nil)
 
       assert_not json[:can_request]
       assert_nil json[:can_request_reason]
@@ -531,9 +535,9 @@ class BookServiceTest < ActiveSupport::TestCase
       service = BookService.new
       stats = service.community_group_stats(community_group_id: group.id)
 
-      assert_equal 1, stats[:books_shared]
-      assert_equal 1, stats[:books_donated]
-      assert_equal 2, stats[:books_requested]
+      assert_equal 1, stats[:items_shared]
+      assert_equal 1, stats[:items_donated]
+      assert_equal 2, stats[:items_requested]
       assert_equal 2, stats[:members]
     end
 
@@ -557,13 +561,13 @@ class BookServiceTest < ActiveSupport::TestCase
       stats_sg1 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg1.id)
       stats_sg2 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg2.id)
 
-      assert_equal 1, stats_sg1[:books_shared]
-      assert_equal 0, stats_sg1[:books_donated]
-      assert_equal 1, stats_sg1[:books_requested]
+      assert_equal 1, stats_sg1[:items_shared]
+      assert_equal 0, stats_sg1[:items_donated]
+      assert_equal 1, stats_sg1[:items_requested]
 
-      assert_equal 0, stats_sg2[:books_shared]
-      assert_equal 1, stats_sg2[:books_donated]
-      assert_equal 1, stats_sg2[:books_requested]
+      assert_equal 0, stats_sg2[:items_shared]
+      assert_equal 1, stats_sg2[:items_donated]
+      assert_equal 1, stats_sg2[:items_requested]
       assert_equal 1, stats_sg2[:members]
     end
 
@@ -583,9 +587,9 @@ class BookServiceTest < ActiveSupport::TestCase
       stats = service.community_group_stats(community_group_id: group.id, sub_group_id: sg2.id)
 
       assert_equal 0, stats[:members]
-      assert_equal 0, stats[:books_shared]
-      assert_equal 0, stats[:books_donated]
-      assert_equal 0, stats[:books_requested]
+      assert_equal 0, stats[:items_shared]
+      assert_equal 0, stats[:items_donated]
+      assert_equal 0, stats[:items_requested]
     end
   end
 end

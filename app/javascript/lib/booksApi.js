@@ -14,7 +14,7 @@ export const fetchCommunityStats = async (zipCode, radius = null, communityGroup
   if (subGroupId) {
     params.sub_group_id = subGroupId;
   }
-  const response = await axios.get('/api/books/stats', {
+  const response = await axios.get('/api/items/stats', {
     params,
     withCredentials: true,
   });

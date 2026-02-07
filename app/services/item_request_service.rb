@@ -114,7 +114,7 @@ class ItemRequestService
   def item_map(item)
     case item.type
     when "Book"
-      { book: BookService.new.book_json(item) }
+      { book: BookService.new.item_detail_map(item) }
     when "Toy"
       { toy: ToyService.new.toy_json(item) }
     else

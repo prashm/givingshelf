@@ -25,18 +25,18 @@
         if @book.cover_image.attached?
           page_image = content_for(:image) || rails_blob_url(@book.cover_image, only_path: false)
         else
-          page_image = content_for(:image) || "https://givingshelf.net/bsc-icon.png"
+          page_image = content_for(:image) || "https://givingshelf.net/gs-logo.png"
         end
         canonical_url = content_for(:canonical) || "https://givingshelf.net/books/#{@book.id}"
       else
-        page_title = content_for(:title) || "Donate Books for Free | GivingShelf - Share. Discover. Connect."
+        page_title = content_for(:title) || "Donate Items for Free | GivingShelf - Share. Discover. Connect."
         page_description = content_for(:description) || "Donate books for free in your local community. GivingShelf helps you donate used books, discover free books from neighbors, and share the joy of reading. 100% free book donation and sharing platform."
         # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
         current_url = request.url
         # Remove query parameters for canonical URL
         canonical_url = content_for(:canonical) || normalize_canonical_url(current_url.split('?').first)
         page_url = content_for(:url) || normalize_canonical_url(current_url)
-        page_image = content_for(:image) || "https://givingshelf.net/bsc-icon.png"
+        page_image = content_for(:image) || "https://givingshelf.net/gs-logo.png"
       end
       base_url = "https://givingshelf.net"
     %>
@@ -78,9 +78,9 @@
     <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
     <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
 
-    <link rel="icon" href="/bsc-icon.png" type="image/png">
-    <link rel="icon" href="/bsc-icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/bsc-icon.png">
+    <link rel="icon" href="/gs-icon.svg" type="image/svg+xml">
+    <link rel="icon" href="/gs-icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/gs-icon.png">
 
     <%# Structured Data (JSON-LD) %>
     <script type="application/ld+json">
@@ -92,7 +92,7 @@
             "@type" => "Organization",
             "name" => "GivingShelf",
             "url" => base_url,
-            "logo" => "#{base_url}/bsc-icon.png",
+            "logo" => "#{base_url}/gs-logo.png",
             "description" => "A community platform for sharing and discovering books. Donate used books and find great reads from neighbors.",
             "sameAs" => []
           }

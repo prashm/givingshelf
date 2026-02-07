@@ -66,10 +66,9 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
       <header className="bg-emerald-600 text-white shadow-sd relative h-16 w-full">
         <div className="flex justify-between items-center h-full w-full">
           <div className="flex items-center h-full cursor-pointer" onClick={() => handleNavClick('home')}>
-            <div className="bg-white h-full aspect-square flex items-center justify-center p-2">
-              <img src="/bsc-icon.png" alt="GivingShelf Community" className="h-full w-full object-contain" />
+            <div className="bg-white aspect-square flex items-center justify-center p-2">
+              <img src="/gs-logo.png" alt="GivingShelf" className="h-full w-48 object-contain" />
             </div>
-            <h1 className="text-xl md:text-2xl font-bold ml-4">GivingShelf Community</h1>
           </div>
 
           {/* Desktop Menu */}

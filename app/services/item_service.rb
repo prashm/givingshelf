@@ -9,7 +9,22 @@ class ItemService
     @errors = []
   end
 
-  def create_item(user, item_params, item_class)
+  def self.get_service(item_type, item)
+    type = item_type.presence || item&.type
+    case type
+    when Book.name
+      BookService.new(item)
+    when Toy.name
+      ToyService.new(item)
+    else
+      ItemService.new(item)
+    end
+  end
+
+  def create_item(user, item_params)
+    item_type = item_params[:type]
+    raise "Invalid item type: #{item_type}" unless Item.valid_type?(item_type)
+
     # Remove api_cover_image from item_params if present.
     # It's handled separately after saving the item.
     api_cover_image = item_params.delete(:cover_image)
@@ -20,7 +35,7 @@ class ItemService
       raise "User profile is incomplete."
     end
 
-    @item = user.items.build(item_params.merge(type: item_class.name))
+    @item = user.items.build(item_params.merge(type: item_type))
     ActiveRecord::Base.transaction do
       @item.save!
       sync_group_item_availabilities!(user, community_group_ids)
@@ -38,6 +53,7 @@ class ItemService
   end
 
   def update_item(user, item_params)
+    raise "Item can't be blank" unless self.item
     raise "Not authorized" if self.item.user != user
 
     # Exclude any image attributes if present. They're handled separately after saving the item.
@@ -86,6 +102,10 @@ class ItemService
     false
   end
 
+  def available_items
+    Item.available.includes(:user).recent
+  end
+
   def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     items = base_scope.joins(:user, :group_item_availabilities)
 
@@ -113,6 +133,30 @@ class ItemService
     end
 
     items.distinct
+  end
+
+  def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+    base_items = search_items(zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
+    base_requests = ItemRequest.joins(:item).merge(base_items)
+
+    {
+      items_shared: base_items.where.not(status: ShareableItemStatus::DONATED).distinct.count(:id),
+      items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
+      items_requested: base_requests.distinct.count(:id),
+      happy_users: base_requests.completed.distinct.count(:requester_id)
+    }
+  end
+
+  def community_group_stats(community_group_id:, sub_group_id: nil)
+    community_stats = community_stats(community_group_id: community_group_id, sub_group_id: sub_group_id)
+
+    membership_scope = CommunityGroupMembership.where(community_group_id: community_group_id)
+    if sub_group_id.present?
+      # Filter by the owner's membership subgroup for this community group.
+      membership_scope = membership_scope.where(sub_group_id: sub_group_id)
+    end
+
+    community_stats.merge(members: membership_scope.distinct.count(:user_id))
   end
 
   def track_item_view(current_user)
@@ -147,6 +191,30 @@ class ItemService
   rescue => e
     @item_cannot_be_requested_by_reason = e.message
     false
+  end
+
+  def item_detail_map(item, requester = nil)
+    # If you're here, then child service was not set during initialization.
+    case item&.type
+    when Book.name
+      BookService.new.item_detail_map(item, requester)
+    when Toy.name
+      ToyService.new.item_detail_map(item, requester)
+    else
+      raise "Invalid item type: #{item&.type}"
+    end
+  end
+
+  def item_map(item)
+    # If you're here, then child service was not set during initialization.
+    case item&.type
+    when Book.name
+      BookService.new.item_map(item)
+    when Toy.name
+      ToyService.new.item_map(item)
+    else
+      raise "Invalid item type: #{item&.type}"
+    end
   end
 
   private

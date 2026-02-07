@@ -1,6 +1,7 @@
 class Item < ApplicationRecord
   self.table_name = "items"
 
+
   belongs_to :user
   has_many :item_requests, dependent: :destroy
   has_many :group_item_availabilities, dependent: :destroy
@@ -31,6 +32,10 @@ class Item < ApplicationRecord
 
   def self.ransackable_associations(auth_object = nil)
     [ "item_requests", "user", "user_images" ]
+  end
+
+  def self.valid_type?(type)
+    [ Book.name, Toy.name ].include?(type)
   end
 
   def cover_image_url

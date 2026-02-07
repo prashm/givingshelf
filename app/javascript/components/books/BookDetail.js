@@ -88,7 +88,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
           });
       } else if (!viewTracked) {
         // For non-owners: Track view (increment) only once per page load
-        axios.post(`/api/books/${book.id}/track_view`)
+        axios.post(`/api/items/${book.id}/track_view`)
           .then(response => {
             setViewCount(response.data.view_count);
             setViewTracked(true);
@@ -106,7 +106,7 @@ const BookDetail = ({ book: initialBook, setCurrentPage, currentUser, onEditBook
     if (!book || !currentUser) return;
 
     axios
-      .get(`/api/books/${book.id}/user_request`)
+      .get(`/api/items/${book.id}/user_request`)
       .then(response => {
         if (response.data.has_requested) {
           setUserRequest(response.data.request);

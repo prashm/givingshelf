@@ -14,7 +14,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook, fromProf
   useEffect(() => {
     const fetchBooks = async () => {
       try {
-        const response = await fetch('/api/books/my_books');
+        const response = await fetch('/api/items/my_items');
         if (!response.ok) {
           throw new Error('Failed to fetch books');
         }

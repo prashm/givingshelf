@@ -15,7 +15,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
     books_shared: 0,
     books_donated: 0,
     books_requested: 0,
-    happy_readers: 0
+    happy_users: 0
   });
   const [statsLoading, setStatsLoading] = useState(false);
   const hasLoadedInitialStats = useRef(false);
@@ -207,12 +207,12 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
         {/* Community Stats */}
         <StatsSection
           title="Community Impact"
-          columnsClassName={communityStats.happy_readers > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'}
+          columnsClassName={communityStats.happy_users > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'}
           stats={[
             { key: 'books_shared', label: 'Books Shared', value: statsLoading ? '...' : communityStats.books_shared, valueClassName: 'text-blue-600' },
             { key: 'books_donated', label: 'Books Donated', value: statsLoading ? '...' : communityStats.books_donated, valueClassName: 'text-green-600' },
             { key: 'books_requested', label: 'Books Requested', value: statsLoading ? '...' : communityStats.books_requested, valueClassName: 'text-purple-600' },
-            ...((!statsLoading && communityStats.happy_readers > 0) ? [{ key: 'happy_readers', label: 'Happy Readers', value: communityStats.happy_readers, valueClassName: 'text-orange-600' }] : [])
+            ...((!statsLoading && communityStats.happy_users > 0) ? [{ key: 'happy_users', label: 'Happy Readers', value: communityStats.happy_users, valueClassName: 'text-orange-600' }] : [])
           ]}
         />
 

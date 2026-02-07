@@ -73,12 +73,12 @@ const WelcomeModal = ({ isOpen, onClose }) => {
 
         {/* Logo/Icon */}
         <div className="flex justify-center mb-6">
-          <img src="/bsc-icon.png" alt="GivingShelf Community" className="h-16 w-16" />
+          <img src="/gs-logo.png" alt="GivingShelf" className="h-16 w-16" />
         </div>
 
         {/* Main Heading */}
         <h1 className="text-4xl font-bold text-gray-900 text-center mb-4">
-          Welcome to GivingShelf Community
+          Welcome to GivingShelf
         </h1>
 
         {/* Tagline */}

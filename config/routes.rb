@@ -69,22 +69,10 @@ Rails.application.routes.draw do
     delete "my_groups/memberships/:id", to: "community_groups#leave_group"
     delete "my_groups/requests/:id", to: "community_groups#cancel_join_request"
 
-    resources :books, only: [ :index, :show, :create, :update, :destroy ] do
+    resources :items, only: [ :index, :show, :create, :update, :destroy ] do
       collection do
         get :search
-        get :my_books
-        get :stats
-      end
-      member do
-        post :track_view
-        get :user_request
-      end
-    end
-
-    resources :toys, only: [ :index, :show, :create, :update, :destroy ] do
-      collection do
-        get :search
-        get :my_toys
+        get :my_items
         get :stats
       end
       member do

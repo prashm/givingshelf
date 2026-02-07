@@ -211,7 +211,7 @@ export const BookProvider = ({ children }) => {
         params[key] = value;
       });
       
-      // Use the same endpoint that was used originally (could be /api/books or /api/books/search)
+      // Use the same endpoint that was used originally (could be /api/books or /api/items/search)
       const endpoint = currentEndpoint;
       
       const response = await axios.get(endpoint, {
@@ -264,7 +264,7 @@ export const BookProvider = ({ children }) => {
         paginationParams.sub_group_id = subGroupId;
       }
       
-      const endpoint = '/api/books/search';
+      const endpoint = '/api/items/search';
       setCurrentEndpoint(endpoint);
       
       const response = await axios.get(endpoint, {
@@ -318,7 +318,7 @@ export const BookProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`/api/books/${id}`, {
+      const response = await axios.get(`/api/items/${id}`, {
         withCredentials: true
       });
       return response.data;
@@ -385,7 +385,7 @@ export const BookProvider = ({ children }) => {
       });
 
       // Submit request
-      const response = await axios.patch(`/api/books/${bookId}`, formData, {
+      const response = await axios.patch(`/api/items/${bookId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -411,7 +411,7 @@ export const BookProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      await axios.delete(`/api/books/${bookId}`, {
+      await axios.delete(`/api/items/${bookId}`, {
         withCredentials: true
       });
 

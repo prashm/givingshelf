@@ -1,17 +1,17 @@
 require "test_helper"
 
-class Api::BooksControllerTest < ActionDispatch::IntegrationTest
+class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
   test "should get index" do
-    get api_books_url
+    get api_items_url, params: { type: Book.name }
     assert_response :success
   end
 
   test "should get show" do
-    get api_book_url(items(:one))
+    get api_item_url(items(:one))
     assert_response :success
   end
 
-  test "should create book" do
+  test "should create book item" do
     user = users(:one)
     sign_in_as(user)
     zip_group = CommunityGroup.find_or_create_zipcode_group!
@@ -20,8 +20,9 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
       m.auto_joined = true
     end
 
-    post api_books_url, params: {
-      book: {
+    post api_items_url, params: {
+      item: {
+        type: Book.name,
         title: "Test Book",
         author: "Test Author",
         condition: "good",
@@ -37,15 +38,15 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     assert GroupItemAvailability.exists?(item_id: book_id, community_group_id: zip_group.id)
   end
 
-  test "should update book" do
+  test "should update book item" do
     sign_in_as(users(:one))
-    patch api_book_url(items(:one)), params: { book: { title: "Updated Title" } }
+    patch api_item_url(items(:one)), params: { item: { title: "Updated Title" } }
     assert_response :success
   end
 
-  test "should destroy book" do
+  test "should destroy book item" do
     sign_in_as(users(:one))
-    delete api_book_url(items(:one))
+    delete api_item_url(items(:one))
     assert_response :success
   end
 
@@ -53,7 +54,7 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     zip_group = CommunityGroup.find_or_create_zipcode_group!
     GroupItemAvailability.find_or_create_by!(item: items(:one), community_group: zip_group)
 
-    get search_api_books_url, params: { query: "Gatsby", zip_code: "12345" }
+    get search_api_items_url, params: { type: Book.name, query: "Gatsby", zip_code: "12345" }
     assert_response :success
 
     data = JSON.parse(response.body)["data"] || []
@@ -67,7 +68,7 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     GroupItemAvailability.create!(item: items(:one), community_group: group)
     GroupItemAvailability.where(item: items(:two), community_group: group).delete_all
 
-    get search_api_books_url, params: { query: "", zip_code: "12345", community_group_id: group.id }
+    get search_api_items_url, params: { type: Book.name, query: "", zip_code: "12345", community_group_id: group.id }
     assert_response :success
 
     data = JSON.parse(response.body)["data"] || []
@@ -89,7 +90,7 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     CommunityGroupMembership.find_by!(user: users(:one), community_group: group).update!(sub_group_id: sg1.id)
     CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
 
-    get search_api_books_url, params: { query: "", community_group_id: group.id, sub_group_id: sg1.id }
+    get search_api_items_url, params: { type: Book.name, query: "", community_group_id: group.id, sub_group_id: sg1.id }
     assert_response :success
 
     data = JSON.parse(response.body)["data"] || []
@@ -109,11 +110,11 @@ class Api::BooksControllerTest < ActionDispatch::IntegrationTest
     end
     service_stub.define_singleton_method(:community_stats) do |**_kwargs|
       called[:community] = true
-      { books_shared: 999, books_donated: 999, books_requested: 999, happy_readers: 999 }
+      { books_shared: 999, books_donated: 999, books_requested: 999, happy_users: 999 }
     end
 
     BookService.stub(:new, service_stub) do
-      get stats_api_books_url, params: { community_group_id: group.id }
+      get stats_api_items_url, params: { type: Book.name, community_group_id: group.id }
       assert_response :success
     end
 
