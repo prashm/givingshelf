@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { useBooks } from '../../contexts/BookContext';
+import { useItems } from '../../contexts/ItemContext';
 
 const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook, fromProfile = false }) => {
   const [myBooks, setMyBooks] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, or integer status value
-  const { deleteBook: deleteBookFromAPI, getBook } = useBooks();
+  const { deleteItem: deleteBookFromAPI, getItem: getBook } = useItems();
   const [deletingBookId, setDeletingBookId] = useState(null);
   const [viewingBookId, setViewingBookId] = useState(null);
 
@@ -20,7 +20,7 @@ const MyBooks = ({ currentUser, setCurrentPage, onEditBook, onViewBook, fromProf
         }
         const data = await response.json();
         setStatuses(data.statuses || []);
-        setMyBooks(data.books || []);
+        setMyBooks(data.items || data.books || []);
       } catch (error) {
         console.error('Error fetching books:', error);
         // Optionally set an error state here to show to the user

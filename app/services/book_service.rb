@@ -1,12 +1,4 @@
 class BookService < ItemService
-  def stats_base_scope
-    Book.all
-  end
-
-  def available_items
-    Book.available.includes(:user).recent
-  end
-
   def search_items(base_scope: Book.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     super(
       base_scope: base_scope,
@@ -43,6 +35,7 @@ class BookService < ItemService
 
     result = {
       id: book.id,
+      type: Book.name,
       title: book.title,
       author: book.author,
       condition: book.condition,
@@ -76,5 +69,11 @@ class BookService < ItemService
       result[:can_request_reason] = @item_cannot_be_requested_by_reason
     end
     result
+  end
+
+  private
+
+  def type_class
+    Book
   end
 end

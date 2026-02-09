@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, BookOpenIcon, ChevronDownIcon, ChevronRightIcon, GiftIcon, CubeIcon } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/solid';
+import * as Constants from '../lib/constants';
 
 const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
   const [offsetY, setOffsetY] = useState(0);
@@ -11,15 +12,15 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleBrowseBooks = () => setCurrentPage('browse');
+  const handleBrowseBooks = () => setCurrentPage('books');
   const handleDonateBooks = () => {
-    if (currentUser) setCurrentPage('donate');
-    else onOpenLoginModal('donate');
+    if (currentUser) setCurrentPage('donate', { donateItemType: Constants.ITEM_TYPE_BOOK });
+    else onOpenLoginModal('donate', { donateItemType: Constants.ITEM_TYPE_BOOK });
   };
-  const handleBrowseToys = () => setCurrentPage('browse');
+  const handleBrowseToys = () => setCurrentPage('toys');
   const handleDonateToys = () => {
-    if (currentUser) setCurrentPage('donate');
-    else onOpenLoginModal('donate');
+    if (currentUser) setCurrentPage('donate', { donateItemType: Constants.ITEM_TYPE_TOY });
+    else onOpenLoginModal('donate', { donateItemType: Constants.ITEM_TYPE_TOY });
   };
 
   const handleScrollClick = () => {

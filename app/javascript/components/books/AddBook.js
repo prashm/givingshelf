@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useBooks } from '../../contexts/BookContext';
+import { useItems } from '../../contexts/ItemContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookForm } from '../../hooks/useBookForm';
 import { useImageCrop } from '../../hooks/useImageCrop';
@@ -32,7 +32,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
     return null;
   }
 
-  const { createBook, loading, error } = useBooks();
+  const { createItem, loading, error } = useItems();
   const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useBookForm(initialTitle ? { title: initialTitle } : {});
 
   // Default group selections:
@@ -163,9 +163,9 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
 
     if (!validateForm()) return;
 
-    const result = await createBook(formData);
+    const result = await createItem(formData);
     if (result.success) {
-      setCurrentPage('browse');
+      setCurrentPage('books');
     }
   };
 
@@ -221,7 +221,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
                   // If user navigated to donate via navbar while already on Add Book,
                   // previousPage becomes 'donate' and Cancel would no-op. Always go
                   // somewhere sensible when cancelling.
-                  const target = (previousPage && previousPage !== 'donate') ? previousPage : 'browse';
+                  const target = (previousPage && previousPage !== 'donate') ? previousPage : 'books';
                   setCurrentPage(target);
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"

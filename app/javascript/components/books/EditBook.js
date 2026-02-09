@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useBooks } from '../../contexts/BookContext';
+import { useItems } from '../../contexts/ItemContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookForm } from '../../hooks/useBookForm';
 import { useImageCrop } from '../../hooks/useImageCrop';
@@ -23,7 +23,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
     return null;
   }
 
-  const { getBook, updateBook, loading, error } = useBooks();
+  const { getItem, updateItem, loading, error } = useItems();
   const { formData, validationErrors, handleInputChange, validateForm, updateFormData, resetForm } = useBookForm();
   const {
     imgRef,
@@ -78,7 +78,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
   useEffect(() => {
     const fetchBook = async () => {
       try {
-        const bookData = await getBook(bookId);
+        const bookData = await getItem(bookId);
         if (bookData) {
           setBook(bookData);
           resetForm({
@@ -124,7 +124,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
     if (bookId) {
       fetchBook();
     }
-  }, [bookId, getBook, resetForm]);
+  }, [bookId, getItem, resetForm]);
 
   const handleImageInputChange = (e) => {
     const file = handleInputChange(e);
@@ -216,7 +216,7 @@ const EditBook = ({ setCurrentPage, bookId }) => {
       remove_user_image_indices: Array.from(removedExistingImageIndices)
     };
 
-    const result = await updateBook(bookId, updateData);
+    const result = await updateItem(bookId, updateData);
     if (result.success) {
       window.history.back();
     }

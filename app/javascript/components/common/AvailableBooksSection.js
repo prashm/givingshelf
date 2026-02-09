@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Constants from '../../lib/constants';
 
 const AvailableBooksSection = ({
   title = 'Available Books',
@@ -8,9 +9,27 @@ const AvailableBooksSection = ({
   paginationMeta,
   loadMoreBooks,
   loading = false,
-  emptyMessage = 'No books available yet.'
+  emptyMessage = 'No books available yet.',
+  itemType = Constants.ITEM_TYPE_BOOK
 }) => {
   const hasMore = Boolean(paginationMeta?.hasMore) && books.length < (paginationMeta?.total ?? 0);
+  const isBook = itemType === Constants.ITEM_TYPE_BOOK;
+
+  const renderItemSubtitle = (item) => {
+    if (isBook) {
+      return item.author ? <p className="text-gray-600 mb-2">by {item.author}</p> : null;
+    }
+    return (item.brand || item.age_range) ? (
+      <p className="text-gray-600 mb-2">{[item.brand, item.age_range].filter(Boolean).join(' • ')}</p>
+    ) : null;
+  };
+
+  const renderItemMeta = (item) => {
+    if (isBook) {
+      return <span className="text-sm text-gray-500">{item.genre || '-'}</span>;
+    }
+    return <span className="text-sm text-gray-500">{item.brand || item.age_range || '-'}</span>;
+  };
 
   return (
     <div className="mb-12">
@@ -26,17 +45,17 @@ const AvailableBooksSection = ({
       {books.length > 0 ? (
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.map((book) => (
+            {books.map((item) => (
               <div
-                key={book.id}
+                key={item.id}
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => onBookSelect?.(book)}
+                onClick={() => onBookSelect?.(item)}
               >
                 <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
-                  {book.cover_image_url ? (
+                  {item.cover_image_url ? (
                     <img
-                      src={book.cover_image_url}
-                      alt={book.title}
+                      src={item.cover_image_url}
+                      alt={item.title}
                       className="img-box"
                     />
                   ) : (
@@ -49,16 +68,16 @@ const AvailableBooksSection = ({
                   )}
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">{book.title}</h3>
-                  <p className="text-gray-600 mb-2">by {book.author}</p>
+                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">{item.title}</h3>
+                  {renderItemSubtitle(item)}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{book.genre}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${book.condition === 'excellent' ? 'bg-green-100 text-green-800' :
-                      book.condition === 'good' ? 'bg-blue-100 text-blue-800' :
-                        book.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                    {renderItemMeta(item)}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.condition === 'excellent' ? 'bg-green-100 text-green-800' :
+                      item.condition === 'good' ? 'bg-blue-100 text-blue-800' :
+                        item.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
-                      }`}>
-                      {book.condition}
+                    }`}>
+                      {item.condition}
                     </span>
                   </div>
                 </div>

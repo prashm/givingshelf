@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Constants from './constants';
 
 /**
  * Converts URLs in text to clickable links
@@ -56,22 +57,33 @@ export const linkifyText = (text) => {
 /**
  * Parses the page state from a URL path
  * @param {string} path - The URL path to parse
- * @returns {Object} Object with page type and groupShortName (if applicable)
- * @returns {string} returns.page - The page type: 'browse', 'groupPage', or 'home'
- * @returns {string|null} returns.groupShortName - The group short name if on a group page, null otherwise
+ * @returns {Object} Object with page, itemType, and groupShortName
  */
 export const parsePageFromPath = (path) => {
-  if (path === '/browse') {
-    return { page: 'browse', groupShortName: null };
+  if (path === '/books') {
+    return { page: 'books', itemType: Constants.ITEM_TYPE_BOOK, groupShortName: null };
+  }
+  if (path === '/toys') {
+    return { page: 'toys', itemType: Constants.ITEM_TYPE_TOY, groupShortName: null };
   }
   if (path.startsWith('/my-groups')) {
-    return { page: 'myGroups', groupShortName: null };
+    return { page: 'myGroups', groupShortName: null, itemType: null };
   }
-  const groupMatch = path.match(/^\/g\/([^\/]+)/);
+  // /g/:short_name/books or /g/:short_name/toys
+  const groupBooksMatch = path.match(/^\/g\/([^/]+)\/books$/);
+  if (groupBooksMatch) {
+    return { page: 'groupBrowse', groupShortName: groupBooksMatch[1], itemType: Constants.ITEM_TYPE_BOOK };
+  }
+  const groupToysMatch = path.match(/^\/g\/([^/]+)\/toys$/);
+  if (groupToysMatch) {
+    return { page: 'groupBrowse', groupShortName: groupToysMatch[1], itemType: Constants.ITEM_TYPE_TOY };
+  }
+  // /g/:short_name (group landing)
+  const groupMatch = path.match(/^\/g\/([^/]+)$/);
   if (groupMatch) {
-    return { page: 'groupPage', groupShortName: groupMatch[1] };
+    return { page: 'groupLanding', groupShortName: groupMatch[1], itemType: null };
   }
-  return { page: 'home', groupShortName: null };
+  return { page: 'home', groupShortName: null, itemType: null };
 };
 
 /**
@@ -82,15 +94,13 @@ export const parsePageFromPath = (path) => {
  */
 export const getGroupPageInfo = () => {
   if (typeof window !== 'undefined') {
-    // First check history state for groupShortName
     const state = window.history.state;
     if (state && state.groupShortName) {
       return { isGroupPage: true, groupShortName: state.groupShortName };
     }
-    // Fallback: check URL
     const path = window.location.pathname;
     const parsed = parsePageFromPath(path);
-    if (parsed.page === 'groupPage') {
+    if (parsed.page === 'groupLanding' || parsed.page === 'groupBrowse') {
       return { isGroupPage: true, groupShortName: parsed.groupShortName };
     }
   }

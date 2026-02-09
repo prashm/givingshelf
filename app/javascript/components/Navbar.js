@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import LoginSignupModal from './auth/LoginSignupModal';
+import * as Constants from '../lib/constants';
 
-const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLoginModalOpen, onOpenLoginModal, onCloseLoginModal }) => {
+const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLogout, isLoginModalOpen, onOpenLoginModal, onCloseLoginModal }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -17,10 +18,14 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
     onLoginSuccess(profileIncomplete);
   };
 
-  const handleNavClick = (page) => {
-    setCurrentPage(page);
+  const handleNavClick = (page, extraState = {}) => {
+    setCurrentPage(page, extraState);
     setIsMobileMenuOpen(false);
   };
+
+  const isOnToysPage = currentPage === 'toys' || (typeof window !== 'undefined' && window.location.pathname === '/toys');
+  const donateLabel = isOnToysPage ? 'Donate a Toy' : 'Donate a Book';
+  const donateExtra = isOnToysPage ? { donateItemType: Constants.ITEM_TYPE_TOY } : { donateItemType: Constants.ITEM_TYPE_BOOK };
 
   const handleLogout = () => {
     onLogout();
@@ -46,7 +51,7 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
 
   const menuItems = currentUser ? (
     <>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('donate')}>Donate a Book</li>
+      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('donate', donateExtra)}>{donateLabel}</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myBooks')}>My Books</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('messages')}>My Requests</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myGroups')}>My Groups</li>
@@ -76,7 +81,7 @@ const Navbar = ({ currentUser, setCurrentPage, onLoginSuccess, onLogout, isLogin
             <ul className="flex space-x-6">
               {currentUser ? (
                 <>
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate')}>Donate a Book</li>
+                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate', donateExtra)}>{donateLabel}</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myBooks')}>My Books</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>My Requests</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myGroups')}>My Groups</li>

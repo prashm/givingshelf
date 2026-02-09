@@ -1,7 +1,7 @@
 class Toy < Item
-  # Toy-specific validations
-  validates :brand, presence: true, length: { minimum: 1, maximum: 255 }
-  validates :age_range, presence: true, length: { minimum: 1, maximum: 50 }
+  # Toy-specific validations (brand and age_range optional)
+  validates :brand, length: { maximum: 255 }, allow_blank: true
+  validates :age_range, length: { maximum: 50 }, allow_blank: true
 
   # Toy-specific scopes
   scope :by_brand, ->(brand) { where("brand ILIKE ?", "%#{brand}%") }

@@ -103,7 +103,7 @@ class ItemService
   end
 
   def available_items
-    Item.available.includes(:user).recent
+    type_class.available.includes(:user).recent
   end
 
   def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
@@ -136,7 +136,7 @@ class ItemService
   end
 
   def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    base_items = search_items(zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
+    base_items = search_items(base_scope: type_class, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
@@ -218,6 +218,10 @@ class ItemService
   end
 
   private
+
+  def type_class
+    Item
+  end
 
   def sync_group_item_availabilities!(user, community_group_ids)
     zip_group = CommunityGroup.zipcode_group

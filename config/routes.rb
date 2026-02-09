@@ -49,6 +49,8 @@ Rails.application.routes.draw do
 
   # Group pages (before catch-all)
   get "/g/:short_name", to: "group_pages#show", as: :group_page
+  get "/g/:short_name/books", to: "group_pages#show"
+  get "/g/:short_name/toys", to: "group_pages#show"
 
   # API routes
   namespace :api do

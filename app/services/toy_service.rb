@@ -1,12 +1,4 @@
 class ToyService < ItemService
-  def stats_base_scope
-    Toy.all
-  end
-
-  def available_items
-    Toy.available.includes(:user).recent
-  end
-
   def search_items(base_scope: Toy.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     super(
       base_scope: base_scope,
@@ -44,6 +36,7 @@ class ToyService < ItemService
 
     result = {
       id: toy.id,
+      type: Toy.name,
       title: toy.title,
       brand: toy.brand,
       age_range: toy.age_range,
@@ -69,11 +62,17 @@ class ToyService < ItemService
       request_count: toy.item_requests.count,
       created_at: toy.created_at,
       updated_at: toy.updated_at,
-      can_request: toy_can_be_requested_by?(requester)
+      can_request: item_can_be_requested_by?(requester)
     }
-    if @toy_cannot_be_requested_by_reason.present?
-      result[:can_request_reason] = @toy_cannot_be_requested_by_reason
+    if @item_cannot_be_requested_by_reason.present?
+      result[:can_request_reason] = @item_cannot_be_requested_by_reason
     end
     result
+  end
+
+  private
+
+  def type_class
+    Toy
   end
 end

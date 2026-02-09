@@ -109,7 +109,7 @@ class Api::ItemsController < ApplicationController
   end
 
   def item_params
-    params.require(:item).permit(:type, :title, :author, :condition, :summary, :isbn, :genre, :published_year,
+    params.require(:item).permit(:type, :title, :author, :brand, :age_range, :condition, :summary, :isbn, :genre, :published_year,
     :cover_image, :api_cover_image, :personal_note, :pickup_method, :pickup_address,
     community_group_ids: [], user_images: [], remove_user_image_indices: [])
   end
