@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# Load Bookshare models only when running this script (they are not in app/models so they
+# do not establish_connection :bookshare during normal app boot or tests).
+Dir[Rails.root.join("lib/bookshare_models/*.rb")].sort.each { |f| require f }
+
 # One-time migration script to migrate data from Bookshare DB to GivingShelf DB (STI structure).
 #
 # Run from Rails console (recommended):
