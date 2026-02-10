@@ -125,7 +125,7 @@ GEM
     bindex (0.8.1)
     bootsnap (1.21.1)
       msgpack (~> 1.2)
-    brakeman (7.1.2)
+    brakeman (8.0.2)
       racc
     builder (3.3.0)
     capybara (3.40.0)
@@ -162,7 +162,6 @@ GEM
     ffi (1.17.2-x86_64-darwin)
     ffi (1.17.2-x86_64-linux-gnu)
     ffi (1.17.2-x86_64-linux-musl)
-    foreman (0.88.1)
     formtastic (5.0.0)
       actionpack (>= 6.0.0)
     formtastic_i18n (0.7.0)
@@ -515,7 +514,6 @@ DEPENDENCIES
   brakeman
   capybara
   debug
-  foreman (~> 0.88.1)
   formtastic
   geocoder
   importmap-rails

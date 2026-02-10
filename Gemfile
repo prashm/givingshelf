@@ -84,8 +84,6 @@ group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 
-  gem "foreman", "~> 0.88.1"
-
   # Language Server Protocol for Ruby [https://github.com/Shopify/ruby-lsp]
   # gem "ruby-lsp", require: false
 end
