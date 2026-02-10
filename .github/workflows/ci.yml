@@ -96,7 +96,10 @@ jobs:
       - name: Run tests
         env:
           RAILS_ENV: test
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: gs_user
           DATABASE_PASSWORD: postgres
+          DATABASE_NAME: givingshelf_test
           # REDIS_URL: redis://localhost:6379/0
         run: bin/rails db:test:prepare test test:system
 
