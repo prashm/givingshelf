@@ -96,7 +96,8 @@ jobs:
       - name: Run tests
         env:
           RAILS_ENV: test
-          DATABASE_PASSWORD: postgres
+          # Force TCP to the service container (Rails would otherwise try Unix sockets)
+          DATABASE_URL: postgresql://gs_user:postgres@127.0.0.1:5432/givingshelf_test
           # REDIS_URL: redis://localhost:6379/0
         run: bin/rails db:test:prepare test test:system
 
