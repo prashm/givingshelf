@@ -33,7 +33,7 @@ const getUrlForPage = (page, extraState = {}) => {
   return window.location.pathname;
 };
 
-const BookDonationMarketplaceContent = ({ onNavigate }) => {
+const AppShellContent = ({ onNavigate }) => {
   const { currentUser, loading: authLoading } = useAuth();
   const { items, searchItems, fetchItems } = useItems();
 
@@ -412,7 +412,7 @@ const BookDonationMarketplaceContent = ({ onNavigate }) => {
   );
 };
 
-const BookDonationMarketplace = () => {
+const AppShell = () => {
   const [pathKey, setPathKey] = useState(0);
   const parsed = parsePageFromPath(typeof window !== 'undefined' ? window.location.pathname : '/');
   const hist = typeof window !== 'undefined' ? window.history.state : null;
@@ -435,7 +435,7 @@ const BookDonationMarketplace = () => {
 
   return (
     <ItemProvider key={`${providerItemType}-${pathKey}`} itemType={providerItemType}>
-      <BookDonationMarketplaceContent onNavigate={onNavigate} />
+      <AppShellContent onNavigate={onNavigate} />
     </ItemProvider>
   );
 };
@@ -481,4 +481,4 @@ const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
   );
 };
 
-export default BookDonationMarketplace; 
+export default AppShell;

@@ -70,9 +70,9 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
     <>
       <header className="bg-emerald-600 text-white shadow-sd relative h-16 w-full">
         <div className="flex justify-between items-center h-full w-full">
-          <div className="flex items-center h-full cursor-pointer" onClick={() => handleNavClick('home')}>
-            <div className="bg-white aspect-square flex items-center justify-center p-2">
-              <img src="/gs-logo.png" alt="GivingShelf" className="h-full w-48 object-contain" />
+          <div className="flex items-center h-full cursor-pointer shrink-0" onClick={() => handleNavClick('home')}>
+            <div className="bg-white h-full flex items-center justify-center px-2 py-1.5 max-h-16">
+              <img src="/gs-logo.png" alt="GivingShelf" className="h-full w-auto max-w-[12rem] object-contain object-center" />
             </div>
           </div>
 

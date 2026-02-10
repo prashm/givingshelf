@@ -600,9 +600,6 @@
   .table {
     display: table;
   }
-  .aspect-square {
-    aspect-ratio: 1 / 1;
-  }
   .h-3 {
     height: calc(var(--spacing) * 3);
   }
@@ -659,6 +656,9 @@
   }
   .h-full {
     height: 100%;
+  }
+  .max-h-16 {
+    max-height: calc(var(--spacing) * 16);
   }
   .max-h-52 {
     max-height: calc(var(--spacing) * 52);
@@ -738,6 +738,9 @@
   .w-96 {
     width: calc(var(--spacing) * 96);
   }
+  .w-auto {
+    width: auto;
+  }
   .w-full {
     width: 100%;
   }
@@ -755,6 +758,9 @@
   }
   .max-w-6xl {
     max-width: var(--container-6xl);
+  }
+  .max-w-\[12rem\] {
+    max-width: 12rem;
   }
   .max-w-\[24px\] {
     max-width: 24px;
@@ -787,6 +793,9 @@
     flex: 1;
   }
   .flex-shrink-0 {
+    flex-shrink: 0;
+  }
+  .shrink-0 {
     flex-shrink: 0;
   }
   .flex-grow {
@@ -1194,6 +1203,10 @@
   .object-cover {
     -o-object-fit: cover;
        object-fit: cover;
+  }
+  .object-center {
+    -o-object-position: center;
+       object-position: center;
   }
   .p-1 {
     padding: calc(var(--spacing) * 1);

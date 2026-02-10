@@ -1,11 +1,11 @@
 import React from 'react';
 import { AuthProvider } from '../contexts/AuthContext';
-import BookDonationMarketplace from './BookDonationMarketplace';
+import AppShell from './AppShell';
 
 const App = () => {
   return (
     <AuthProvider>
-      <BookDonationMarketplace />
+      <AppShell />
     </AuthProvider>
   );
 };
