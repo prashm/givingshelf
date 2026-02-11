@@ -295,7 +295,7 @@ GEM
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
-    prism (1.8.0)
+    prism (1.9.0)
     propshaft (1.1.0)
       actionpack (>= 7.0.0)
       activesupport (>= 7.0.0)
@@ -425,7 +425,7 @@ GEM
       concurrent-ruby (~> 1.0, >= 1.0.2)
     sitemap_generator (6.3.0)
       builder (~> 3.0)
-    solid_cable (3.0.8)
+    solid_cable (3.0.12)
       actioncable (>= 7.2)
       activejob (>= 7.2)
       activerecord (>= 7.2)
