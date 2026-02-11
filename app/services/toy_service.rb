@@ -14,6 +14,7 @@ class ToyService < ItemService
     {
       id: toy.id,
       title: toy.title,
+      summary: toy.summary,
       brand: toy.brand,
       age_range: toy.age_range,
       condition: toy.condition,

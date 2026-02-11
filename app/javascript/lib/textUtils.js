@@ -2,6 +2,19 @@ import React from 'react';
 import * as Constants from './constants';
 
 /**
+ * Truncates text to a maximum length with ellipsis
+ * @param {string} text - The text to truncate
+ * @param {number} maxChars - Maximum character length (default 50)
+ * @returns {string|null} Truncated text or null if invalid input
+ */
+export const truncateText = (text, maxChars = 50) => {
+  if (!text || typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+  return trimmed.slice(0, maxChars).trim() + '...';
+};
+
+/**
  * Converts URLs in text to clickable links
  * @param {string} text - The text to process
  * @returns {Array} Array of React elements (text and links)

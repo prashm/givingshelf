@@ -296,6 +296,9 @@ const ItemList = ({
     ? (paginationMeta?.total > 0 ? `${paginationMeta.total} ${labels.itemsLabel} Found` : (itemsLoading ? 'Searching...' : labels.emptyGlobal))
     : getResultsLabel();
 
+  const otherItemName = itemType === Constants.ITEM_TYPE_BOOK ? 'toys' : 'books';
+  const otherItemType = itemType === Constants.ITEM_TYPE_BOOK ? Constants.ITEM_TYPE_TOY : Constants.ITEM_TYPE_BOOK;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-12">
@@ -328,6 +331,20 @@ const ItemList = ({
               </p>
             </div>
           )}
+
+          <p className="text-center text-sm text-gray-500 -mt-2 mb-6">
+            Looking for {otherItemName} instead?{' '}
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700 underline cursor-pointer font-medium"
+              onClick={() => isGroupBrowse
+                ? setCurrentPage('groupBrowse', { groupShortName, itemType: otherItemType })
+                : setCurrentPage(otherItemName)
+              }
+            >
+              Click here
+            </button>
+          </p>
         </div>
 
         <AvailableBooksSection

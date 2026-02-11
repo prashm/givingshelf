@@ -14,7 +14,10 @@ class BookService < ItemService
     {
       id: book.id,
       title: book.title,
+      summary: book.summary,
       author: book.author,
+      genre: book.genre,
+      published_year: book.published_year,
       condition: book.condition,
       status: book.status,
       status_display: ShareableItemStatus.display_status(book.status),
