@@ -42,11 +42,14 @@ const ItemDetail = ({
     editLabel = 'Edit This Item',
     notFoundLabel = 'Item Not Found',
     emptyPlaceholder = '📦',
+    emptyPlaceholderIcon = null,
     emptyStateText = 'No Cover Available',
     requestModalTitle = 'Request this item',
     requestModalDescription = "Add a short message to the donor explaining why you'd like this item or how you plan to pick it up.",
     DetailIcon = null
   } = config || {};
+
+  const isOwner = item?.owner?.id === currentUser?.id || item?.owner_id === currentUser?.id;
 
   const handleBackNavigation = () => {
     if (sourcePage === 'myBooks') {
@@ -279,7 +282,11 @@ const ItemDetail = ({
               ) : (
                 <div className="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center">
                   <div className="text-center text-gray-400">
-                    <div className="text-6xl mb-2">{emptyPlaceholder}</div>
+                    {emptyPlaceholderIcon ? (
+                      React.createElement(emptyPlaceholderIcon, { className: 'w-24 h-24 mx-auto mb-2', strokeWidth: 1.5 })
+                    ) : (
+                      <div className="text-6xl mb-2">{emptyPlaceholder}</div>
+                    )}
                     <div className="text-lg">{emptyStateText}</div>
                   </div>
                 </div>
@@ -287,7 +294,7 @@ const ItemDetail = ({
             </div>
 
             <div className="space-y-3">
-              {item.owner?.id !== currentUser?.id ? (
+              {!isOwner ? (
                 <>
                   {userRequest ? (
                     <button
@@ -335,13 +342,13 @@ const ItemDetail = ({
                 </div>
               )}
 
-              {onEditItem && item.owner?.id === currentUser?.id && (
+              {onEditItem && isOwner && (
                 <button onClick={() => onEditItem(item.id)} className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition-colors mb-3">
                   {editLabel}
                 </button>
               )}
 
-              {item.owner?.id !== currentUser?.id && (
+              {!isOwner && (
                 <button onClick={handleDonateSimilarClick} className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">
                   {donateSimilarLabel}
                 </button>

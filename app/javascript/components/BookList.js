@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchCommunityStats } from '../lib/booksApi';
 import { useBooks } from '../contexts/BookContext';
-import AvailableBooksSection from './common/AvailableBooksSection';
+import AvailableItemsSection from './common/AvailableItemsSection';
 import PopularGenresSection from './common/PopularGenresSection';
 import StatsSection from './common/StatsSection';
 import CallToActionSection from './common/CallToActionSection';
@@ -187,7 +187,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
 
 
         {/* Available Books */}
-        <AvailableBooksSection
+        <AvailableItemsSection
           title="Available Books"
           books={books || []}
           resultsLabel={getResultsLabel()}

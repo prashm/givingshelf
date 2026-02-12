@@ -3,7 +3,7 @@ import { fetchCommunityStats } from '../lib/booksApi';
 import { fetchGroupByShortName } from '../lib/communityGroupsApi';
 import { useItems } from '../contexts/ItemContext';
 import * as Constants from '../lib/constants';
-import AvailableBooksSection from './common/AvailableBooksSection';
+import AvailableItemsSection from './common/AvailableItemsSection';
 import PopularGenresSection from './common/PopularGenresSection';
 import StatsSection from './common/StatsSection';
 import CallToActionSection from './common/CallToActionSection';
@@ -347,7 +347,7 @@ const ItemList = ({
           </p>
         </div>
 
-        <AvailableBooksSection
+        <AvailableItemsSection
           title={labels.availableTitle}
           books={items || []}
           itemType={itemType}

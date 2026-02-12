@@ -70,11 +70,30 @@ export const useToyForm = (initialData = {}) => {
     setFormData(prev => ({ ...prev, ...updates }));
   }, []);
 
+  const resetForm = useCallback((newData = {}) => {
+    setFormData({
+      title: '',
+      brand: '',
+      age_range: '',
+      condition: 'good',
+      summary: '',
+      personal_note: '',
+      cover_image: null,
+      user_images: [],
+      pickup_method: '',
+      pickup_address: '',
+      community_group_ids: [],
+      ...newData
+    });
+    setValidationErrors({});
+  }, []);
+
   return {
     formData,
     validationErrors,
     handleInputChange,
     updateFormData,
-    validateForm
+    validateForm,
+    resetForm
   };
 };

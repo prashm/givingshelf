@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { fetchGroupByShortName } from '../../lib/communityGroupsApi';
 import { fetchCommunityStats } from '../../lib/booksApi';
 import { useBooks } from '../../contexts/BookContext';
-import AvailableBooksSection from '../common/AvailableBooksSection';
+import AvailableItemsSection from '../common/AvailableItemsSection';
 import PopularGenresSection from '../common/PopularGenresSection';
 import StatsSection from '../common/StatsSection';
 import CallToActionSection from '../common/CallToActionSection';
@@ -183,7 +183,7 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
         </div>
 
         {/* Available Books */}
-        <AvailableBooksSection
+        <AvailableItemsSection
           title="Available Books"
           books={books || []}
           resultsLabel={paginationMeta?.total > 0 ? `${paginationMeta.total} Books Found` : (booksLoading ? 'Searching...' : 'No books Found')}

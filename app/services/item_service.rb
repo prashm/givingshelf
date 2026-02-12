@@ -42,7 +42,10 @@ class ItemService
       handle_api_cover_image(api_cover_image)
       if user_images.present?
         Array(user_images).each do |image|
-          self.item.user_images.attach(image) if image.present?
+          if image.present?
+            self.item.cover_image.attach(image) if self.item.cover_image.blank?
+            self.item.user_images.attach(image)
+          end
         end
       end
     end

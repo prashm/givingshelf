@@ -3,7 +3,7 @@ import { GiftIcon } from '@heroicons/react/24/outline';
 import * as Constants from '../../lib/constants';
 import { truncateText } from '../../lib/textUtils';
 
-const AvailableBooksSection = ({
+const AvailableItemsSection = ({
   title = 'Available Books',
   books = [],
   resultsLabel,
@@ -119,5 +119,5 @@ const AvailableBooksSection = ({
   );
 };
 
-export default AvailableBooksSection;
+export default AvailableItemsSection;
 

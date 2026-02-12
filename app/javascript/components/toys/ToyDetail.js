@@ -16,6 +16,7 @@ const TOY_CONFIG = {
   editLabel: 'Edit This Toy',
   notFoundLabel: 'Toy Not Found',
   emptyPlaceholder: '🧸',
+  emptyPlaceholderIcon: GiftIcon,
   emptyStateText: 'No Image Available',
   requestModalTitle: 'Request this toy',
   requestModalDescription: "Add a short message to the donor explaining why you'd like this toy or how you plan to pick it up.",
