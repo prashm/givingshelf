@@ -13,6 +13,7 @@ class ToyService < ItemService
   def item_map(toy)
     {
       id: toy.id,
+      type: Toy.name,
       title: toy.title,
       summary: toy.summary,
       brand: toy.brand,

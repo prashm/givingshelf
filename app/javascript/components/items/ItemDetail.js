@@ -52,8 +52,8 @@ const ItemDetail = ({
   const isOwner = item?.owner?.id === currentUser?.id || item?.owner_id === currentUser?.id;
 
   const handleBackNavigation = () => {
-    if (sourcePage === 'myBooks') {
-      setCurrentPage('myBooks');
+    if (sourcePage === 'myItems') {
+      setCurrentPage('myItems');
     } else if (sourcePage === 'messages') {
       setCurrentPage('messages');
     } else {
@@ -266,7 +266,7 @@ const ItemDetail = ({
         <div className="p-6 border-b border-gray-200">
           <button onClick={handleBackNavigation} className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            {sourcePage === 'myBooks' ? 'Back to My Books' : sourcePage === 'messages' ? 'Back to Messages' : 'Back to search results'}
+            {sourcePage === 'myItems' ? 'Back to My Items' : sourcePage === 'messages' ? 'Back to Messages' : 'Back to search results'}
           </button>
           <h1 className="text-3xl font-bold text-gray-900">{item.title}</h1>
           {subtitle && <p className="text-xl text-gray-600">{subtitle}</p>}

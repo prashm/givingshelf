@@ -13,6 +13,7 @@ class BookService < ItemService
   def item_map(book)
     {
       id: book.id,
+      type: Book.name,
       title: book.title,
       summary: book.summary,
       author: book.author,

@@ -939,12 +939,12 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
-                  onClick={() => setCurrentPage('myBooks')}
+                  onClick={() => setCurrentPage('myItems')}
                   className="p-4 bg-blue-50 rounded-lg text-center hover:bg-blue-100 transition-colors"
                 >
                   <div className="text-2xl mb-2">📚</div>
-                  <div className="font-medium text-blue-900">My Books</div>
-                  <div className="text-sm text-blue-600">Manage your donated books</div>
+                  <div className="font-medium text-blue-900">My Items</div>
+                  <div className="text-sm text-blue-600">Manage your donated items</div>
                 </button>
                 
                 <button

@@ -12,7 +12,7 @@ import ItemDetailPage from './items/ItemDetailPage';
 import BookRequestDetail from './messages/BookRequestDetail';
 import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
-import MyBooks from './profile/MyBooks';
+import MyItems from './profile/MyItems';
 import MyRequests from './profile/MyRequests';
 import MyGroups from './profile/MyGroups';
 import GroupLanding from './group/GroupLanding';
@@ -331,12 +331,13 @@ const AppShellContent = ({ onNavigate }) => {
           redirectReason={redirectReason}
           clearRedirectReason={() => setRedirectReason(null)}
         />;
-      case 'myBooks':
-        return <MyBooks
+      case 'myItems':
+        return <MyItems
           currentUser={currentUser}
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
-          onViewBook={(book) => handleItemSelect(book, 'myBooks')}
+          onEditToy={handleEditToy}
+          onViewBook={(item) => handleItemSelect(item, 'myItems')}
           fromProfile={previousPage === 'profile'}
         />;
       case 'myRequests':
