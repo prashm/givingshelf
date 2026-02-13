@@ -56,12 +56,16 @@ const ItemDetail = ({
       setCurrentPage('myItems');
     } else if (sourcePage === 'messages') {
       setCurrentPage('messages');
+    } else if (sourcePage === 'books') {
+      setCurrentPage('books');
+    } else if (sourcePage === 'toys') {
+      setCurrentPage('toys');
     } else {
       const { isGroupPage, groupShortName } = getGroupPageInfo();
       if ((sourcePage === 'groupPage' || isGroupPage) && groupShortName) {
         setCurrentPage('groupPage', { groupShortName });
       } else {
-        setCurrentPage('browse');
+        setCurrentPage('books');
       }
     }
   };
@@ -254,7 +258,7 @@ const ItemDetail = ({
   const formatPickupMethod = (m) => m ? m.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
   const handleBrowseMore = () => {
     const { isGroupPage, groupShortName } = getGroupPageInfo();
-    setCurrentPage(isGroupPage && groupShortName ? 'groupPage' : 'browse', isGroupPage && groupShortName ? { groupShortName } : {});
+    setCurrentPage(isGroupPage && groupShortName ? 'groupPage' : 'books', isGroupPage && groupShortName ? { groupShortName } : {});
   };
 
   const subtitle = getSubtitle(item);
@@ -266,7 +270,7 @@ const ItemDetail = ({
         <div className="p-6 border-b border-gray-200">
           <button onClick={handleBackNavigation} className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            {sourcePage === 'myItems' ? 'Back to My Items' : sourcePage === 'messages' ? 'Back to Messages' : 'Back to search results'}
+            {sourcePage === 'myItems' ? 'Back to My Items' : sourcePage === 'messages' ? 'Back to Messages' : sourcePage === 'books' ? 'Back to Books' : sourcePage === 'toys' ? 'Back to Toys' : sourcePage === 'groupPage' ? 'Back to Group' : 'Back to search results'}
           </button>
           <h1 className="text-3xl font-bold text-gray-900">{item.title}</h1>
           {subtitle && <p className="text-xl text-gray-600">{subtitle}</p>}

@@ -59,12 +59,20 @@ const AppShellContent = ({ onNavigate }) => {
   const [groupShortName, setGroupShortName] = useState(() => getInitialState().groupShortName);
   const [currentItemType, setCurrentItemType] = useState(() => getInitialState().itemType);
   const [previousPage, setPreviousPage] = useState(null);
+  const [editReturnPage, setEditReturnPage] = useState(() => {
+    const hist = typeof window !== 'undefined' ? window.history.state : null;
+    return (hist?.page === 'editBook' || hist?.page === 'editToy') ? (hist.editReturnPage || null) : null;
+  });
+  const [editReturnSelectedBook, setEditReturnSelectedBook] = useState(() => {
+    const hist = typeof window !== 'undefined' ? window.history.state : null;
+    return (hist?.page === 'editBook' || hist?.page === 'editToy') ? (hist.editReturnSelectedBook || null) : null;
+  });
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [selectedBook, setSelectedBook] = useState(() => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
-    return (hist?.page === 'bookDetails' && hist?.selectedBook) ? hist.selectedBook : null;
+    return (hist?.page === 'itemDetails' && hist?.selectedBook) ? hist.selectedBook : null;
   });
   const [editingBookId, setEditingBookId] = useState(() => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
@@ -86,13 +94,13 @@ const AppShellContent = ({ onNavigate }) => {
     }
     return Constants.ITEM_TYPE_BOOK;
   });
-  const [bookDetailSource, setBookDetailSource] = useState(() => {
+  const [itemDetailSource, setItemDetailSource] = useState(() => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
-    return (hist?.page === 'bookDetails' && hist?.bookDetailSource) ? hist.bookDetailSource : null;
+    return (hist?.page === 'itemDetails' && hist?.itemDetailSource) ? hist.itemDetailSource : null;
   });
   const [selectedItemType, setSelectedItemType] = useState(() => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
-    return (hist?.page === 'bookDetails' && hist?.selectedItemType) ? hist.selectedItemType : null;
+    return (hist?.page === 'itemDetails' && hist?.selectedItemType) ? hist.selectedItemType : null;
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
@@ -191,8 +199,10 @@ const AppShellContent = ({ onNavigate }) => {
         if (state.editingToyId) setEditingToyId(state.editingToyId);
         if (state.bookRequestId) setSelectedBookRequestId(state.bookRequestId);
         if (state.donateInitialTitle !== undefined) setDonateInitialTitle(state.donateInitialTitle);
-        if (state.bookDetailSource !== undefined) setBookDetailSource(state.bookDetailSource);
+        if (state.itemDetailSource !== undefined) setItemDetailSource(state.itemDetailSource);
         if (state.selectedItemType !== undefined) setSelectedItemType(state.selectedItemType);
+        if (state.editReturnPage !== undefined) setEditReturnPage(state.editReturnPage);
+        if (state.editReturnSelectedBook !== undefined) setEditReturnSelectedBook(state.editReturnSelectedBook);
         if (state.groupShortName) setGroupShortName(state.groupShortName);
         if (state.itemType) setCurrentItemType(state.itemType);
         if (state.donateItemType) setDonateItemType(state.donateItemType);
@@ -217,8 +227,10 @@ const AppShellContent = ({ onNavigate }) => {
       setDonateInitialTitle(extraState.donateInitialTitle ?? null);
       setDonateItemType(extraState.donateItemType ?? Constants.ITEM_TYPE_BOOK);
     }
-    if (extraState.bookDetailSource !== undefined) setBookDetailSource(extraState.bookDetailSource);
+    if (extraState.itemDetailSource !== undefined) setItemDetailSource(extraState.itemDetailSource);
     if (extraState.selectedItemType !== undefined) setSelectedItemType(extraState.selectedItemType);
+    if (extraState.editReturnPage !== undefined) setEditReturnPage(extraState.editReturnPage);
+    if (extraState.editReturnSelectedBook !== undefined) setEditReturnSelectedBook(extraState.editReturnSelectedBook);
     if (extraState.groupShortName) setGroupShortName(extraState.groupShortName);
     if (extraState.itemType) setCurrentItemType(extraState.itemType);
     _setPageState(page);
@@ -247,20 +259,22 @@ const AppShellContent = ({ onNavigate }) => {
 
   const handleItemSelect = (item, source = 'browse', itemTypeHint = null) => {
     setSelectedBook(item);
-    setBookDetailSource(source);
-    const extraState = { selectedBook: item, bookDetailSource: source, selectedItemType: itemTypeHint };
+    setItemDetailSource(source);
+    const extraState = { selectedBook: item, itemDetailSource: source, selectedItemType: itemTypeHint };
     if (source === 'groupPage' && groupShortName) extraState.groupShortName = groupShortName;
-    setCurrentPage('bookDetails', extraState);
+    setCurrentPage('itemDetails', extraState);
   };
 
   const handleEditBook = (bookId) => {
     setEditingBookId(bookId);
-    setCurrentPage('editBook', { editingBookId: bookId });
+    const extra = { editingBookId: bookId, editReturnPage: currentPage, editReturnSelectedBook: selectedBook };
+    setCurrentPage('editBook', extra);
   };
 
   const handleEditToy = (toyId) => {
     setEditingToyId(toyId);
-    setCurrentPage('editToy', { editingToyId: toyId });
+    const extra = { editingToyId: toyId, editReturnPage: currentPage, editReturnSelectedBook: selectedBook };
+    setCurrentPage('editToy', extra);
   };
 
   const renderPage = () => {
@@ -289,13 +303,17 @@ const AppShellContent = ({ onNavigate }) => {
         return <EditBook
           setCurrentPage={setCurrentPage}
           bookId={editingBookId}
+          previousPage={editReturnPage ?? previousPage}
+          returnSelectedBook={editReturnSelectedBook}
         />;
       case 'editToy':
         return <EditToy
           setCurrentPage={setCurrentPage}
           toyId={editingToyId}
+          previousPage={editReturnPage ?? previousPage}
+          returnSelectedBook={editReturnSelectedBook}
         />;
-      case 'bookDetails':
+      case 'itemDetails':
         return <ItemDetailPage
           selectedItem={selectedBook}
           hintItemType={selectedItemType}
@@ -305,7 +323,7 @@ const AppShellContent = ({ onNavigate }) => {
           onEditToy={handleEditToy}
           onOpenLoginModal={handleOpenLoginModal}
           setRedirectReason={setRedirectReason}
-          sourcePage={bookDetailSource}
+          sourcePage={itemDetailSource}
         />;
       case 'books':
         return <ItemList itemType={Constants.ITEM_TYPE_BOOK} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
@@ -371,7 +389,7 @@ const AppShellContent = ({ onNavigate }) => {
       setCurrentPage('profile');
     } else if (pendingNavigation) {
       const nav = typeof pendingNavigation === 'object' ? pendingNavigation : { page: pendingNavigation };
-      const extraState = nav.page === 'bookDetails' ? { selectedBook } : nav.donateItemType ? { donateItemType: nav.donateItemType } : {};
+      const extraState = nav.page === 'itemDetails' ? { selectedBook } : nav.donateItemType ? { donateItemType: nav.donateItemType } : {};
       setCurrentPage(nav.page, { ...extraState, ...nav });
       setPendingNavigation(null);
     }
@@ -443,7 +461,7 @@ const AppShell = () => {
     : effectivePage === 'toys' ? Constants.ITEM_TYPE_TOY
     : effectivePage === 'editToy' ? Constants.ITEM_TYPE_TOY
     : effectivePage === 'groupBrowse' ? (hist?.itemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
-    : effectivePage === 'bookDetails' ? (hist?.selectedItemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
+    : effectivePage === 'itemDetails' ? (hist?.selectedItemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
     : effectivePage === 'donate' ? donateItemTypeFromState
     : Constants.ITEM_TYPE_BOOK;
 

@@ -352,7 +352,7 @@ const ItemList = ({
           books={items || []}
           itemType={itemType}
           resultsLabel={resultsLabel}
-          onBookSelect={(item) => handleItemSelect(item, isGroupBrowse ? 'groupPage' : 'browse', itemType)}
+          onBookSelect={(item) => handleItemSelect(item, isGroupBrowse ? 'groupPage' : (itemType === Constants.ITEM_TYPE_TOY ? 'toys' : 'books'), itemType)}
           paginationMeta={paginationMeta}
           loadMoreBooks={loadMoreItems}
           loading={itemsLoading}

@@ -92,7 +92,7 @@ const MessagesPage = ({ setCurrentPage }) => {
                   <button
                     type="button"
                     onClick={() =>
-                      setCurrentPage('bookDetails', { selectedBook: request.book, bookDetailSource: 'messages' })
+                      setCurrentPage('itemDetails', { selectedBook: request.book, itemDetailSource: 'messages' })
                     }
                     className="text-emerald-700 hover:text-emerald-900 underline"
                   >

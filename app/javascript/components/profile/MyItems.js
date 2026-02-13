@@ -65,8 +65,9 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
       if (itemData) {
         if (onViewBook) {
           onViewBook(itemData);
+        } else {
+          setCurrentPage('itemDetails', { selectedBook: itemData, itemDetailSource: 'myItems' });
         }
-        setCurrentPage('bookDetails', { selectedBook: itemData });
       } else {
         alert('Failed to load item details. Please try again.');
       }
