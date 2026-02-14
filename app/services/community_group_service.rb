@@ -18,6 +18,7 @@ class CommunityGroupService
         auto_joined: false
       )
     end
+    @group
   rescue => e
     @errors << e.message
     nil
@@ -25,7 +26,11 @@ class CommunityGroupService
 
   def update_group(params)
     raise "group can't be blank" unless @group
-
+    remove_logo = params.delete(:remove_logo)
+    # Remove the logo first if there is a new logo in the params or remove_logo is true
+    if (remove_logo.to_b || params[:logo].present?) && @group.logo.attached?
+      @group.logo.purge
+    end
     unless @group.update(params)
       @errors = @group.errors.full_messages
       return false
@@ -285,6 +290,7 @@ class CommunityGroupService
       short_name: group.short_name,
       public: group.public,
       member_count: member_count,
+      logo_url: group.logo_url,
       created_at: group.created_at,
       updated_at: group.updated_at
     }

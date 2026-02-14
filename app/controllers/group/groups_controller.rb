@@ -58,10 +58,10 @@ module Group
     private
 
     def group_params
-      params.require(:community_group).permit(:name, :group_description, :domain, :short_name, :public).to_h.with_indifferent_access
+      params.require(:community_group).permit(:name, :group_description, :domain, :short_name, :public, :logo, :remove_logo).to_h.with_indifferent_access
     rescue ActionController::ParameterMissing
       # Handle case where params might not be nested
-      params.permit(:name, :group_description, :domain, :short_name, :public).to_h.with_indifferent_access
+      params.permit(:name, :group_description, :domain, :short_name, :public, :logo, :remove_logo).to_h.with_indifferent_access
     end
   end
 end

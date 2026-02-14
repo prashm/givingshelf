@@ -4,6 +4,91 @@ import { fetchGroupByShortName } from '../../lib/communityGroupsApi';
 import { fetchCommunityStats } from '../../lib/booksApi';
 import * as Constants from '../../lib/constants';
 
+const CIRCLE_R = 36;
+const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_R;
+const STROKE_WIDTH = 10;
+
+const StatsDonut = ({ shared, donated, requested, accentColor = 'emerald', loading }) => {
+  const total = shared + donated + requested;
+  const sharedPercent = total > 0 ? shared / total : 0;
+  const donatedPercent = total > 0 ? donated / total : 0;
+  const requestedPercent = total > 0 ? requested / total : 0;
+  const sharedDash = sharedPercent * CIRCLE_CIRCUMFERENCE;
+  const donatedDash = donatedPercent * CIRCLE_CIRCUMFERENCE;
+  const requestedDash = requestedPercent * CIRCLE_CIRCUMFERENCE;
+
+  const sharedColor = accentColor === 'red' ? '#dc2626' : '#059669';
+  const donatedColor = '#16a34a';
+  const requestedColor = '#9333ea';
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-3 mb-4">
+        <div className="w-20 h-20 rounded-full border-2 border-gray-200 animate-pulse" />
+        <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 mb-4">
+      <svg width={100} height={100} viewBox="0 0 100 100" className="flex-shrink-0">
+        <circle
+          cx="50"
+          cy="50"
+          r={CIRCLE_R}
+          fill="none"
+          stroke={total === 0 ? '#e5e7eb' : sharedColor}
+          strokeWidth={STROKE_WIDTH}
+          strokeDasharray={total === 0 ? 'none' : `${sharedDash} ${CIRCLE_CIRCUMFERENCE}`}
+          strokeDashoffset={0}
+          transform="rotate(-90 50 50)"
+        />
+        {total > 0 && (
+          <>
+            <circle
+              cx="50"
+              cy="50"
+              r={CIRCLE_R}
+              fill="none"
+              stroke={donatedColor}
+              strokeWidth={STROKE_WIDTH}
+              strokeDasharray={`${donatedDash} ${CIRCLE_CIRCUMFERENCE}`}
+              strokeDashoffset={-sharedDash}
+              transform="rotate(-90 50 50)"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r={CIRCLE_R}
+              fill="none"
+              stroke={requestedColor}
+              strokeWidth={STROKE_WIDTH}
+              strokeDasharray={`${requestedDash} ${CIRCLE_CIRCUMFERENCE}`}
+              strokeDashoffset={-(sharedDash + donatedDash)}
+              transform="rotate(-90 50 50)"
+            />
+          </>
+        )}
+      </svg>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: sharedColor }} />
+          Shared {shared}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: donatedColor }} />
+          Donated {donated}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: requestedColor }} />
+          Requested {requested}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const GroupLanding = ({ groupShortName, currentUser, setCurrentPage, onOpenLoginModal }) => {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,34 +165,37 @@ const GroupLanding = ({ groupShortName, currentUser, setCurrentPage, onOpenLogin
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto max-w-3xl px-4 py-12">
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-3xl font-bold text-center mb-2">{group.name}</h2>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            {group.logo_url && (
+              <img src={group.logo_url} alt={group.name} className="w-14 h-14 rounded-md object-contain border border-gray-200 flex-shrink-0" />
+            )}
+            <h2 className="text-3xl font-bold text-center">{group.name}</h2>
+          </div>
           {group.group_description && (
-            <p className="text-center text-gray-600 mb-8">{group.group_description}</p>
+            <p className="text-center text-gray-600 mb-2">{group.group_description}</p>
           )}
+          <p className="text-center text-gray-500 text-sm mb-8">
+            {group.member_count ?? 0} members
+          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-6">
             {/* Books Section */}
             <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col">
-              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4 border-2 border-emerald-200">
-                <BookOpenIcon className="w-7 h-7 text-emerald-700" />
+              <div className="flex flex-col items-center text-center mb-2">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4 border-2 border-emerald-200">
+                  <BookOpenIcon className="w-7 h-7 text-emerald-700" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Books</h3>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Books</h3>
-              <div className="grid grid-cols-3 gap-2 mb-4 text-center text-sm">
-                <div>
-                  <div className="font-bold text-emerald-600">{statsLoading ? '...' : booksStats.items_shared}</div>
-                  <div className="text-gray-500">Shared</div>
-                </div>
-                <div>
-                  <div className="font-bold text-green-600">{statsLoading ? '...' : booksStats.items_donated}</div>
-                  <div className="text-gray-500">Donated</div>
-                </div>
-                <div>
-                  <div className="font-bold text-purple-600">{statsLoading ? '...' : booksStats.items_requested}</div>
-                  <div className="text-gray-500">Requested</div>
-                </div>
-              </div>
+              <StatsDonut
+                shared={booksStats.items_shared}
+                donated={booksStats.items_donated}
+                requested={booksStats.items_requested}
+                accentColor="emerald"
+                loading={statsLoading}
+              />
               <div className="flex flex-row justify-between items-center mt-auto">
                 <button onClick={handleBrowseBooks} className="text-emerald-600 font-semibold hover:underline flex items-center gap-2 cursor-pointer">
                   Browse Books <ChevronRightIcon className="w-4 h-4" />
@@ -120,24 +208,19 @@ const GroupLanding = ({ groupShortName, currentUser, setCurrentPage, onOpenLogin
 
             {/* Toys Section */}
             <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col">
-              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-4 border-2 border-red-200">
-                <GiftIcon className="w-7 h-7 text-red-700" />
+              <div className="flex flex-col items-center text-center mb-2">
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-4 border-2 border-red-200">
+                  <GiftIcon className="w-7 h-7 text-red-700" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Toys</h3>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Toys</h3>
-              <div className="grid grid-cols-3 gap-2 mb-4 text-center text-sm">
-                <div>
-                  <div className="font-bold text-red-600">{statsLoading ? '...' : toysStats.items_shared}</div>
-                  <div className="text-gray-500">Shared</div>
-                </div>
-                <div>
-                  <div className="font-bold text-green-600">{statsLoading ? '...' : toysStats.items_donated}</div>
-                  <div className="text-gray-500">Donated</div>
-                </div>
-                <div>
-                  <div className="font-bold text-purple-600">{statsLoading ? '...' : toysStats.items_requested}</div>
-                  <div className="text-gray-500">Requested</div>
-                </div>
-              </div>
+              <StatsDonut
+                shared={toysStats.items_shared}
+                donated={toysStats.items_donated}
+                requested={toysStats.items_requested}
+                accentColor="red"
+                loading={statsLoading}
+              />
               <div className="flex flex-row justify-between items-center mt-auto">
                 <button onClick={handleBrowseToys} className="text-red-600 font-semibold hover:underline flex items-center gap-2 cursor-pointer">
                   Browse Toys <ChevronRightIcon className="w-4 h-4" />

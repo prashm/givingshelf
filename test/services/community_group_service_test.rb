@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "test_helper"
 require "minitest/spec"
 
@@ -40,9 +42,9 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
         short_name: "new-group"
       }
 
-      @service.create_group(@admin_user, params)
-
-      membership = @service.group.community_group_memberships.find_by(user: @admin_user)
+      group = @service.create_group(@admin_user, params)
+      assert_equal group, CommunityGroup.last
+      membership = group.community_group_memberships.find_by(user: @admin_user)
       assert_not_nil membership
       assert membership.admin
       assert_not membership.auto_joined
@@ -93,8 +95,29 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
   end
 
   describe "#update_group" do
+    def update_group_with_logo(group = nil, **params)
+      group ||= community_groups(:three)
+      service = CommunityGroupService.new(group)
+      [ service.update_group(params.merge(name: params[:name] || group.name)), service, group ]
+    end
+
+    def attach_logo(group, content = "fake")
+      group.logo.attach(io: StringIO.new(content), filename: "logo.png", content_type: "image/png")
+    end
+
+    def with_logo_upload(content = "upload")
+      temp = Tempfile.new([ "logo", ".png" ])
+      temp.binmode
+      temp.write(content)
+      temp.rewind
+      yield Rack::Test::UploadedFile.new(temp.path, "image/png")
+    ensure
+      temp&.close
+      temp&.unlink
+    end
+
     it "updates group successfully" do
-      group = community_groups(:three)  # Use fixture
+      group = community_groups(:three)
       service = CommunityGroupService.new(group)
 
       result = service.update_group(name: "Updated Name")
@@ -102,6 +125,78 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       assert result
       assert_equal "Updated Name", group.reload.name
       assert_empty service.errors
+    end
+
+    it "purges logo when remove_logo is true and logo is attached" do
+      group = community_groups(:three)
+      attach_logo(group)
+
+      result, service, group = update_group_with_logo(group, remove_logo: true)
+
+      assert result
+      assert_not group.reload.logo.attached?
+      assert_empty service.errors
+    end
+
+    it "purges logo when remove_logo is string '1' (form submission) and logo is attached" do
+      group = community_groups(:three)
+      attach_logo(group)
+
+      result, service, group = update_group_with_logo(group, remove_logo: "1")
+
+      assert result
+      assert_not group.reload.logo.attached?
+      assert_empty service.errors
+    end
+
+    it "does not purge logo when remove_logo is false and no new logo provided" do
+      group = community_groups(:three)
+      attach_logo(group)
+
+      result, service, group = update_group_with_logo(group, remove_logo: false, name: "Updated Name")
+
+      assert result
+      assert group.reload.logo.attached?
+      assert_empty service.errors
+    end
+
+    it "succeeds when remove_logo is true but group has no logo attached" do
+      group = community_groups(:three)
+      assert_not group.logo.attached?
+
+      result, service, group = update_group_with_logo(group, remove_logo: true, name: "Updated Name")
+
+      assert result
+      assert_equal "Updated Name", group.reload.name
+      assert_empty service.errors
+    end
+
+    it "does not pass remove_logo to update" do
+      group = community_groups(:three)
+      attach_logo(group)
+
+      result, _service, group = update_group_with_logo(group, remove_logo: true, name: "Updated Name")
+
+      assert result
+      assert_equal "Updated Name", group.reload.name
+      assert_not group.reload.logo.attached?
+    end
+
+    it "purges old logo and attaches new one when logo param is provided" do
+      group = community_groups(:three)
+      attach_logo(group, "old")
+      old_blob_id = group.logo.blob.id
+
+      with_logo_upload("new logo content") do |new_logo|
+        service = CommunityGroupService.new(group)
+        result = service.update_group(logo: new_logo, name: group.name)
+
+        assert result
+        group.reload
+        assert group.logo.attached?
+        assert_not_equal old_blob_id, group.logo.blob.id
+        assert_empty service.errors
+      end
     end
 
     it "returns false on validation errors" do

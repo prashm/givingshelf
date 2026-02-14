@@ -305,7 +305,12 @@ const ItemList = ({
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           {isGroupBrowse ? (
             <>
-              <h2 className="text-3xl font-bold text-center mb-2">{group?.name}</h2>
+              <div className="flex items-center justify-center gap-3 mb-2">
+                {group?.logo_url && (
+                  <img src={group.logo_url} alt={group?.name} className="w-12 h-12 rounded-md object-contain border border-gray-200 flex-shrink-0" />
+                )}
+                <h2 className="text-3xl font-bold text-center">{group?.name}</h2>
+              </div>
               {group?.group_description && <p className="text-center text-gray-600 mb-6">{group.group_description}</p>}
             </>
           ) : (

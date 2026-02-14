@@ -26,10 +26,15 @@
     <% if @groups && @groups.any? %>
       <div class="space-y-4">
         <% @groups.each do |group| %>
-        <div class="bg-white rounded-lg shadow-md p-6 h-80 flex flex-col overflow-hidden">
+        <div class="bg-white rounded-lg shadow-md p-6 flex flex-col <%= group.sub_groups.any? ? 'h-80 min-h-0' : '' %>">
           <div class="flex justify-between items-start mb-4 flex-shrink-0">
             <div class="flex-1">
-              <h3 class="text-xl font-semibold"><%= group.name %></h3>
+              <div class="flex items-center gap-3 mb-1">
+                <% if group.logo.attached? %>
+                  <%= image_tag url_for(group.logo), alt: group.name, class: "w-12 h-12 rounded-md object-contain flex-shrink-0 border border-gray-200" %>
+                <% end %>
+                <h3 class="text-xl font-semibold"><%= group.name %></h3>
+              </div>
               <% if group.group_description.present? %>
                 <p class="text-gray-600"><%= group.group_description %></p>
               <% end %>

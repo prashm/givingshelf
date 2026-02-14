@@ -480,6 +480,7 @@ GEM
     unicode-emoji (4.0.4)
     uri (1.1.1)
     useragent (0.16.11)
+    wannabe_bool (0.7.1)
     web-console (4.2.1)
       actionview (>= 6.0.0)
       activemodel (>= 6.0.0)
@@ -546,6 +547,7 @@ DEPENDENCIES
   thruster
   turbo-rails
   tzinfo-data
+  wannabe_bool
   web-console
   zxcvbn-ruby
 

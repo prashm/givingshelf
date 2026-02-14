@@ -16,8 +16,10 @@ class CommunityGroup < ApplicationRecord
   # Backward compatibility alias
   has_many :group_book_availabilities, class_name: "GroupItemAvailability", foreign_key: "community_group_id", dependent: :destroy
 
+  has_one_attached :logo
 
   before_validation :set_default_short_description
+  before_validation :normalize_blank_domain
 
   validates :name, presence: true
   validates :domain, uniqueness: true, allow_blank: true,
@@ -67,9 +69,17 @@ class CommunityGroup < ApplicationRecord
     find_by(short_name: ZIPCODE_SHORT_NAME)
   end
 
+  def logo_url
+    logo.attachment.url if logo.attached?
+  end
+
   private
 
   def set_default_short_description
     self.group_description = DEFAULT_SHORT_DESCRIPTION if group_description.blank?
+  end
+
+  def normalize_blank_domain
+    self.domain = nil if domain.blank?
   end
 end
