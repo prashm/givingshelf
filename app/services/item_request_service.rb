@@ -3,9 +3,6 @@ class ItemRequestService
   attr_accessor :item_request
   attr_reader :errors
 
-  alias_method :book_request, :item_request
-  alias_method :book_request=, :item_request=
-
   def initialize(item_request = nil)
     @item_request = item_request
     @errors = []
@@ -113,10 +110,10 @@ class ItemRequestService
 
   def item_map(item)
     case item.type
-    when "Book"
+    when Book.name
       { book: BookService.new.item_detail_map(item) }
-    when "Toy"
-      { toy: ToyService.new.toy_json(item) }
+    when Toy.name
+      { toy: ToyService.new.item_detail_map(item) }
     else
       { item: item.as_json }
     end
@@ -140,6 +137,6 @@ class ItemRequestService
   private
 
   def notify_item_owner
-    BookRequestNotificationJob.perform_later(self.item_request)
+    ItemRequestNotificationJob.perform_later(self.item_request)
   end
 end

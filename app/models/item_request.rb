@@ -118,6 +118,3 @@ class ItemRequest < ApplicationRecord
     Rails.logger.info "Status change notification sent to #{requester.email_address}"
   end
 end
-
-# Backward compatibility alias
-BookRequest = ItemRequest

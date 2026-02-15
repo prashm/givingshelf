@@ -10,8 +10,7 @@ class Book < Item
   scope :by_author, ->(author) { where("author ILIKE ?", "%#{author}%") }
   scope :by_title, ->(title) { where("title ILIKE ?", "%#{title}%") }
 
-  # Backward compatibility associations (will be updated when ItemRequest/GroupItemAvailability are created)
-  has_many :book_requests, class_name: "ItemRequest", foreign_key: "item_id", dependent: :destroy
+  has_many :item_requests, class_name: "ItemRequest", foreign_key: "item_id", dependent: :destroy
   has_many :group_book_availabilities, class_name: "GroupItemAvailability", foreign_key: "item_id", dependent: :destroy
   has_many :available_community_groups, through: :group_item_availabilities, source: :community_group
 

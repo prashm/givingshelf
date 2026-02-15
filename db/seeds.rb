@@ -2,7 +2,7 @@
 puts "Clearing existing data..."
 User.destroy_all
 Book.destroy_all
-BookRequest.destroy_all
+ItemRequest.destroy_all
 
 # Create sample users
 puts "Creating sample users..."
@@ -150,29 +150,29 @@ puts "Creating sample book requests..."
 requests_data = [
   {
     requester: created_users[1],
-    book: created_books[0], # Jane requests The Great Gatsby from John
+    item: created_books[0], # Jane requests The Great Gatsby from John
     message: 'I would love to read this classic! I can pick it up this weekend if that works for you.',
-    status: BookRequest::PENDING_STATUS
+    status: ItemRequest::PENDING_STATUS
   },
   {
     requester: created_users[2],
-    book: created_books[1], # Mike requests To Kill a Mockingbird from Jane
+    item: created_books[1], # Mike requests To Kill a Mockingbird from Jane
     message: 'This is one of my favorite books and I would love to have a copy. I can meet you anywhere convenient.',
-    status: BookRequest::ACCEPTED_STATUS
+    status: ItemRequest::ACCEPTED_STATUS
   },
   {
     requester: created_users[0],
-    book: created_books[3], # John requests The Hobbit from Sarah
+    item: created_books[3], # John requests The Hobbit from Sarah
     message: 'I\'ve been wanting to read this for a while. Would love to add it to my collection!',
-    status: BookRequest::PENDING_STATUS
+    status: ItemRequest::PENDING_STATUS
   }
 ]
 
 created_requests = requests_data.map do |request_data|
-  BookRequest.create!(request_data)
+  ItemRequest.create!(request_data)
 end
 
-puts "Created #{created_requests.length} book requests"
+puts "Created #{created_requests.length} item requests"
 
 # Create super admin user
 puts "Creating super admin user..."

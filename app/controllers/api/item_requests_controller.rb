@@ -1,6 +1,6 @@
-class Api::BookRequestsController < ApplicationController
+class Api::ItemRequestsController < ApplicationController
   before_action :require_authentication
-  before_action :set_book_request, only: [ :show, :update, :destroy, :messages ]
+  before_action :set_item_request, only: [ :show, :update, :destroy, :messages ]
 
   def index
     item_requests = item_request_service.requests_for_user(Current.user, params[:type])
@@ -8,15 +8,15 @@ class Api::BookRequestsController < ApplicationController
   end
 
   def show
-    unless @book_request.requester == Current.user || @book_request.item.owner?(Current.user)
+    unless @item_request.requester == Current.user || @item_request.item.owner?(Current.user)
       render json: { error: "Not authorized" }, status: :forbidden
     else
-      render json: item_request_service.request_json(@book_request)
+      render json: item_request_service.request_json(@item_request)
     end
   end
 
   def create
-    item_request = item_request_service.create_request(Current.user, params[:book_id] || params[:item_id], params[:message])
+    item_request = item_request_service.create_request(Current.user, params[:item_id], params[:message])
     if item_request
       render json: item_request_service.request_json(item_request), status: :created
     else
@@ -42,14 +42,14 @@ class Api::BookRequestsController < ApplicationController
   end
 
   def messages
-    unless @book_request.requester == Current.user || @book_request.owner == Current.user
+    unless @item_request.requester == Current.user || @item_request.owner == Current.user
       render json: { error: "Not authorized" }, status: :forbidden
       return
     end
 
     # Fetch most recent 50 messages, ordered by created_at desc (newest first)
     # Then reverse for display (oldest first)
-    messages = @book_request.messages
+    messages = @item_request.messages
       .includes(:user)
       .recent
       .limit(50)
@@ -72,10 +72,10 @@ class Api::BookRequestsController < ApplicationController
   private
 
   def item_request_service
-    @item_request_service ||= ItemRequestService.new(@book_request)
+    @item_request_service ||= ItemRequestService.new(@item_request)
   end
 
-  def set_book_request
-    @book_request = ItemRequest.find(params[:id])
+  def set_item_request
+    @item_request = ItemRequest.find(params[:id])
   end
 end

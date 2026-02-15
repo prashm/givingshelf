@@ -18,7 +18,7 @@ ActiveAdmin.register Message do
     actions
   end
 
-  filter :book_request
+  filter :item_request
   filter :user
   filter :read_at
   filter :created_at
@@ -26,8 +26,8 @@ ActiveAdmin.register Message do
   show do
     attributes_table do
       row :id
-      row :book_request do |message|
-        link_to "Request ##{message.book_request_id}", admin_book_request_path(message.book_request)
+      row :item_request do |message|
+        link_to "Request ##{message.item_request_id}", admin_item_request_path(message.item_request)
       end
       row :user do |message|
         link_to message.user.email_address, admin_user_path(message.user)

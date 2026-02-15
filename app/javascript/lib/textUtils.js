@@ -96,6 +96,9 @@ export const parsePageFromPath = (path) => {
   if (groupMatch) {
     return { page: 'groupLanding', groupShortName: groupMatch[1], itemType: null };
   }
+  if (path === '/item_request_details') {
+    return { page: 'itemRequestDetails', groupShortName: null, itemType: null };
+  }
   return { page: 'home', groupShortName: null, itemType: null };
 };
 

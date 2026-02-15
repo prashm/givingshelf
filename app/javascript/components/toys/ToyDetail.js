@@ -9,7 +9,7 @@ const TOY_CONFIG = {
     { label: 'Brand', value: item.brand },
     { label: 'Age Range', value: item.age_range }
   ],
-  donateSimilarLabel: 'Donate a Similar Toy',
+  donateSimilarLabel: '',
   donateLabel: 'Donate a Toy',
   browseMoreLabel: 'Browse More Toys',
   requestLabel: 'Request This Toy',

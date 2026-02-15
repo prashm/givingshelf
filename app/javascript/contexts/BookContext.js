@@ -430,8 +430,8 @@ export const BookProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post('/api/book_requests', {
-        book_id: bookId,
+      const response = await axios.post('/api/item_requests', {
+        item_id: bookId,
         message: message
       }, {
         withCredentials: true

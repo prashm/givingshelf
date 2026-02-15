@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { fetchBookRequestDetails, updateBookRequestStatus } from '../../lib/bookRequestsApi';
+import { fetchItemRequestDetails, updateItemRequestStatus } from '../../lib/itemRequestsApi';
 import { CheckIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { CheckIcon as CheckIconSolid, XMarkIcon as XMarkIconSolid, CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import ChatSection from './ChatSection';
 
-const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
+const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,8 +12,8 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
   const [hasMarkedAsViewed, setHasMarkedAsViewed] = useState(false);
 
   useEffect(() => {
-    if (!bookRequestId) {
-      setError('Missing book request id.');
+    if (!itemRequestId) {
+      setError('Missing item request id.');
       setLoading(false);
       return;
     }
@@ -22,7 +22,7 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchBookRequestDetails(bookRequestId);
+        const data = await fetchItemRequestDetails(itemRequestId);
         setRequest(data);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to load request details.');
@@ -32,22 +32,23 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
     };
 
     loadDetails();
-    setHasMarkedAsViewed(false); // Reset when bookRequestId changes
-  }, [bookRequestId]);
+    setHasMarkedAsViewed(false); // Reset when itemRequestId changes
+  }, [itemRequestId]);
 
   // Mark request as viewed when owner views a pending request
   useEffect(() => {
     if (!request || !currentUser || updatingStatus || hasMarkedAsViewed) return;
-    
-    const isOwner = currentUser.id === request?.book?.owner?.id;
+
+    const itemData = request.book || request.toy;
+    const isOwner = currentUser.id === itemData?.owner?.id;
     const isPending = request?.status_display === 'Pending';
-    
+
     if (isOwner && isPending) {
       setHasMarkedAsViewed(true);
       const markAsViewed = async () => {
         setUpdatingStatus(true);
         try {
-          const updatedRequest = await updateBookRequestStatus(bookRequestId, 'mark_as_viewed');
+          const updatedRequest = await updateItemRequestStatus(itemRequestId, 'mark_as_viewed');
           setRequest(updatedRequest);
         } catch (err) {
           // Silently fail - don't show error for auto-marking as viewed
@@ -58,14 +59,14 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
       };
       markAsViewed();
     }
-  }, [request, currentUser, updatingStatus, hasMarkedAsViewed, bookRequestId]);
+  }, [request, currentUser, updatingStatus, hasMarkedAsViewed, itemRequestId]);
 
   const handleStatusUpdate = async (actionType) => {
     if (updatingStatus) return;
-    
+
     setUpdatingStatus(true);
     try {
-      const updatedRequest = await updateBookRequestStatus(bookRequestId, actionType);
+      const updatedRequest = await updateItemRequestStatus(itemRequestId, actionType);
       setRequest(updatedRequest);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update status. Please try again.');
@@ -74,7 +75,8 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
     }
   };
 
-  const isOwner = currentUser && request?.book?.owner?.id === currentUser.id;
+  const itemData = request?.book || request?.toy;
+  const isOwner = currentUser && itemData?.owner?.id === currentUser.id;
   const currentStatusDisplay = request?.status_display;
 
   const statusButtons = [
@@ -87,7 +89,7 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
       IconSolid: CheckIconSolid,
       title: 'Accept Request',
       additionalDisabled: currentStatusDisplay === 'Accepted',
-      description: 'Approve this request and mark the book as requested'
+      description: 'Approve this request and mark the item as requested'
     },
     {
       action: 'decline',
@@ -109,15 +111,15 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
       IconSolid: CheckCircleIconSolid,
       title: 'Mark as Completed',
       additionalDisabled: currentStatusDisplay !== 'Accepted',
-      description: 'This action will mark the book as "donated" (only available for accepted requests)'
+      description: 'This action will mark the item as "donated" (only available for accepted requests)'
     }
   ];
 
   const renderStatusButton = (buttonConfig) => {
     const isActive = currentStatusDisplay === buttonConfig.statusMatch;
     const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
-    const tooltip = !request.can_update_status 
-      ? 'Another request for this book is already accepted'
+    const tooltip = !request.can_update_status
+      ? 'Another request for this item is already accepted'
       : isActive && buttonConfig.action === 'accept'
       ? 'This request is already accepted'
       : buttonConfig.title;
@@ -175,12 +177,16 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
   }
 
   const createdAt = new Date(request.created_at).toLocaleString();
+  const item = request.book || request.toy;
+  const itemLabel = request.book ? 'Book' : 'Item';
+  const itemTitle = item?.title;
+  const itemSubtitle = request.book ? `by ${item?.author}` : item?.brand ? `(${item.brand})` : '';
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-3xl">
       <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Book Request Details</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Item Request Details</h2>
           <button
             type="button"
             onClick={() => setCurrentPage('messages')}
@@ -192,23 +198,23 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
 
         <section>
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Book
+            {itemLabel}
           </h3>
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-lg font-medium text-gray-900">{request.book.title}</p>
-              <p className="text-sm text-gray-600">by {request.book.author}</p>
+              <p className="text-lg font-medium text-gray-900">{itemTitle}</p>
+              {itemSubtitle && <p className="text-sm text-gray-600">{itemSubtitle}</p>}
               <p className="text-sm text-gray-500 mt-1">
-                Status: <span className="font-medium capitalize">{request.book.status_display}</span>
+                Status: <span className="font-medium capitalize">{item?.status_display}</span>
               </p>
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentPage('itemDetails', { selectedBook: request.book, itemDetailSource: 'messages' })
+                  setCurrentPage('itemDetails', { selectedBook: item, itemDetailSource: 'messages' })
                 }
                 className="mt-2 text-sm text-emerald-700 hover:text-emerald-900 underline"
               >
-                View book details
+                View {itemLabel.toLowerCase()} details
               </button>
             </div>
           </div>
@@ -265,11 +271,11 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
       {/* Chat Section */}
       {currentUser && (
         <ChatSection
-          bookRequestId={bookRequestId}
+          itemRequestId={itemRequestId}
           currentUser={currentUser}
           otherUser={
             currentUser.id === request.requester.id
-              ? request.book.owner
+              ? item?.owner
               : request.requester
           }
         />
@@ -278,6 +284,4 @@ const BookRequestDetail = ({ bookRequestId, setCurrentPage, currentUser }) => {
   );
 };
 
-export default BookRequestDetail;
-
-
+export default ItemRequestDetail;

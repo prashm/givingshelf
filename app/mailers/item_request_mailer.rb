@@ -1,5 +1,5 @@
-# app/mailers/book_request_mailer.rb
-class BookRequestMailer < ApplicationMailer
+# app/mailers/item_request_mailer.rb
+class ItemRequestMailer < ApplicationMailer
   def new_request_notification(item_request)
     @item_request = item_request
     @item = item_request.item

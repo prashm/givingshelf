@@ -265,7 +265,7 @@ export const ItemProvider = ({ children, itemType = Constants.ITEM_TYPE_BOOK }) 
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post('/api/book_requests', { book_id: itemId, message }, { withCredentials: true });
+      const response = await axios.post('/api/item_requests', { item_id: itemId, message }, { withCredentials: true });
       setItems(prev => prev.map(item => item.id === itemId ? { ...item, can_request: false } : item));
       return { success: true, request: response.data };
     } catch (err) {

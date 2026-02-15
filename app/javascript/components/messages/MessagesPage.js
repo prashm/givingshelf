@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchBookRequests } from '../../lib/bookRequestsApi';
+import { fetchItemRequests } from '../../lib/itemRequestsApi';
 
 const MessagesPage = ({ setCurrentPage }) => {
   const [activeTab, setActiveTab] = useState('received');
@@ -14,7 +14,7 @@ const MessagesPage = ({ setCurrentPage }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchBookRequests(type);
+      const data = await fetchItemRequests(type);
       if (type === 'received') {
         setReceivedRequests(data);
         setHasLoadedReceived(true);
@@ -45,7 +45,7 @@ const MessagesPage = ({ setCurrentPage }) => {
   };
 
   const handleViewDetails = (requestId) => {
-    setCurrentPage('bookRequestDetails', { bookRequestId: requestId });
+    setCurrentPage('itemRequestDetails', { itemRequestId: requestId });
   };
 
   const renderTable = (requests, type) => {
@@ -53,8 +53,8 @@ const MessagesPage = ({ setCurrentPage }) => {
       return (
         <p className="text-sm text-gray-500 text-center py-6">
           {type === 'received'
-            ? 'No requests received for your books yet.'
-            : 'You have not requested any books yet.'}
+            ? 'No requests received for your items yet.'
+            : 'You have not requested any items yet.'}
         </p>
       );
     }
@@ -65,7 +65,7 @@ const MessagesPage = ({ setCurrentPage }) => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Book
+                Item
               </th>
               {type === 'received' && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -92,11 +92,11 @@ const MessagesPage = ({ setCurrentPage }) => {
                   <button
                     type="button"
                     onClick={() =>
-                      setCurrentPage('itemDetails', { selectedBook: request.book, itemDetailSource: 'messages' })
+                      setCurrentPage('itemDetails', { selectedBook: request.book || request.toy, itemDetailSource: 'messages' })
                     }
                     className="text-emerald-700 hover:text-emerald-900 underline"
                   >
-                    {request.book.title}
+                    {(request.book || request.toy).title}
                   </button>
                 </td>
                 {type === 'received' && (
@@ -138,7 +138,7 @@ const MessagesPage = ({ setCurrentPage }) => {
     <div className="container mx-auto py-8 px-4 max-w-5xl">
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">My Book Requests</h2>
+          <h2 className="text-2xl font-bold">My Item Requests</h2>
           <button
             onClick={() => setCurrentPage('browse')}
             className="text-sm text-emerald-700 hover:text-emerald-900"

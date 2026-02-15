@@ -1,22 +1,22 @@
 require "set"
 
-class BookRequestPresenceChannel < ApplicationCable::Channel
-  REDIS_KEY_PREFIX = "book_request_presence"
+class ItemRequestPresenceChannel < ApplicationCable::Channel
+  REDIS_KEY_PREFIX = "item_request_presence"
   PRESENCE_TTL = 300 # 5 minutes - users are considered inactive after this
 
   # Fallback in-memory store for development when Redis is unavailable
-  @@fallback_active_users = {} # book_request_id => Set of user_ids
+  @@fallback_active_users = {} # item_request_id => Set of user_ids
   @@redis_available = nil
 
   def subscribed
-    @book_request = ItemRequest.find(params[:book_request_id])
+    @item_request = ItemRequest.find(params[:item_request_id])
 
     unless can_access_chat?
       reject
       return
     end
 
-    stream_from "book_request_presence_#{params[:book_request_id]}"
+    stream_from "item_request_presence_#{params[:item_request_id]}"
 
     # Track this user as active in Redis
     track_user_active
@@ -40,13 +40,13 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
     end
   end
 
-  def self.is_user_active?(book_request_id, user_id)
+  def self.is_user_active?(item_request_id, user_id)
     if redis_available?
-      redis_key = "#{REDIS_KEY_PREFIX}:#{book_request_id}"
+      redis_key = "#{REDIS_KEY_PREFIX}:#{item_request_id}"
       redis_connection.sismember(redis_key, user_id.to_s)
     else
       # Fallback to in-memory store
-      @@fallback_active_users[book_request_id.to_i]&.include?(user_id.to_i) || false
+      @@fallback_active_users[item_request_id.to_i]&.include?(user_id.to_i) || false
     end
   end
 
@@ -54,46 +54,46 @@ class BookRequestPresenceChannel < ApplicationCable::Channel
 
   def can_access_chat?
     return false unless current_user
-    @book_request.requester == current_user || @book_request.owner == current_user
+    @item_request.requester == current_user || @item_request.owner == current_user
   end
 
   def track_user_active
     if redis_available?
-      redis_key = "#{REDIS_KEY_PREFIX}:#{@book_request.id}"
+      redis_key = "#{REDIS_KEY_PREFIX}:#{@item_request.id}"
       redis_connection.sadd(redis_key, current_user.id.to_s)
       redis_connection.expire(redis_key, PRESENCE_TTL)
     else
       # Fallback to in-memory store
-      @@fallback_active_users[@book_request.id] ||= Set.new
-      @@fallback_active_users[@book_request.id].add(current_user.id)
+      @@fallback_active_users[@item_request.id] ||= Set.new
+      @@fallback_active_users[@item_request.id].add(current_user.id)
     end
   end
 
   def untrack_user_active
     if redis_available?
-      redis_key = "#{REDIS_KEY_PREFIX}:#{@book_request.id}"
+      redis_key = "#{REDIS_KEY_PREFIX}:#{@item_request.id}"
       redis_connection.srem(redis_key, current_user.id.to_s)
     else
       # Fallback to in-memory store
-      @@fallback_active_users[@book_request.id]&.delete(current_user.id)
-      @@fallback_active_users.delete(@book_request.id) if @@fallback_active_users[@book_request.id]&.empty?
+      @@fallback_active_users[@item_request.id]&.delete(current_user.id)
+      @@fallback_active_users.delete(@item_request.id) if @@fallback_active_users[@item_request.id]&.empty?
     end
   end
 
   def broadcast_presence_update
-    # Get all active users for this book request
+    # Get all active users for this item request
     active_user_ids = if redis_available?
-      redis_key = "#{REDIS_KEY_PREFIX}:#{@book_request.id}"
+      redis_key = "#{REDIS_KEY_PREFIX}:#{@item_request.id}"
       redis_connection.smembers(redis_key).map(&:to_i)
     else
       # Fallback to in-memory store
-      (@@fallback_active_users[@book_request.id] || Set.new).to_a
+      (@@fallback_active_users[@item_request.id] || Set.new).to_a
     end
 
     active_users = User.where(id: active_user_ids)
 
     ActionCable.server.broadcast(
-      "book_request_presence_#{params[:book_request_id]}",
+      "item_request_presence_#{params[:item_request_id]}",
       {
         type: "presence",
         users: active_users.map { |user| { id: user.id, name: user.display_name } }

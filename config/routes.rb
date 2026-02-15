@@ -91,7 +91,7 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :book_requests, only: [ :index, :show, :create, :update, :destroy ] do
+    resources :item_requests, only: [ :index, :show, :create, :update, :destroy ] do
       member do
         get :messages
       end

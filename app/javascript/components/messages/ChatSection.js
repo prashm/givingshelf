@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchChatMessages } from '../../lib/bookRequestsApi';
+import { fetchChatMessages } from '../../lib/itemRequestsApi';
 import { createSubscription } from '../../lib/actionCable';
 import { linkifyText } from '../../lib/textUtils';
 
-const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
+const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -27,7 +27,7 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
 
   // Fetch chat history and subscribe to channels on mount
   useEffect(() => {
-    if (!bookRequestId || !currentUser) return;
+    if (!itemRequestId || !currentUser) return;
 
     const initializeChat = async () => {
       try {
@@ -35,14 +35,14 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
         setError(null);
 
         // Fetch chat history
-        const chatHistory = await fetchChatMessages(bookRequestId);
+        const chatHistory = await fetchChatMessages(itemRequestId);
         setMessages(chatHistory);
 
         // Subscribe to chat channel
         chatSubscriptionRef.current = createSubscription(
           {
-            channel: 'BookRequestChatChannel',
-            book_request_id: bookRequestId
+            channel: 'ItemRequestChatChannel',
+            item_request_id: itemRequestId
           },
           {
             connected: () => {
@@ -85,8 +85,8 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
         // Subscribe to presence channel
         presenceSubscriptionRef.current = createSubscription(
           {
-            channel: 'BookRequestPresenceChannel',
-            book_request_id: bookRequestId
+            channel: 'ItemRequestPresenceChannel',
+            item_request_id: itemRequestId
           },
           {
             connected: () => {
@@ -138,7 +138,7 @@ const ChatSection = ({ bookRequestId, currentUser, otherUser }) => {
         clearTimeout(typingIndicatorTimeoutRef.current);
       }
     };
-  }, [bookRequestId, currentUser, otherUser]);
+  }, [itemRequestId, currentUser, otherUser]);
 
   // Backup heartbeat mechanism - only runs if ActionCable subscription fails
   const startBackupHeartbeat = () => {

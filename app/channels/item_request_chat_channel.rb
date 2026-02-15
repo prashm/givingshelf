@@ -1,13 +1,13 @@
-class BookRequestChatChannel < ApplicationCable::Channel
+class ItemRequestChatChannel < ApplicationCable::Channel
   def subscribed
-    @book_request = ItemRequest.find(params[:book_request_id])
+    @item_request = ItemRequest.find(params[:item_request_id])
 
     unless can_access_chat?
       reject
       return
     end
 
-    stream_from "book_request_#{params[:book_request_id]}"
+    stream_from "item_request_#{params[:item_request_id]}"
   end
 
   def unsubscribed
@@ -15,7 +15,7 @@ class BookRequestChatChannel < ApplicationCable::Channel
   end
 
   def receive(data)
-    @book_request = ItemRequest.find(params[:book_request_id])
+    @item_request = ItemRequest.find(params[:item_request_id])
 
     unless can_access_chat?
       transmit({ type: "error", message: "Not authorized" })
@@ -28,14 +28,14 @@ class BookRequestChatChannel < ApplicationCable::Channel
       return
     end
 
-    message = @book_request.messages.create!(
+    message = @item_request.messages.create!(
       user: current_user,
       content: content
     )
 
     # Broadcast to all subscribers
     ActionCable.server.broadcast(
-      "book_request_#{params[:book_request_id]}",
+      "item_request_#{params[:item_request_id]}",
       {
         type: "message",
         message: {
@@ -53,7 +53,7 @@ class BookRequestChatChannel < ApplicationCable::Channel
   end
 
   def typing(data)
-    @book_request = ItemRequest.find(params[:book_request_id])
+    @item_request = ItemRequest.find(params[:item_request_id])
 
     unless can_access_chat?
       transmit({ type: "error", message: "Not authorized" })
@@ -64,7 +64,7 @@ class BookRequestChatChannel < ApplicationCable::Channel
 
     # Broadcast typing status to all subscribers
     ActionCable.server.broadcast(
-      "book_request_#{params[:book_request_id]}",
+      "item_request_#{params[:item_request_id]}",
       {
         type: "typing",
         user_id: current_user.id,
@@ -78,16 +78,16 @@ class BookRequestChatChannel < ApplicationCable::Channel
 
   def can_access_chat?
     return false unless current_user
-    @book_request.requester == current_user || @book_request.owner == current_user
+    @item_request.requester == current_user || @item_request.owner == current_user
   end
 
   def handle_message_notification(message)
     # Determine the recipient (the other user in the conversation)
-    recipient = message.user == @book_request.requester ? @book_request.owner : @book_request.requester
+    recipient = message.user == @item_request.requester ? @item_request.owner : @item_request.requester
 
     # Check if recipient is currently active using the presence channel class method
     begin
-      recipient_active = BookRequestPresenceChannel.is_user_active?(@book_request.id, recipient.id)
+      recipient_active = ItemRequestPresenceChannel.is_user_active?(@item_request.id, recipient.id)
     rescue => e
       Rails.logger.warn "Failed to check user presence: #{e.message}. Assuming inactive."
       recipient_active = false

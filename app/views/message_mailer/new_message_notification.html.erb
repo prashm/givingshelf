@@ -16,7 +16,7 @@
     
     <p><strong>View the full message and continue the conversation:</strong></p>
     <p>
-      <a href="<%= "#{Rails.application.config.action_mailer.default_url_options[:host]}/book_request_details?id=#{@item_request.id}" %>" 
+      <a href="<%= "#{Rails.application.config.action_mailer.default_url_options[:host]}/item_request_details?id=#{@item_request.id}" %>" 
          style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
         View <%= item_type.capitalize %> Request Details
       </a>

@@ -9,7 +9,7 @@ import AddToy from './toys/AddToy';
 import EditBook from './books/EditBook';
 import EditToy from './toys/EditToy';
 import ItemDetailPage from './items/ItemDetailPage';
-import BookRequestDetail from './messages/BookRequestDetail';
+import ItemRequestDetail from './messages/ItemRequestDetail';
 import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyItems from './profile/MyItems';
@@ -29,6 +29,7 @@ const getUrlForPage = (page, extraState = {}) => {
   if (page === 'editToy') return '/toys';
   if (page === 'home') return '/';
   if (page === 'myGroups') return '/my-groups';
+  if (page === 'itemRequestDetails' && extraState.itemRequestId) return `/item_request_details?id=${extraState.itemRequestId}`;
   if (page === 'groupLanding' && extraState.groupShortName) return `/g/${extraState.groupShortName}`;
   if (page === 'groupBrowse' && extraState.groupShortName) {
     return extraState.itemType === Constants.ITEM_TYPE_TOY ? `/g/${extraState.groupShortName}/toys` : `/g/${extraState.groupShortName}/books`;
@@ -82,9 +83,15 @@ const AppShellContent = ({ onNavigate }) => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
     return (hist?.page === 'editToy' && hist?.editingToyId) ? hist.editingToyId : null;
   });
-  const [selectedBookRequestId, setSelectedBookRequestId] = useState(() => {
+  const [selectedItemRequestId, setSelectedItemRequestId] = useState(() => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
-    return (hist?.page === 'bookRequestDetails' && hist?.bookRequestId) ? hist.bookRequestId : null;
+    if (hist?.page === 'itemRequestDetails' && hist?.itemRequestId) return hist.itemRequestId;
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const search = new URLSearchParams(window.location.search);
+      if (path === '/item_request_details' && search.has('id')) return search.get('id');
+    }
+    return null;
   });
   const [redirectReason, setRedirectReason] = useState(null);
   const [donateInitialTitle, setDonateInitialTitle] = useState(null);
@@ -197,7 +204,7 @@ const AppShellContent = ({ onNavigate }) => {
         if (state.selectedBook) setSelectedBook(state.selectedBook);
         if (state.editingBookId) setEditingBookId(state.editingBookId);
         if (state.editingToyId) setEditingToyId(state.editingToyId);
-        if (state.bookRequestId) setSelectedBookRequestId(state.bookRequestId);
+        if (state.itemRequestId) setSelectedItemRequestId(state.itemRequestId);
         if (state.donateInitialTitle !== undefined) setDonateInitialTitle(state.donateInitialTitle);
         if (state.itemDetailSource !== undefined) setItemDetailSource(state.itemDetailSource);
         if (state.selectedItemType !== undefined) setSelectedItemType(state.selectedItemType);
@@ -222,7 +229,7 @@ const AppShellContent = ({ onNavigate }) => {
     if (extraState.selectedBook) setSelectedBook(extraState.selectedBook);
     if (extraState.editingBookId) setEditingBookId(extraState.editingBookId);
     if (extraState.editingToyId) setEditingToyId(extraState.editingToyId);
-    if (extraState.bookRequestId) setSelectedBookRequestId(extraState.bookRequestId);
+    if (extraState.itemRequestId) setSelectedItemRequestId(extraState.itemRequestId);
     if (page === 'donate') {
       setDonateInitialTitle(extraState.donateInitialTitle ?? null);
       setDonateItemType(extraState.donateItemType ?? Constants.ITEM_TYPE_BOOK);
@@ -334,10 +341,10 @@ const AppShellContent = ({ onNavigate }) => {
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
         />;
-      case 'bookRequestDetails':
+      case 'itemRequestDetails':
         return (
-          <BookRequestDetail
-            bookRequestId={selectedBookRequestId}
+          <ItemRequestDetail
+            itemRequestId={selectedItemRequestId}
             setCurrentPage={setCurrentPage}
             currentUser={currentUser}
           />

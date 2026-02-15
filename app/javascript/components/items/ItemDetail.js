@@ -303,7 +303,7 @@ const ItemDetail = ({
                   {userRequest ? (
                     <button
                       type="button"
-                      onClick={() => setCurrentPage('bookRequestDetails', { bookRequestId: userRequest.id })}
+                      onClick={() => setCurrentPage('itemRequestDetails', { itemRequestId: userRequest.id })}
                       className="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
                     >
                       Requested on {new Date(userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -352,7 +352,7 @@ const ItemDetail = ({
                 </button>
               )}
 
-              {!isOwner && (
+              {!isOwner && donateSimilarLabel && (
                 <button onClick={handleDonateSimilarClick} className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">
                   {donateSimilarLabel}
                 </button>

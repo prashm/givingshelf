@@ -53,9 +53,9 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result
       assert result.persisted?
       assert_equal @requester, result.requester
-      assert_equal book, result.book
+      assert_equal book, result.item
       assert_equal message, result.message
-      assert_equal BookRequest::PENDING_STATUS, result.status
+      assert_equal ItemRequest::PENDING_STATUS, result.status
       assert service.errors.empty?
     end
 
@@ -63,7 +63,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request(items(:one))
       message = "I would love to read this book!"
 
-      assert_enqueued_jobs(1, only: BookRequestNotificationJob) do
+      assert_enqueued_jobs(1, only: ItemRequestNotificationJob) do
         service.create_request(@requester, book.id, message)
       end
     end
@@ -124,7 +124,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Previous request message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
 
 
@@ -171,7 +171,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   end
 
   describe "#update_request" do
-    def setup_book_request(status: BookRequest::PENDING_STATUS)
+    def setup_item_request(status: ItemRequest::PENDING_STATUS)
       book = setup_book_for_request(items(:one))
       ItemRequest.create!(
         item: book,
@@ -183,59 +183,59 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "accepts a request successfully" do
-      book_request = setup_book_request
-      service = ItemRequestService.new(book_request)
+      item_request = setup_item_request
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "accept")
 
       assert result
-      book_request.reload
-      assert_equal BookRequest::ACCEPTED_STATUS, book_request.status
-      assert_equal BookStatus::REQUESTED, book_request.item.status
+      item_request.reload
+      assert_equal ItemRequest::ACCEPTED_STATUS, item_request.status
+      assert_equal BookStatus::REQUESTED, item_request.item.status
       assert service.errors.empty?
     end
 
     it "declines a request successfully" do
-      book_request = setup_book_request
-      service = ItemRequestService.new(book_request)
+      item_request = setup_item_request
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "decline")
 
       assert result
-      book_request.reload
-      assert_equal BookRequest::DECLINED_STATUS, book_request.status
+      item_request.reload
+      assert_equal ItemRequest::DECLINED_STATUS, item_request.status
       assert service.errors.empty?
     end
 
     it "completes an accepted request successfully" do
-      book_request = setup_book_request(status: BookRequest::ACCEPTED_STATUS)
-      book_request.item.update!(status: BookStatus::REQUESTED)
-      service = ItemRequestService.new(book_request)
+      item_request = setup_item_request(status: ItemRequest::ACCEPTED_STATUS)
+      item_request.item.update!(status: BookStatus::REQUESTED)
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
 
       assert result
-      book_request.reload
-      assert_equal BookRequest::COMPLETED_STATUS, book_request.status
-      assert_equal BookStatus::DONATED, book_request.item.status
+      item_request.reload
+      assert_equal ItemRequest::COMPLETED_STATUS, item_request.status
+      assert_equal BookStatus::DONATED, item_request.item.status
       assert service.errors.empty?
     end
 
     it "marks request as viewed successfully" do
-      book_request = setup_book_request
-      service = ItemRequestService.new(book_request)
+      item_request = setup_item_request
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "mark_as_viewed")
 
       assert result
-      book_request.reload
-      assert_equal BookRequest::IN_REVIEW_STATUS, book_request.status
+      item_request.reload
+      assert_equal ItemRequest::IN_REVIEW_STATUS, item_request.status
       assert service.errors.empty?
     end
 
     it "returns false and sets error when action is invalid" do
-      book_request = setup_book_request
-      service = ItemRequestService.new(book_request)
+      item_request = setup_item_request
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "invalid_action")
 
@@ -244,9 +244,9 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false and sets error when user is not authorized" do
-      book_request = setup_book_request
+      item_request = setup_item_request
       unauthorized_user = users(:two)
-      service = ItemRequestService.new(book_request)
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(unauthorized_user, "accept")
 
@@ -255,8 +255,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when trying to complete a non-accepted request" do
-      book_request = setup_book_request(status: BookRequest::PENDING_STATUS)
-      service = ItemRequestService.new(book_request)
+      item_request = setup_item_request(status: ItemRequest::PENDING_STATUS)
+      service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
 
@@ -271,14 +271,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
 
       service = ItemRequestService.new(request1)
       service.update_request(@owner, "accept")
 
       request1.reload
-      assert_equal BookRequest::ACCEPTED_STATUS, request1.status
+      assert_equal ItemRequest::ACCEPTED_STATUS, request1.status
       assert_equal BookStatus::REQUESTED, book.reload.status
     end
   end
@@ -286,39 +286,39 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   describe "#cancel_request" do
     it "cancels a request successfully" do
       book = setup_book_for_request(items(:one))
-      book_request = ItemRequest.create!(
+      item_request = ItemRequest.create!(
         item: book,
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
-      service = ItemRequestService.new(book_request)
+      service = ItemRequestService.new(item_request)
 
       result = service.cancel_request(@requester)
 
       assert result
-      assert_nil ItemRequest.find_by(id: book_request.id)
+      assert_nil ItemRequest.find_by(id: item_request.id)
       assert service.errors.empty?
     end
 
     it "returns false and sets error when user is not authorized" do
       book = setup_book_for_request(items(:one))
-      book_request = ItemRequest.create!(
+      item_request = ItemRequest.create!(
         item: book,
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
       # Use a different user (owner) trying to cancel requester's request
-      service = ItemRequestService.new(book_request)
+      service = ItemRequestService.new(item_request)
 
       result = service.cancel_request(@owner)
 
       assert_not result
       assert_includes service.errors.join(" "), "Not authorized"
-      assert ItemRequest.exists?(book_request.id)
+      assert ItemRequest.exists?(item_request.id)
     end
   end
 
@@ -343,14 +343,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
         message: "Second request message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
 
       requests = service.requests_for_user(@owner, "received")
@@ -382,14 +382,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
         message: "Second request message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
 
 
@@ -412,23 +412,23 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   describe "#request_json" do
     it "returns correct JSON structure" do
       book = setup_book_for_request(items(:one))
-      book_request = ItemRequest.create!(
+      item_request = ItemRequest.create!(
         item: book,
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
 
 
-      json = service.request_json(book_request)
+      json = service.request_json(item_request)
 
-      assert_equal book_request.id, json[:id]
-      assert_equal book_request.status, json[:status]
+      assert_equal item_request.id, json[:id]
+      assert_equal item_request.status, json[:status]
       assert_equal "Pending", json[:status_display]
-      assert_equal book_request.message, json[:message]
-      assert_equal book_request.created_at, json[:created_at]
-      assert_equal book_request.updated_at, json[:updated_at]
+      assert_equal item_request.message, json[:message]
+      assert_equal item_request.created_at, json[:created_at]
+      assert_equal item_request.updated_at, json[:updated_at]
       assert json[:book].present?
       assert json[:can_update_status].present?
       assert_equal @requester.id, json[:requester][:id]
@@ -439,16 +439,16 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "includes book JSON in request JSON" do
       book = setup_book_for_request(items(:one))
-      book_request = ItemRequest.create!(
+      item_request = ItemRequest.create!(
         item: book,
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: BookRequest::PENDING_STATUS
+        status: ItemRequest::PENDING_STATUS
       )
 
 
-      json = service.request_json(book_request)
+      json = service.request_json(item_request)
 
       assert json[:book].is_a?(Hash)
       assert_equal book.id, json[:book][:id]
@@ -458,23 +458,23 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
   describe "#display_status" do
     it "returns 'Completed' for COMPLETED_STATUS" do
-      assert_equal "Completed", service.display_status(BookRequest::COMPLETED_STATUS)
+      assert_equal "Completed", service.display_status(ItemRequest::COMPLETED_STATUS)
     end
 
     it "returns 'Accepted' for ACCEPTED_STATUS" do
-      assert_equal "Accepted", service.display_status(BookRequest::ACCEPTED_STATUS)
+      assert_equal "Accepted", service.display_status(ItemRequest::ACCEPTED_STATUS)
     end
 
     it "returns 'Declined' for DECLINED_STATUS" do
-      assert_equal "Declined", service.display_status(BookRequest::DECLINED_STATUS)
+      assert_equal "Declined", service.display_status(ItemRequest::DECLINED_STATUS)
     end
 
     it "returns 'In Review' for IN_REVIEW_STATUS" do
-      assert_equal "In Review", service.display_status(BookRequest::IN_REVIEW_STATUS)
+      assert_equal "In Review", service.display_status(ItemRequest::IN_REVIEW_STATUS)
     end
 
     it "returns 'Pending' for PENDING_STATUS" do
-      assert_equal "Pending", service.display_status(BookRequest::PENDING_STATUS)
+      assert_equal "Pending", service.display_status(ItemRequest::PENDING_STATUS)
     end
 
     it "returns 'Pending' for unknown status" do

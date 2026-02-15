@@ -1216,22 +1216,8 @@
   .bg-white {
     background-color: var(--color-white);
   }
-  .bg-white\/85 {
-    background-color: color-mix(in srgb, #fff 85%, transparent);
-  }
-  @supports (color: color-mix(in lab, red, red)) {
-    .bg-white\/85 {
-      background-color: color-mix(in oklab, var(--color-white) 85%, transparent);
-    }
-  }
   .bg-yellow-100 {
     background-color: var(--color-yellow-100);
-  }
-  .bg-cover {
-    background-size: cover;
-  }
-  .bg-center {
-    background-position: center;
   }
   .object-contain {
     -o-object-fit: contain;

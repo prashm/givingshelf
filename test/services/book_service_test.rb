@@ -45,7 +45,7 @@ class BookServiceTest < ActiveSupport::TestCase
     CommunityGroupMembership.where(user: user, community_group: group).delete_all
   end
 
-  def create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+  def create_item_request(book, requester, status: ItemRequest::PENDING_STATUS)
     ItemRequest.create!(
       item: book,
       requester: requester,
@@ -334,7 +334,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+      create_item_request(book, requester, status: ItemRequest::PENDING_STATUS)
 
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
@@ -346,7 +346,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_book_request(book, requester, status: BookRequest::ACCEPTED_STATUS)
+      create_item_request(book, requester, status: ItemRequest::ACCEPTED_STATUS)
 
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
@@ -401,7 +401,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+      create_item_request(book, requester, status: ItemRequest::PENDING_STATUS)
       remove_user_from_group(requester, @other_group)
 
       service = BookService.new(book)
@@ -478,7 +478,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_book_request(book, requester, status: BookRequest::PENDING_STATUS)
+      create_item_request(book, requester, status: ItemRequest::PENDING_STATUS)
 
       service = BookService.new(book)
       json = service.item_detail_map(book, requester)
