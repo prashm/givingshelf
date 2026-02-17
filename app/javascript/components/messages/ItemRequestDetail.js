@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchItemRequestDetails, updateItemRequestStatus } from '../../lib/itemRequestsApi';
 import { CheckIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import * as Constants from '../../lib/constants';
 import { CheckIcon as CheckIconSolid, XMarkIcon as XMarkIconSolid, CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import ChatSection from './ChatSection';
 
@@ -210,7 +211,11 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentPage('itemDetails', { selectedBook: item, itemDetailSource: 'messages' })
+                  setCurrentPage('itemDetails', {
+                    selectedBook: item,
+                    itemDetailSource: 'messages',
+                    selectedItemType: request.book ? Constants.ITEM_TYPE_BOOK : Constants.ITEM_TYPE_TOY
+                  })
                 }
                 className="mt-2 text-sm text-emerald-700 hover:text-emerald-900 underline"
               >

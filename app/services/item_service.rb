@@ -175,8 +175,9 @@ class ItemService
     return false if user.nil?
     return false unless item.available?
     return false if user == item.user
-    if item.item_requests.exists?(requester: user, status: [ ItemRequest::PENDING_STATUS, ItemRequest::ACCEPTED_STATUS ])
-      raise "You have a pending or accepted request for this item"
+    @user_request = item.item_requests.find_by(requester: user)
+    if @user_request
+      raise "You already requested this item"
     end
 
     # Check if user is in any of the groups the item is shared in

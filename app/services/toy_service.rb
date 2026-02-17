@@ -66,8 +66,12 @@ class ToyService < ItemService
       updated_at: toy.updated_at,
       can_request: item_can_be_requested_by?(requester)
     }
+    if @user_request
+      result[:user_request_id] = @user_request.id
+      result[:user_request_dt] = @user_request.created_at
+    end
     if @item_cannot_be_requested_by_reason.present?
-      result[:can_request_reason] = @item_cannot_be_requested_by_reason
+      result[:cannot_request_reason] = @item_cannot_be_requested_by_reason
     end
     result
   end

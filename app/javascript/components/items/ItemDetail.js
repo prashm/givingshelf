@@ -89,13 +89,24 @@ const ItemDetail = ({
     );
   }
 
+  const deriveUserRequest = (itemData) => {
+    if (itemData?.user_request_id != null && itemData?.user_request_dt != null) {
+      return { id: itemData.user_request_id, created_at: itemData.user_request_dt };
+    }
+    return null;
+  };
+
   useEffect(() => {
     setItem(initialItem);
+    setUserRequest(deriveUserRequest(initialItem));
     if (initialItem && !initialItem.owner && initialItem.id) {
       getItem(initialItem.id)
         .then((data) => {
           const fullItem = data;
-          if (fullItem) setItem(fullItem);
+          if (fullItem) {
+            setItem(fullItem);
+            setUserRequest(deriveUserRequest(fullItem));
+          }
         })
         .catch(error => console.error('Error fetching full item details:', error));
     }
@@ -118,6 +129,7 @@ const ItemDetail = ({
           if (fullItem) {
             setItem(fullItem);
             if (fullItem.view_count !== undefined) setViewCount(fullItem.view_count);
+            setUserRequest(deriveUserRequest(fullItem));
           }
         })
         .catch(error => console.error('Error fetching view count:', error));
@@ -130,15 +142,6 @@ const ItemDetail = ({
         .catch(() => setViewTracked(true));
     }
   }, [item?.id, currentUser?.id, viewTracked, getItem]);
-
-  useEffect(() => {
-    if (!item || !currentUser) return;
-    axios.get(`/api/items/${item.id}/user_request`, { withCredentials: true })
-      .then(response => {
-        setUserRequest(response.data.has_requested ? response.data.request : null);
-      })
-      .catch(error => console.error('Error fetching user request:', error));
-  }, [item?.id, currentUser?.id]);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -313,7 +316,7 @@ const ItemDetail = ({
                       onClick={openRequestModal}
                       disabled={requestStatus === 'requesting' || (item.can_request === false && currentUser)}
                       className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title={item.can_request === false && currentUser && item.can_request_reason ? item.can_request_reason : ''}
+                      title={item.can_request === false && currentUser && item.cannot_request_reason ? item.cannot_request_reason : ''}
                     >
                       {requestStatus === 'requesting' ? 'Sending Request...' : requestLabel}
                     </button>

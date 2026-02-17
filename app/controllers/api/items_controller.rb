@@ -1,7 +1,7 @@
 class Api::ItemsController < ApplicationController
   before_action :require_authentication, except: [ :index, :show, :search, :track_view, :stats ]
   before_action :resume_session, only: [ :show, :track_view ]
-  before_action :set_item, only: [ :show, :update, :destroy, :track_view, :user_request ]
+  before_action :set_item, only: [ :show, :update, :destroy, :track_view ]
 
   include ApiCursorPagination
 
@@ -60,29 +60,6 @@ class Api::ItemsController < ApplicationController
 
   def track_view
     render json: { view_count: item_service.track_item_view(Current.user) }
-  end
-
-  def user_request
-    unless Current.user
-      render json: { has_requested: false }
-      return
-    end
-
-    request = @item.item_requests.find_by(requester: Current.user, status: [ ItemRequest::PENDING_STATUS, ItemRequest::ACCEPTED_STATUS ])
-
-    if request
-      render json: {
-        has_requested: true,
-        request: {
-          id: request.id,
-          status: request.status,
-          created_at: request.created_at,
-          message: request.message
-        }
-      }
-    else
-      render json: { has_requested: false }
-    end
   end
 
   def stats

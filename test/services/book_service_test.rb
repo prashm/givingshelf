@@ -339,7 +339,7 @@ class BookServiceTest < ActiveSupport::TestCase
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You have a pending or accepted request for this item", service.item_cannot_be_requested_by_reason
+      assert_equal "You already requested this item", service.item_cannot_be_requested_by_reason
     end
 
     it "returns false with reason when user has accepted request" do
@@ -351,7 +351,7 @@ class BookServiceTest < ActiveSupport::TestCase
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You have a pending or accepted request for this item", service.item_cannot_be_requested_by_reason
+      assert_equal "You already requested this item", service.item_cannot_be_requested_by_reason
     end
 
     it "returns false with reason when book has no groups" do
@@ -407,7 +407,7 @@ class BookServiceTest < ActiveSupport::TestCase
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
       assert_not result
-      assert_equal "You have a pending or accepted request for this item", service.item_cannot_be_requested_by_reason
+      assert_equal "You already requested this item", service.item_cannot_be_requested_by_reason
     end
   end
 
@@ -462,7 +462,7 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_equal 2, json[:community_group_names].length
     end
 
-    it "includes can_request and can_request_reason when requester can request" do
+    it "includes can_request and cannot_request_reason when requester can request" do
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
@@ -471,23 +471,27 @@ class BookServiceTest < ActiveSupport::TestCase
       json = service.item_detail_map(book, requester)
 
       assert json[:can_request]
-      assert_nil json[:can_request_reason]
+      assert_nil json[:cannot_request_reason]
+      assert_nil json[:user_request_id]
+      assert_nil json[:user_request_dt]
     end
 
-    it "includes can_request and can_request_reason when requester has pending request" do
+    it "includes can_request and cannot_request_reason when requester has pending request" do
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(book, requester, status: ItemRequest::PENDING_STATUS)
+      request = create_item_request(book, requester, status: ItemRequest::PENDING_STATUS)
 
       service = BookService.new(book)
       json = service.item_detail_map(book, requester)
 
       assert_not json[:can_request]
-      assert_equal "You have a pending or accepted request for this item", json[:can_request_reason]
+      assert_equal "You already requested this item", json[:cannot_request_reason]
+      assert_equal request.id, json[:user_request_id]
+      assert_equal request.created_at, json[:user_request_dt]
     end
 
-    it "includes can_request and can_request_reason when book has no groups" do
+    it "includes can_request and cannot_request_reason when book has no groups" do
       book = setup_book_for_request_test(items(:one), groups: [])
       requester = users(:two)
 
@@ -495,10 +499,10 @@ class BookServiceTest < ActiveSupport::TestCase
       json = service.item_detail_map(book, requester)
 
       assert_not json[:can_request]
-      assert_equal "This item is not shared in any groups", json[:can_request_reason]
+      assert_equal "This item is not shared in any groups", json[:cannot_request_reason]
     end
 
-    it "includes can_request and can_request_reason when requester is not in book's groups" do
+    it "includes can_request and cannot_request_reason when requester is not in book's groups" do
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       remove_user_from_group(requester, @other_group)
@@ -507,17 +511,17 @@ class BookServiceTest < ActiveSupport::TestCase
       json = service.item_detail_map(book, requester)
 
       assert_not json[:can_request]
-      assert_equal "You are not a member of any groups this item is shared in", json[:can_request_reason]
+      assert_equal "You are not a member of any groups this item is shared in", json[:cannot_request_reason]
     end
 
-    it "includes can_request and can_request_reason when requester is nil" do
+    it "includes can_request and cannot_request_reason when requester is nil" do
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
 
       service = BookService.new(book)
       json = service.item_detail_map(book, nil)
 
       assert_not json[:can_request]
-      assert_nil json[:can_request_reason]
+      assert_nil json[:cannot_request_reason]
     end
   end
 

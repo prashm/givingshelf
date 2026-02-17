@@ -132,7 +132,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert_nil result
       assert_includes service.errors.join(" "), "Cannot request this item"
-      assert_includes service.errors.join(" "), "pending or accepted request"
+      assert_includes service.errors.join(" "), "You already requested this item"
     end
 
     it "returns nil and sets error when message is too short" do

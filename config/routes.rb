@@ -79,7 +79,6 @@ Rails.application.routes.draw do
       end
       member do
         post :track_view
-        get :user_request
       end
     end
 

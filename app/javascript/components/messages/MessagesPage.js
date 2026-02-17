@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchItemRequests } from '../../lib/itemRequestsApi';
+import * as Constants from '../../lib/constants';
 
 const MessagesPage = ({ setCurrentPage }) => {
   const [activeTab, setActiveTab] = useState('received');
@@ -92,7 +93,11 @@ const MessagesPage = ({ setCurrentPage }) => {
                   <button
                     type="button"
                     onClick={() =>
-                      setCurrentPage('itemDetails', { selectedBook: request.book || request.toy, itemDetailSource: 'messages' })
+                      setCurrentPage('itemDetails', {
+                        selectedBook: request.book || request.toy,
+                        itemDetailSource: 'messages',
+                        selectedItemType: request.book ? Constants.ITEM_TYPE_BOOK : Constants.ITEM_TYPE_TOY
+                      })
                     }
                     className="text-emerald-700 hover:text-emerald-900 underline"
                   >
