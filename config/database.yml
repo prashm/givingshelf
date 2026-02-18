@@ -30,7 +30,7 @@ production:
   primary:
     <<: *default
     url: <%= ENV["DATABASE_URL"] %>
-    sslmode: disable
+    sslmode: require
   cache:
     <<: *default
     <% if ENV["DATABASE_URL"] %>

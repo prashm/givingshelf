@@ -67,27 +67,24 @@ jobs:
               sudo bash deploy/setup-docker-logs.sh
             fi
 
+            # Setup givingshelf systemd service for auto-start on reboot (if not already set up)
+            if [ ! -f /etc/systemd/system/givingshelf.service ]; then
+              echo "Setting up givingshelf service..."
+              sudo cp deploy/givingshelf.service /etc/systemd/system/
+              sudo systemctl daemon-reload
+              sudo systemctl enable givingshelf.service
+            fi
+
             # build image and start containers
             docker compose -f docker-compose.production.yml build web worker
             docker compose -f docker-compose.production.yml up -d --remove-orphans
             
-            # wait for database to be ready
-            echo "Waiting for database to be ready..."
-            timeout=60
-            counter=0
-            while [ "$(docker inspect -f '{{.State.Health.Status}}' givingshelf-postgres 2>/dev/null)" != "healthy" ]; do
-              if [ $counter -ge $timeout ]; then
-                echo "Database failed to become ready within $timeout seconds"
-                docker compose -f docker-compose.production.yml ps
-                exit 1
-              fi
-              echo "Waiting for database... ($counter/$timeout)"
-              sleep 2
-              counter=$((counter + 2))
-            done
-            echo "Database is ready!"
+            # wait for web container to be ready, then verify RDS connectivity via db:prepare
+            echo "Waiting for web container to start..."
+            sleep 10
+            echo "Verifying RDS connectivity and preparing database..."
             
-            # prepare database (creates if needed, then runs migrations)
+            # prepare database (creates if needed, then runs migrations - fails if RDS unreachable)
             docker compose -f docker-compose.production.yml exec web bundle exec rails db:prepare
             
             # generate sitemap

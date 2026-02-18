@@ -16,8 +16,6 @@ services:
     depends_on:
       redis:
         condition: service_started
-      db:
-        condition: service_healthy
     restart: unless-stopped
     command: bundle exec puma -C config/puma.rb
     expose:
@@ -44,33 +42,10 @@ services:
         condition: service_started
       web:
         condition: service_started
-      db:
-        condition: service_healthy
     restart: unless-stopped
     command: bin/jobs
     networks:
       - givingshelf
-  # ------------------------
-  # POSTGRES DATABASE
-  # ------------------------
-  db:
-    image: postgres:15
-    container_name: givingshelf-postgres
-    restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - givingshelf
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   # ------------------------
   # REDIS (CHAT + JOBS)
   # ------------------------
@@ -125,7 +100,6 @@ volumes:
   redis_data:
   rails_storage:
   rails_logs:
-  postgres_data:
 
 networks:
   givingshelf:

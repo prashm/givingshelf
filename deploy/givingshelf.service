@@ -1,0 +1,17 @@
+[Unit]
+Description=Givingshelf application (Docker Compose)
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/ubuntu/givingshelf
+ExecStart=/usr/bin/docker compose -f docker-compose.production.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.production.yml down
+User=ubuntu
+Group=ubuntu
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
