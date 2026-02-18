@@ -1,3 +1,5 @@
+return unless Rails.env.development?
+
 # Clear existing data
 puts "Clearing existing data..."
 User.destroy_all
