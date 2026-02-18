@@ -260,7 +260,7 @@ URL-encode the password if it contains special characters (e.g. `@` → `%40`, `
 3. Use the shown command, e.g.:
 
 ```bash
-ssh -i "givingshelf-key.pem" ec2-user@ec2-xx-xx-xx-xx.us-west-2.compute.amazonaws.com
+ssh -i "givingshelf-key.pem" ec2-user@34.208.25.211
 ```
 
 (Use `ubuntu@...` if you chose Ubuntu AMI.)
