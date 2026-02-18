@@ -14,7 +14,7 @@ Your app is a **Rails 8** application with:
 - **PostgreSQL** (4 databases: primary, cache, queue, cable via Solid Cache/Queue/Cable)
 - **Redis** (Action Cable + presence features)
 - **Solid Queue** for background jobs (runs via `bin/jobs`)
-- **Docker Compose** deployment to a single EC2 (44.250.51.11) with Postgres and Redis in containers
+- **Docker Compose** deployment to a single EC2 (34.208.25.211) with Postgres and Redis in containers
 
 ## Target Architecture
 
@@ -179,7 +179,7 @@ URL-encode the password if it contains special characters (e.g. `@` → `%40`, `
 
 ## Phase 2: EC2 Setup (Step-by-Step)
 
-*If you already have an EC2 instance (e.g. 44.250.51.11), skip to Step 2.6 to verify/update security groups and networking.*
+*If you already have an EC2 instance (e.g. 34.208.25.211), skip to Step 2.6 to verify/update security groups and networking.*
 
 ### Step 2.1: Open EC2 Console
 

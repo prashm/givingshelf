@@ -27,7 +27,7 @@ jobs:
 
       - name: Deploy
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@44.250.51.11 << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@34.208.25.211 << 'EOF'
             cd /home/ubuntu/givingshelf
             
             # Check disk space before starting deployment
