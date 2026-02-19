@@ -393,6 +393,93 @@ The service runs `docker compose -f docker-compose.production.yml up -d` at boot
 
 ---
 
+## Phase 2.5: HTTPS Setup on EC2 (Let's Encrypt)
+
+Enable HTTPS using Let's Encrypt certificates. Nginx is already configured for SSL; you need to obtain certs and ensure renewal is scheduled. See [deploy/nginx/SSL_SETUP.md](deploy/nginx/SSL_SETUP.md) for full details.
+
+### Step 2.5.1: Prerequisites
+
+- DNS: `givingshelf.net` and `www.givingshelf.net` must resolve to your EC2 public IP
+- Security group: Ports 80 and 443 open (Step 2.6)
+- App running: Containers (including nginx) must be up
+
+### Step 2.5.2: Point DNS to EC2
+
+1. Get EC2 public IP: `curl -s http://169.254.169.254/latest/meta-data/public-ipv4` (from EC2) or AWS Console
+2. In your DNS provider (e.g. Namecheap): Add A records `@` and `www` → EC2 IP
+3. Wait 5–30 min for propagation. Verify: `dig givingshelf.net`
+
+### Step 2.5.3: Create Dummy Certificates (Bootstrap)
+
+Nginx needs certificate files to start on 443. Create self-signed placeholders first:
+
+```bash
+cd /home/ubuntu/givingshelf
+sudo mkdir -p deploy/nginx/certbot/live/givingshelf.net
+sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+  -keyout deploy/nginx/certbot/live/givingshelf.net/privkey.pem \
+  -out deploy/nginx/certbot/live/givingshelf.net/fullchain.pem \
+  -subj "/CN=givingshelf.net"
+```
+
+### Step 2.5.4: Start Containers (if not already running)
+
+```bash
+cd /home/ubuntu/givingshelf
+docker compose -f docker-compose.production.yml up -d
+```
+
+### Step 2.5.5: Obtain Let's Encrypt Certificates
+
+```bash
+cd /home/ubuntu/givingshelf
+docker compose -f docker-compose.production.yml --profile certbot run --rm certbot certonly \
+  --webroot \
+  -w /var/www/certbot \
+  -d givingshelf.net \
+  -d www.givingshelf.net \
+  --email your-email@example.com \
+  --agree-tos \
+  --non-interactive
+```
+
+Replace `your-email@example.com` with your email. Certificates overwrite the dummy certs.
+
+### Step 2.5.6: Reload Nginx
+
+```bash
+docker compose -f docker-compose.production.yml exec nginx nginx -s reload
+```
+
+### Step 2.5.7: Verify HTTPS
+
+```bash
+curl -I https://givingshelf.net
+curl -I http://givingshelf.net   # Should 301 redirect to HTTPS
+```
+
+### Step 2.5.8: Set Up Automatic Certificate Renewal
+
+Certificates expire in 90 days. Add a weekly renewal:
+
+**Option A: Cron**
+```bash
+crontab -e
+# Add:
+0 3 * * 1 cd /home/ubuntu/givingshelf && ./deploy/nginx/renew-certificates.sh >> /var/log/certbot-renewal.log 2>&1
+```
+
+**Option B: systemd timer** (see [deploy/nginx/SSL_SETUP.md](deploy/nginx/SSL_SETUP.md) Step 8)
+
+### Step 2.5.9: Test Renewal (Dry Run)
+
+```bash
+cd /home/ubuntu/givingshelf
+docker compose -f docker-compose.production.yml --profile certbot run --rm certbot renew --dry-run
+```
+
+---
+
 ## Phase 3: Application Configuration Changes
 
 ### 2.1 Database SSL
@@ -514,6 +601,7 @@ flowchart TB
 | Local dev docker-compose (if used)                             | Update Postgres image from `postgres:15` to `postgres:17`   |
 | [.github/workflows/deploy.yml](.github/workflows/deploy.yml)   | Replace Docker DB health check with RDS connectivity check  |
 | [deploy/givingshelf.service](deploy/givingshelf.service)       | systemd unit for auto-starting Docker Compose on reboot     |
+| [deploy/nginx/SSL_SETUP.md](deploy/nginx/SSL_SETUP.md)         | Detailed HTTPS/Let's Encrypt setup (referenced in Phase 2.5) |
 | New: `deploy/rds-setup.sql`                                    | SQL to create cache/queue/cable databases (optional)        |
 | Secrets / `.env`                                               | Add `DATABASE_URL`; remove Postgres vars for prod           |
 
@@ -530,6 +618,7 @@ flowchart TB
 6. [ ] Run migrations against RDS from local or a one-off container before switching traffic
 7. [ ] Migrate existing data from Docker Postgres to RDS (if any) via `pg_dump` / `pg_restore`
 8. [ ] Deploy code changes and verify health
+9. [ ] Complete HTTPS setup: DNS, dummy certs, Certbot, renewal (Phase 2.5)
 
 ---
 

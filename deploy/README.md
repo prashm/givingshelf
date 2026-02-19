@@ -2,6 +2,10 @@
 
 This directory contains scripts for setting up and deploying the Givingshelf application on EC2.
 
+## Setup Guides
+
+- **[SES_SETUP.md](SES_SETUP.md)** – Step-by-step AWS SES setup with BYODKIM for `givingshelf.net` (domain verification, SMTP credentials, production access).
+
 ## Initial EC2 Setup
 
 When setting up a **new EC2 instance**, run the comprehensive setup script:
