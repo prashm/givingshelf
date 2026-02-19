@@ -8,9 +8,8 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
   const [myItems, setMyItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, Books, Toys
-  const { deleteItem: deleteItemFromAPI, getItem: getItem } = useItems();
+  const { deleteItem: deleteItemFromAPI } = useItems();
   const [deletingItemId, setDeletingItemId] = useState(null);
-  const [viewingItemId, setViewingItemId] = useState(null);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -58,24 +57,12 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
     }
   };
 
-  const handleViewItem = async (itemId) => {
-    setViewingItemId(itemId);
-    try {
-      const itemData = await getItem(itemId);
-      if (itemData) {
-        if (onViewBook) {
-          onViewBook(itemData);
-        } else {
-          setCurrentPage('itemDetails', { selectedBook: itemData, itemDetailSource: 'myItems' });
-        }
-      } else {
-        alert('Failed to load item details. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error fetching item:', error);
-      alert('An error occurred while loading the item. Please try again.');
-    } finally {
-      setViewingItemId(null);
+  const handleViewItem = (item) => {
+    // Pass item so ItemDetailPage can use id; ItemDetailPage performs the single fetch
+    if (onViewBook) {
+      onViewBook(item);
+    } else {
+      setCurrentPage('itemDetails', { selectedBook: item, itemDetailSource: 'myItems' });
     }
   };
 
@@ -260,18 +247,11 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                     {/* Action Buttons */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleViewItem(item.id)}
-                        disabled={viewingItemId === item.id}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleViewItem(item)}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                       >
-                        {viewingItemId === item.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
-                        ) : (
-                          <>
-                            <EyeIcon className="h-4 w-4" />
-                            View
-                          </>
-                        )}
+                        <EyeIcon className="h-4 w-4" />
+                        View
                       </button>
 
                       <button

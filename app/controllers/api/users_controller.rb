@@ -28,16 +28,6 @@ class Api::UsersController < ApplicationController
     render json: user_json(Current.user)
   end
 
-  def my_requests
-    @requests = Current.user.item_requests.includes(:item, :requester).recent
-    render json: @requests.map { |request| request_json(request) }
-  end
-
-  def received_requests
-    @requests = ItemRequest.for_item_owner(Current.user).includes(:item, :requester).recent
-    render json: @requests.map { |request| request_json(request) }
-  end
-
   private
 
   def set_user
@@ -85,47 +75,6 @@ class Api::UsersController < ApplicationController
       },
       created_at: user.created_at,
       updated_at: user.updated_at
-    }
-  end
-
-  def request_json(request)
-    item = request.item
-    item_data = case item.type
-    when "Book"
-                  {
-                    id: item.id,
-                    title: item.title,
-                    author: item.author,
-                    cover_image_url: item.cover_image.attached? ? rails_blob_url(item.cover_image) : nil
-                  }
-    when "Toy"
-                  {
-                    id: item.id,
-                    title: item.title,
-                    brand: item.brand,
-                    cover_image_url: item.cover_image.attached? ? rails_blob_url(item.cover_image) : nil
-                  }
-    else
-                  {
-                    id: item.id,
-                    title: item.title,
-                    cover_image_url: item.cover_image.attached? ? rails_blob_url(item.cover_image) : nil
-                  }
-    end
-
-    {
-      id: request.id,
-      status: request.status,
-      message: request.message,
-      created_at: request.created_at,
-      updated_at: request.updated_at,
-      item: item_data,
-      requester: {
-        id: request.requester.id,
-        name: request.requester.display_name,
-        location: request.requester.location,
-        verified: request.requester.verified?
-      }
     }
   end
 end

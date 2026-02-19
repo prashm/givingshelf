@@ -34,6 +34,11 @@ const getUrlForPage = (page, extraState = {}) => {
   if (page === 'groupBrowse' && extraState.groupShortName) {
     return extraState.itemType === Constants.ITEM_TYPE_TOY ? `/g/${extraState.groupShortName}/toys` : `/g/${extraState.groupShortName}/books`;
   }
+  if (page === 'itemDetails' && extraState.selectedBook?.id != null) {
+    const type = extraState.selectedItemType || extraState.itemType;
+    const slug = type === Constants.ITEM_TYPE_TOY ? 'toys' : 'books';
+    return `/${slug}/${extraState.selectedBook.id}`;
+  }
   return window.location.pathname;
 };
 
@@ -195,7 +200,12 @@ const AppShellContent = ({ onNavigate }) => {
     const parsed = parsePageFromPath(window.location.pathname);
     if (parsed.groupShortName) setGroupShortName(parsed.groupShortName);
     if (parsed.itemType) setCurrentItemType(parsed.itemType);
-    window.history.replaceState({ page: parsed.page, groupShortName: parsed.groupShortName, itemType: parsed.itemType }, '', window.location.pathname);
+    const state = { page: parsed.page, groupShortName: parsed.groupShortName, itemType: parsed.itemType };
+    if (parsed.page === 'itemDetails' && parsed.itemId) {
+      state.itemId = parsed.itemId;
+      state.selectedBook = { id: parsed.itemId };
+    }
+    window.history.replaceState(state, '', window.location.pathname);
 
     const handlePopState = (event) => {
       const state = event.state;
@@ -320,10 +330,12 @@ const AppShellContent = ({ onNavigate }) => {
           previousPage={editReturnPage ?? previousPage}
           returnSelectedBook={editReturnSelectedBook}
         />;
-      case 'itemDetails':
+      case 'itemDetails': {
+        const parsed = typeof window !== 'undefined' ? parsePageFromPath(window.location.pathname) : {};
+        const effectiveSelectedItem = selectedBook || (parsed.page === 'itemDetails' && parsed.itemId ? { id: parsed.itemId } : null);
         return <ItemDetailPage
-          selectedItem={selectedBook}
-          hintItemType={selectedItemType}
+          selectedItem={effectiveSelectedItem}
+          hintItemType={selectedItemType || parsed.itemType}
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
           onEditBook={handleEditBook}
@@ -332,6 +344,7 @@ const AppShellContent = ({ onNavigate }) => {
           setRedirectReason={setRedirectReason}
           sourcePage={itemDetailSource}
         />;
+      }
       case 'books':
         return <ItemList itemType={Constants.ITEM_TYPE_BOOK} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
       case 'toys':
@@ -362,7 +375,7 @@ const AppShellContent = ({ onNavigate }) => {
           setCurrentPage={setCurrentPage}
           onEditBook={handleEditBook}
           onEditToy={handleEditToy}
-          onViewBook={(item) => handleItemSelect(item, 'myItems')}
+          onViewBook={(item) => handleItemSelect(item, 'myItems', item?.type)}
           fromProfile={previousPage === 'profile'}
         />;
       case 'myRequests':

@@ -85,8 +85,6 @@ Rails.application.routes.draw do
     resources :users, only: [ :show, :update ] do
       collection do
         get :profile
-        get :my_requests
-        get :received_requests
       end
     end
 
@@ -120,7 +118,7 @@ Rails.application.routes.draw do
   patch "passwords/:token", to: "passwords#update"
 
   # Catch all for React routing - but exclude system paths
-  get "*path", to: "books#index", constraints: ->(request) do
+  get "*path", to: "home#index", constraints: ->(request) do
     !request.path.start_with?("/.well-known") &&
     !request.path.start_with?("/api") &&
     !request.path.start_with?("/assets") &&
@@ -133,5 +131,5 @@ Rails.application.routes.draw do
     !request.path.match?(/\.(ico|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot)$/i)
   end
 
-  root "books#index"
+  root "home#index"
 end

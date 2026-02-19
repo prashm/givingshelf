@@ -16,21 +16,24 @@
         url
       end
       
-      # If this is a book detail page, use book-specific meta tags
-      if defined?(@book) && @book.present?
-        page_title = content_for(:title) || "#{@book.title} by #{@book.author} - GivingShelf"
-        page_description = content_for(:description) || @book.summary
-        page_url = content_for(:url) || "#{request.protocol}#{request.host}/books/#{@book.id}"
-        # Use book cover image if available, otherwise default
-        if @book.cover_image.attached?
-          page_image = content_for(:image) || rails_blob_url(@book.cover_image, only_path: false)
+      # If this is an item detail page (book or toy), use item-specific meta tags
+      if defined?(@item) && @item.present?
+        is_book = @item.is_a?(Book)
+        item_path = is_book ? "books/#{@item.id}" : "toys/#{@item.id}"
+        page_title = content_for(:title) || (
+          is_book ? "#{@item.title} by #{@item.author} - GivingShelf" : "#{@item.title} - Free Toy | GivingShelf"
+        )
+        page_description = content_for(:description) || @item.summary
+        page_url = content_for(:url) || "#{request.protocol}#{request.host}/#{item_path}"
+        if @item.cover_image.attached?
+          page_image = content_for(:image) || @item.cover_image.attachment.url
         else
           page_image = content_for(:image) || "https://givingshelf.net/gs-logo.png"
         end
-        canonical_url = content_for(:canonical) || "https://givingshelf.net/books/#{@book.id}"
+        canonical_url = content_for(:canonical) || "https://givingshelf.net/#{item_path}"
       else
         page_title = content_for(:title) || "Donate Items for Free | GivingShelf - Share. Discover. Connect."
-        page_description = content_for(:description) || "Donate books for free in your local community. GivingShelf helps you donate used books, discover free books from neighbors, and share the joy of reading. 100% free book donation and sharing platform."
+        page_description = content_for(:description) || "Donate books and toys for free in your local community. GivingShelf helps you donate used books and toys, discover free items from neighbors, and share with your community. 100% free donation and sharing platform."
         # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
         current_url = request.url
         # Remove query parameters for canonical URL
@@ -93,34 +96,41 @@
             "name" => "GivingShelf",
             "url" => base_url,
             "logo" => "#{base_url}/gs-logo.png",
-            "description" => "A community platform for sharing and discovering books. Donate used books and find great reads from neighbors.",
+            "description" => "A community platform for sharing and discovering books and toys. Donate used books and toys to your community members.",
             "sameAs" => []
           }
         ]
       }
 
-      # Add Book schema if this is a book detail page
-      if defined?(@book) && @book.present?
-        cover_image_url = @book.cover_image.attached? ? @book.cover_image.attachment.url : nil
-        
-        # Convert to Schema.org Book format
-        book_data = {
-          "@type" => "Book",
-          "name" => @book.title,
-          "author" => {
-            "@type" => "Person",
-            "name" => @book.author
-          },
-          "description" => @book.summary,
-          "genre" => @book.genre,
-          "datePublished" => @book.published_year.to_s,
-          "url" => page_url,
-          "isbn" => @book.isbn
-        }
-        if cover_image_url.present?
-          book_data["image"] = cover_image_url
+      # Add item schema for book or toy detail pages
+      if defined?(@item) && @item.present?
+        cover_image_url = @item.cover_image.attached? ? @item.cover_image.attachment.url : nil
+        is_book = @item.is_a?(Book)
+
+        if is_book
+          book_data = {
+            "@type" => "Book",
+            "name" => @item.title,
+            "author" => { "@type" => "Person", "name" => @item.author },
+            "description" => @item.summary,
+            "genre" => @item.genre,
+            "datePublished" => @item.published_year.to_s,
+            "url" => page_url,
+            "isbn" => @item.isbn
+          }
+          book_data["image"] = cover_image_url if cover_image_url.present?
+          structured_data["@graph"] << book_data
+        else
+          toy_data = {
+            "@type" => "Product",
+            "name" => @item.title,
+            "description" => @item.summary,
+            "url" => page_url
+          }
+          toy_data["brand"] = { "@type" => "Brand", "name" => @item.brand } if @item.brand.present?
+          toy_data["image"] = cover_image_url if cover_image_url.present?
+          structured_data["@graph"] << toy_data
         end
-        structured_data["@graph"] << book_data
       end
 
       # Add WebSite schema
@@ -131,12 +141,12 @@
         "description" => page_description
       }
       
-      # Add Service schema for book donation (only for homepage)
-      if !defined?(@book) || @book.blank?
+      # Add Service schema for item donation (only for homepage)
+      if !defined?(@item) || @item.blank?
         structured_data["@graph"] << {
           "@type" => "Service",
-          "name" => "Book Donation and Sharing Service",
-          "description" => "Free book donation and sharing service for local communities. Donate books, discover free books, and share books with neighbors.",
+          "name" => "Book and Toy Donation and Sharing Service",
+          "description" => "Free book and toy donation and sharing service for local communities. Donate books and toys, discover free items, and share with neighbors.",
           "provider" => {
             "@type" => "Organization",
             "name" => "GivingShelf"
@@ -145,7 +155,7 @@
             "@type" => "Country",
             "name" => "United States"
           },
-          "serviceType" => "Book Donation and Sharing",
+          "serviceType" => "Book and Toy Donation and Sharing",
           "url" => base_url
         }
       end

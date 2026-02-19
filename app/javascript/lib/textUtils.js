@@ -79,6 +79,14 @@ export const parsePageFromPath = (path) => {
   if (path === '/toys') {
     return { page: 'toys', itemType: Constants.ITEM_TYPE_TOY, groupShortName: null };
   }
+  const bookDetailMatch = path.match(/^\/books\/(\d+)$/);
+  if (bookDetailMatch) {
+    return { page: 'itemDetails', itemId: parseInt(bookDetailMatch[1], 10), itemType: Constants.ITEM_TYPE_BOOK, groupShortName: null };
+  }
+  const toyDetailMatch = path.match(/^\/toys\/(\d+)$/);
+  if (toyDetailMatch) {
+    return { page: 'itemDetails', itemId: parseInt(toyDetailMatch[1], 10), itemType: Constants.ITEM_TYPE_TOY, groupShortName: null };
+  }
   if (path.startsWith('/my-groups')) {
     return { page: 'myGroups', groupShortName: null, itemType: null };
   }

@@ -42,16 +42,4 @@ class Api::UsersControllerTest < ActionDispatch::IntegrationTest
     get profile_api_users_url
     assert_response :success
   end
-
-  test "should get my_requests" do
-    sign_in_as(users(:one))
-    get my_requests_api_users_url
-    assert_response :success
-  end
-
-  test "should get received_requests" do
-    sign_in_as(users(:one))
-    get received_requests_api_users_url
-    assert_response :success
-  end
 end

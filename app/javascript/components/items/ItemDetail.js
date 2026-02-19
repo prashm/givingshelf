@@ -123,16 +123,9 @@ const ItemDetail = ({
     if (!item) return;
     const isOwner = item.owner?.id === currentUser?.id;
     if (isOwner) {
-      getItem(item.id)
-        .then((data) => {
-          const fullItem = data;
-          if (fullItem) {
-            setItem(fullItem);
-            if (fullItem.view_count !== undefined) setViewCount(fullItem.view_count);
-            setUserRequest(deriveUserRequest(fullItem));
-          }
-        })
-        .catch(error => console.error('Error fetching view count:', error));
+      // Parent (ItemDetailPage) already fetches full item with view_count; use it, no refetch
+      setViewCount(item.view_count ?? 0);
+      setUserRequest(deriveUserRequest(item));
     } else if (!viewTracked) {
       axios.post(`/api/items/${item.id}/track_view`, {}, { withCredentials: true })
         .then(response => {
