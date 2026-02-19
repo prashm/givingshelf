@@ -6,7 +6,7 @@ class OtpMailer < ApplicationMailer
 
     mail(
       to: @user.email_address,
-      subject: "Your GivingShelf Community verification code"
+      subject: "Your GivingShelf verification code"
     )
   end
 end

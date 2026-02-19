@@ -9,20 +9,20 @@ const TermsOfServiceModal = ({ isOpen, onClose }) => {
         <p className="text-gray-600">Last updated: December 22, 2025</p>
 
         <section>
-          <h2 className="text-2xl font-semibold mb-3">Welcome to GivingShelf Community</h2>
+          <h2 className="text-2xl font-semibold mb-3">Welcome to GivingShelf</h2>
           <p className="text-gray-700 leading-relaxed mb-3">
-            These Terms of Service govern your use of GivingShelf Community, operated by SimplifAI LLC. By creating an account
+            These Terms of Service govern your use of GivingShelf, operated by SimplifAI LLC. By creating an account
             and using our service, you agree to these terms. Please read them carefully.
           </p>
           <p className="text-gray-700 leading-relaxed">
-            GivingShelf Community is an independently-operated platform designed to foster local book sharing and community building.
+            GivingShelf is an independently-operated platform designed to foster local book sharing and community building.
           </p>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mb-3">Our Service</h2>
           <p className="text-gray-700 leading-relaxed">
-            GivingShelf Community is a free platform that connects people who want to donate books with those who want to
+            GivingShelf is a free platform that connects people who want to donate books with those who want to
             receive them. We provide the technology to facilitate these connections, but we are not party to the actual
             exchange of books between users.
           </p>
@@ -66,7 +66,7 @@ const TermsOfServiceModal = ({ isOpen, onClose }) => {
         <section>
           <h2 className="text-2xl font-semibold mb-3">Limitation of Liability</h2>
           <p className="text-gray-700 leading-relaxed mb-3">
-            GivingShelf Community is a platform that connects users. SimplifAI LLC is not responsible for:
+            GivingShelf is a platform that connects users. SimplifAI LLC is not responsible for:
           </p>
           <ul style={{ listStyleType: 'disc', listStylePosition: 'inside', paddingLeft: '1rem' }} className="text-gray-700 space-y-2 ml-4">
             <li>The actual exchange of books between users</li>
@@ -96,7 +96,7 @@ const TermsOfServiceModal = ({ isOpen, onClose }) => {
             <strong>Email:</strong> support@givingshelf.net
           </p>
           <p className="text-sm text-gray-600 mt-3">
-            GivingShelf Community is operated by SimplifAI LLC
+            GivingShelf is operated by SimplifAI LLC
           </p>
         </section>
       </div>

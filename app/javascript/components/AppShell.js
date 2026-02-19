@@ -489,7 +489,7 @@ const AppShell = () => {
 
 // Simple Footer Component
 const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
-  const meta = (typeof window !== 'undefined' && window.GivingshelfAppMeta) ? window.GivingshelfAppMeta : {};
+  const meta = (typeof window !== 'undefined' && window.GivingShelfAppMeta) ? window.GivingShelfAppMeta : {};
   const companyName = meta.companyName || 'SimplifAI LLC';
   const appVersion = meta.appVersion || '';
   const copyrightYear = meta.copyrightYear || `${new Date().getFullYear()}`;

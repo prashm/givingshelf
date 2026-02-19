@@ -141,7 +141,7 @@ class User < ApplicationRecord
 
   def current_otp
     return nil unless otp_secret.present?
-    totp = ROTP::TOTP.new(otp_secret, issuer: "GivingShelf Community")
+    totp = ROTP::TOTP.new(otp_secret, issuer: "GivingShelf")
     totp.now
   end
 
@@ -165,7 +165,7 @@ class User < ApplicationRecord
       return false
     end
 
-    totp = ROTP::TOTP.new(otp_secret, issuer: "GivingShelf Community")
+    totp = ROTP::TOTP.new(otp_secret, issuer: "GivingShelf")
 
     # Verify with drift tolerance
     if totp.verify(provided_otp.to_s, drift_behind: OTP_DRIFT, drift_ahead: OTP_DRIFT)

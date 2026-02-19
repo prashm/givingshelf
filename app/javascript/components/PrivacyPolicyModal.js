@@ -50,12 +50,12 @@ const PrivacyPolicyModal = ({ isOpen, onClose }) => {
             </p>
           </div>
           <p className="text-gray-700 leading-relaxed mb-3">
-            GivingShelf Community is operated by SimplifAI LLC and built on trust. We believe your personal information belongs to you,
+            GivingShelf is operated by SimplifAI LLC and built on trust. We believe your personal information belongs to you,
             and we're committed to protecting it. This policy explains what information we collect, how we use it, and your rights
             regarding your data.
           </p>
           <p className="text-gray-700 leading-relaxed">
-            GivingShelf Community is a small, independently-operated service. We collect only the minimum information necessary to
+            GivingShelf is a small, independently-operated service. We collect only the minimum information necessary to
             connect book donors with recipients in local communities.
           </p>
         </section>
@@ -249,7 +249,7 @@ const PrivacyPolicyModal = ({ isOpen, onClose }) => {
         <section>
           <h2 className="text-2xl font-semibold mb-3">Children's Privacy</h2>
           <p className="text-gray-700 leading-relaxed">
-            GivingShelf Community is not intended for users under 13 years of age. We do not knowingly collect information
+            GivingShelf is not intended for users under 13 years of age. We do not knowingly collect information
             from children under 13. If you are a parent or guardian and believe your child has provided us with personal
             information, please contact us immediately.
           </p>
@@ -259,7 +259,7 @@ const PrivacyPolicyModal = ({ isOpen, onClose }) => {
           <h2 className="text-2xl font-semibold mb-3">Changes to This Policy</h2>
           <p className="text-gray-700 leading-relaxed">
             We may update this privacy policy from time to time. We will notify you of any significant changes by email
-            and by posting a notice on our website. Your continued use of GivingShelf Community after such changes
+            and by posting a notice on our website. Your continued use of GivingShelf after such changes
             constitutes acceptance of the updated policy.
           </p>
         </section>
@@ -273,7 +273,7 @@ const PrivacyPolicyModal = ({ isOpen, onClose }) => {
             <p><strong>Email:</strong> privacy@givingshelf.net</p>
             <p><strong>Website:</strong> givingshelf.net</p>
             <p className="text-sm text-gray-600 mt-3">
-              GivingShelf Community is operated by SimplifAI LLC
+              GivingShelf is operated by SimplifAI LLC
             </p>
           </div>
         </section>
