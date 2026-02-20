@@ -75,6 +75,9 @@
     <% if ENV['CLOUDFLARE_TURNSTILE_SITE_KEY'].present? && (Rails.env.production? || Rails.env.staging?) %>
       <meta name="turnstile-site-key" content="<%= ENV['CLOUDFLARE_TURNSTILE_SITE_KEY'] %>">
     <% end %>
+    <% if ENV['GOOGLE_BOOKS_API_KEY'].present? %>
+      <meta name="google-books-api-key" content="<%= ENV['GOOGLE_BOOKS_API_KEY'] %>">
+    <% end %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 

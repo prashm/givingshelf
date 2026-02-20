@@ -6,6 +6,7 @@ export const useBookAutocomplete = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const abortControllerRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
 
   // Debounced search function
   const searchBooks = useCallback(async (query, delay = 300) => {
@@ -15,21 +16,32 @@ export const useBookAutocomplete = () => {
       return;
     }
 
-    // Cancel previous request
+    // Clear previous debounce timer so only the last keystroke triggers a request
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
+    }
+
+    // Cancel previous in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    // Create new abort controller
     abortControllerRef.current = new AbortController();
 
-    // Debounce the search
-    setTimeout(async () => {
+    debounceTimeoutRef.current = setTimeout(async () => {
+      debounceTimeoutRef.current = null;
       try {
         setLoading(true);
-        
+
+        const apiKey = document.querySelector('meta[name="google-books-api-key"]')?.getAttribute('content');
+        const url = new URL('https://www.googleapis.com/books/v1/volumes');
+        url.searchParams.set('q', query);
+        url.searchParams.set('maxResults', '8');
+        if (apiKey) url.searchParams.set('key', apiKey);
+
         const response = await fetch(
-          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=8`,
+          url.toString(),
           {
             signal: abortControllerRef.current.signal,
           }
@@ -102,6 +114,9 @@ export const useBookAutocomplete = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
