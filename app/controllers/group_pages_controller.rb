@@ -5,6 +5,6 @@ class GroupPagesController < ApplicationController
     @group = CommunityGroup.find_by(short_name: params[:short_name])
 
     # Render the React app - it will handle the group page display
-    render "books/index"
+    render "home/index"
   end
 end
