@@ -3,7 +3,8 @@ import { MapPinIcon, CalendarIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, 
 import axios from '../../lib/axios';
 import { useItems } from '../../contexts/ItemContext';
 import VerificationBadge from '../common/VerificationBadge';
-import { getGroupPageInfo } from '../../lib/textUtils';
+import { getGroupPageInfo, parsePageFromPath } from '../../lib/textUtils';
+import * as Constants from '../../lib/constants';
 
 const ItemDetail = ({
   item: initialItem,
@@ -256,11 +257,12 @@ const ItemDetail = ({
   };
   const formatPickupMethod = (m) => m ? m.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
   const handleBrowseMore = () => {
-    const { isGroupPage, groupShortName } = getGroupPageInfo();
-    if (isGroupPage && groupShortName) {
-      const itemType = groupBrowseItemType || null;
-      const extra = itemType ? { groupShortName, itemType } : { groupShortName };
-      setCurrentPage('groupBrowse', extra);
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const parsed = parsePageFromPath(path);
+    if (parsed.page === 'groupBrowse' && parsed.groupShortName && parsed.itemType) {
+      setCurrentPage('groupBrowse', { groupShortName: parsed.groupShortName, itemType: parsed.itemType });
+    } else if (parsed.page === 'toys' || parsed.itemType === Constants.ITEM_TYPE_TOY) {
+      setCurrentPage('toys');
     } else {
       setCurrentPage('books');
     }
