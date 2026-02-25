@@ -62,7 +62,11 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
     if (onViewBook) {
       onViewBook(item);
     } else {
-      setCurrentPage('itemDetails', { selectedBook: item, itemDetailSource: 'myItems' });
+      setCurrentPage('itemDetails', {
+        selectedBook: item,
+        itemDetailSource: 'myItems',
+        selectedItemType: item?.type
+      });
     }
   };
 

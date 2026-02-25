@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchItemRequests } from '../../lib/itemRequestsApi';
+import { parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
 
 const MessagesPage = ({ setCurrentPage }) => {
@@ -145,7 +146,21 @@ const MessagesPage = ({ setCurrentPage }) => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">My Item Requests</h2>
           <button
-            onClick={() => setCurrentPage('browse')}
+            onClick={() => {
+              const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+              const parsed = parsePageFromPath(path);
+              if (parsed.page === 'groupBrowse' && parsed.groupShortName && parsed.itemType) {
+                setCurrentPage('groupBrowse', { groupShortName: parsed.groupShortName, itemType: parsed.itemType });
+              } else if (parsed.page === 'groupLanding' && parsed.groupShortName) {
+                setCurrentPage('groupLanding', { groupShortName: parsed.groupShortName });
+              } else if (parsed.page === 'books') {
+                setCurrentPage('books');
+              } else if (parsed.page === 'toys') {
+                setCurrentPage('toys');
+              } else {
+                setCurrentPage('home');
+              }
+            }}
             className="text-sm text-emerald-700 hover:text-emerald-900"
           >
             Back to Home

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import LoginSignupModal from './auth/LoginSignupModal';
+import { parsePageFromPath, getGroupPageInfo } from '../lib/textUtils';
 import * as Constants from '../lib/constants';
 
 const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLogout, isLoginModalOpen, onOpenLoginModal, onCloseLoginModal }) => {
@@ -23,9 +24,13 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
     setIsMobileMenuOpen(false);
   };
 
-  const isOnToysPage = currentPage === 'toys' || (typeof window !== 'undefined' && window.location.pathname === '/toys');
-  const donateLabel = isOnToysPage ? 'Donate a Toy' : 'Donate a Book';
-  const donateExtra = isOnToysPage ? { donateItemType: Constants.ITEM_TYPE_TOY } : { donateItemType: Constants.ITEM_TYPE_BOOK };
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const parsed = parsePageFromPath(path);
+  const isToysContext = parsed.page === 'toys' || (parsed.page === 'groupBrowse' && parsed.itemType === Constants.ITEM_TYPE_TOY);
+  const donateLabel = isToysContext ? 'Donate a Toy' : 'Donate a Book';
+  const donateExtra = isToysContext ? { donateItemType: Constants.ITEM_TYPE_TOY } : { donateItemType: Constants.ITEM_TYPE_BOOK };
+
+  const { isGroupPage, groupShortName } = typeof window !== 'undefined' ? getGroupPageInfo() : { isGroupPage: false, groupShortName: null };
 
   const handleLogout = () => {
     onLogout();
@@ -51,6 +56,9 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
 
   const menuItems = currentUser ? (
     <>
+      {isGroupPage && groupShortName && (
+        <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('groupLanding', { groupShortName })}>Group Home</li>
+      )}
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('donate', donateExtra)}>{donateLabel}</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myItems')}>My Items</li>
       <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('messages')}>My Requests</li>
@@ -81,6 +89,9 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
             <ul className="flex space-x-6">
               {currentUser ? (
                 <>
+                  {isGroupPage && groupShortName && (
+                    <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('groupLanding', { groupShortName })}>Group Home</li>
+                  )}
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate', donateExtra)}>{donateLabel}</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myItems')}>My Items</li>
                   <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>My Requests</li>

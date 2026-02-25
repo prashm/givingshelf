@@ -112,6 +112,19 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
     }
   };
 
+  const navigateAfterComplete = () => {
+    const parsed = parsePageFromPath(window.location.pathname);
+    if (parsed.page === 'groupBrowse' && parsed.groupShortName && parsed.itemType) {
+      setCurrentPage('groupBrowse', { groupShortName: parsed.groupShortName, itemType: parsed.itemType });
+    } else if (parsed.page === 'groupLanding' && parsed.groupShortName) {
+      setCurrentPage('groupLanding', { groupShortName: parsed.groupShortName });
+    } else if (parsed.page === 'books' || parsed.page === 'toys') {
+      setCurrentPage(parsed.page);
+    } else {
+      setCurrentPage('books');
+    }
+  };
+
   // Helper function to truncate summary intelligently at sentence boundary
   const truncateSummary = (text, maxLength = 1000) => {
     if (!text || text.length <= maxLength) {
@@ -165,7 +178,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
 
     const result = await createItem(formData);
     if (result.success) {
-      setCurrentPage('books');
+      navigateAfterComplete();
     }
   };
 
@@ -217,13 +230,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
             <div className="flex gap-4 pt-4">
               <button
                 type="button"
-                onClick={() => {
-                  // If user navigated to donate via navbar while already on Add Book,
-                  // previousPage becomes 'donate' and Cancel would no-op. Always go
-                  // somewhere sensible when cancelling.
-                  const target = (previousPage && previousPage !== 'donate') ? previousPage : 'books';
-                  setCurrentPage(target);
-                }}
+                onClick={navigateAfterComplete}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 Cancel

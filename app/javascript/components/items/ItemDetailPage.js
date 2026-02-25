@@ -33,13 +33,17 @@ const ItemDetailPage = ({
   onEditToy,
   onOpenLoginModal,
   setRedirectReason,
-  sourcePage
+  sourcePage,
+  groupBrowseItemType
 }) => {
   const { getItem } = useItems();
   const [resolvedItem, setResolvedItem] = useState(null);
   const [itemType, setItemType] = useState(null); // 'book' | 'toy'
   const [loading, setLoading] = useState(true);
-  const effectiveHint = hintItemType ?? getHintFromUrl();
+  const urlHint = getHintFromUrl();
+  const effectiveHint = sourcePage === 'myItems'
+    ? (hintItemType ?? null)
+    : (hintItemType ?? urlHint);
 
   useEffect(() => {
     if (!selectedItem?.id) {
@@ -93,7 +97,8 @@ const ItemDetailPage = ({
     currentUser,
     onOpenLoginModal,
     setRedirectReason,
-    sourcePage
+    sourcePage,
+    groupBrowseItemType
   };
 
   if (itemType === 'toy') {

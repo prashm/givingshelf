@@ -9,7 +9,7 @@ const TABS = [
   { key: 'invites', label: 'Invites' },
 ];
 
-const MyGroups = ({ currentUser, setCurrentPage }) => {
+const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
   const { checkAuthStatus } = useAuth();
   const [activeTab, setActiveTab] = useState('current');
   const [loading, setLoading] = useState(false);
@@ -222,12 +222,14 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
     <div className="container mx-auto py-8 px-4 max-w-5xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <button
-            onClick={() => setCurrentPage('profile')}
-            className="text-emerald-600 hover:text-emerald-700"
-          >
-            ← Back to Profile
-          </button>
+          {fromProfile && (
+            <button
+              onClick={() => setCurrentPage('profile')}
+              className="text-emerald-600 hover:text-emerald-700"
+            >
+              ← Back to Profile
+            </button>
+          )}
           <h2 className="text-3xl font-bold text-gray-900 mt-2">My Groups</h2>
         </div>
       </div>
@@ -274,7 +276,15 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
               <div>
                 <div className="text-xl font-semibold text-gray-900">{selectedGroup.name}</div>
                 <div className="text-sm text-gray-600">
-                  /g/{selectedGroup.short_name} • {selectedGroup.member_count} members • Created {new Date(selectedGroup.created_at).toLocaleDateString()}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage('groupLanding', { groupShortName: selectedGroup.short_name })}
+                    title="Switch to this group"
+                    className="text-emerald-700 hover:text-emerald-800 underline"
+                  >
+                    /g/{selectedGroup.short_name}
+                  </button>
+                  {' • '}{selectedGroup.member_count} members • Created {new Date(selectedGroup.created_at).toLocaleDateString()}
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -288,12 +298,6 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                   className="text-gray-600 hover:text-gray-800 underline text-sm"
                 >
                   Change selection
-                </button>
-                <button
-                  onClick={() => setCurrentPage('groupPage', { groupShortName: selectedGroup.short_name })}
-                  className="text-emerald-700 hover:text-emerald-800 underline text-sm"
-                >
-                  View group page
                 </button>
               </div>
             </div>
@@ -361,7 +365,16 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                         <div className="text-lg font-semibold text-gray-900">
                           {g.sub_group ? `${g.name} — ${g.sub_group.name}` : g.name}
                         </div>
-                        <div className="text-sm text-gray-600">/g/{g.short_name}</div>
+                        <div className="text-sm text-gray-600">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage('groupLanding', { groupShortName: g.short_name })}
+                            title="Switch to this group"
+                            className="text-emerald-700 hover:text-emerald-800 underline"
+                          >
+                            /g/{g.short_name}
+                          </button>
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           Joined {new Date(g.joined_at).toLocaleDateString()}
                         </div>
@@ -388,12 +401,6 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => setCurrentPage('groupPage', { groupShortName: g.short_name })}
-                        className="text-emerald-700 hover:text-emerald-800 underline text-sm"
-                      >
-                        View
-                      </button>
                     </div>
                     <div className="mt-4 flex justify-between items-center">
                       <span
@@ -428,7 +435,16 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="text-lg font-semibold text-gray-900">{r.community_group?.name}</div>
-                        <div className="text-sm text-gray-600">/g/{r.community_group?.short_name}</div>
+                        <div className="text-sm text-gray-600">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage('groupLanding', { groupShortName: r.community_group?.short_name })}
+                            title="Switch to this group"
+                            className="text-emerald-700 hover:text-emerald-800 underline"
+                          >
+                            /g/{r.community_group?.short_name}
+                          </button>
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           Requested {new Date(r.created_at).toLocaleDateString()}
                         </div>
@@ -438,12 +454,6 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => setCurrentPage('groupPage', { groupShortName: r.community_group?.short_name })}
-                        className="text-emerald-700 hover:text-emerald-800 underline text-sm"
-                      >
-                        View
-                      </button>
                     </div>
                     <div className="mt-4 flex justify-end">
                       <button
@@ -468,7 +478,16 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="text-lg font-semibold text-gray-900">{inv.community_group?.name}</div>
-                        <div className="text-sm text-gray-600">/g/{inv.community_group?.short_name}</div>
+                        <div className="text-sm text-gray-600">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage('groupLanding', { groupShortName: inv.community_group?.short_name })}
+                            title="Switch to this group"
+                            className="text-emerald-700 hover:text-emerald-800 underline"
+                          >
+                            /g/{inv.community_group?.short_name}
+                          </button>
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           Invited {new Date(inv.created_at).toLocaleDateString()}
                           {inv.inviter?.display_name ? ` by ${inv.inviter.display_name}` : ''}
@@ -479,12 +498,6 @@ const MyGroups = ({ currentUser, setCurrentPage }) => {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => setCurrentPage('groupPage', { groupShortName: inv.community_group?.short_name })}
-                        className="text-emerald-700 hover:text-emerald-800 underline text-sm"
-                      >
-                        View
-                      </button>
                     </div>
                     <div className="mt-4 flex justify-end">
                       <button

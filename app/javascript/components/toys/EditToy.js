@@ -7,7 +7,7 @@ import ToyForm from '../common/ToyForm';
 import ImageCropper from '../common/ImageCropper';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
-const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook }) => {
+const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, returnItemDetailSource, returnGroupShortName, returnSelectedItemType }) => {
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -134,7 +134,14 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook }) =>
     const result = await updateItem(toyId, updateData);
     if (result.success) {
       const target = (previousPage && previousPage !== 'editToy') ? previousPage : 'myItems';
-      const extra = (target === 'itemDetails' && returnSelectedBook) ? { selectedBook: returnSelectedBook } : {};
+      const extra = (target === 'itemDetails' && returnSelectedBook)
+        ? {
+            selectedBook: returnSelectedBook,
+            ...(returnItemDetailSource ? { itemDetailSource: returnItemDetailSource } : {}),
+            ...(returnGroupShortName ? { groupShortName: returnGroupShortName } : {}),
+            ...(returnSelectedItemType ? { selectedItemType: returnSelectedItemType } : {})
+          }
+        : {};
       setCurrentPage(target, extra);
     }
   };
@@ -162,7 +169,14 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook }) =>
             <button
               onClick={() => {
                 const target = (previousPage && previousPage !== 'editToy') ? previousPage : 'myItems';
-                const extra = (target === 'itemDetails' && returnSelectedBook) ? { selectedBook: returnSelectedBook } : {};
+                const extra = (target === 'itemDetails' && returnSelectedBook)
+                  ? {
+                      selectedBook: returnSelectedBook,
+                      ...(returnItemDetailSource ? { itemDetailSource: returnItemDetailSource } : {}),
+                      ...(returnGroupShortName ? { groupShortName: returnGroupShortName } : {}),
+                      ...(returnSelectedItemType ? { selectedItemType: returnSelectedItemType } : {})
+                    }
+                  : {};
                 setCurrentPage(target, extra);
               }}
               className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
@@ -210,7 +224,14 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook }) =>
                 type="button"
                 onClick={() => {
                   const target = (previousPage && previousPage !== 'editToy') ? previousPage : 'myItems';
-                  const extra = (target === 'itemDetails' && returnSelectedBook) ? { selectedBook: returnSelectedBook } : {};
+                  const extra = (target === 'itemDetails' && returnSelectedBook)
+                    ? {
+                        selectedBook: returnSelectedBook,
+                        ...(returnItemDetailSource ? { itemDetailSource: returnItemDetailSource } : {}),
+                        ...(returnGroupShortName ? { groupShortName: returnGroupShortName } : {}),
+                        ...(returnSelectedItemType ? { selectedItemType: returnSelectedItemType } : {})
+                      }
+                    : {};
                   setCurrentPage(target, extra);
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"

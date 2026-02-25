@@ -23,7 +23,7 @@ const TOY_CONFIG = {
   DetailIcon: GiftIcon
 };
 
-const ToyDetail = ({ toy, setCurrentPage, currentUser, onEditToy, onOpenLoginModal, setRedirectReason, sourcePage }) => (
+const ToyDetail = ({ toy, setCurrentPage, currentUser, onEditToy, onOpenLoginModal, setRedirectReason, sourcePage, groupBrowseItemType }) => (
   <ItemDetail
     item={toy}
     setCurrentPage={setCurrentPage}
@@ -32,6 +32,7 @@ const ToyDetail = ({ toy, setCurrentPage, currentUser, onEditToy, onOpenLoginMod
     onOpenLoginModal={onOpenLoginModal}
     setRedirectReason={setRedirectReason}
     sourcePage={sourcePage}
+    groupBrowseItemType={groupBrowseItemType}
     config={TOY_CONFIG}
   />
 );

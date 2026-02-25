@@ -22,7 +22,7 @@ const BOOK_CONFIG = {
   DetailIcon: BookOpenIcon
 };
 
-const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook, onOpenLoginModal, setRedirectReason, sourcePage }) => (
+const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook, onOpenLoginModal, setRedirectReason, sourcePage, groupBrowseItemType }) => (
   <ItemDetail
     item={book}
     setCurrentPage={setCurrentPage}
@@ -31,6 +31,7 @@ const BookDetail = ({ book, setCurrentPage, currentUser, onEditBook, onOpenLogin
     onOpenLoginModal={onOpenLoginModal}
     setRedirectReason={setRedirectReason}
     sourcePage={sourcePage}
+    groupBrowseItemType={groupBrowseItemType}
     config={BOOK_CONFIG}
   />
 );

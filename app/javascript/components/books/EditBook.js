@@ -8,7 +8,7 @@ import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
-const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook }) => {
+const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, returnItemDetailSource, returnGroupShortName, returnSelectedItemType }) => {
   const { currentUser } = useAuth();
 
   // Check if profile is complete, redirect if not
@@ -219,7 +219,14 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook }) 
     const result = await updateItem(bookId, updateData);
     if (result.success) {
       const target = (previousPage && previousPage !== 'editBook') ? previousPage : 'myItems';
-      const extra = (target === 'itemDetails' && returnSelectedBook) ? { selectedBook: returnSelectedBook } : {};
+      const extra = (target === 'itemDetails' && returnSelectedBook)
+        ? {
+            selectedBook: returnSelectedBook,
+            ...(returnItemDetailSource ? { itemDetailSource: returnItemDetailSource } : {}),
+            ...(returnGroupShortName ? { groupShortName: returnGroupShortName } : {}),
+            ...(returnSelectedItemType ? { selectedItemType: returnSelectedItemType } : {})
+          }
+        : {};
       setCurrentPage(target, extra);
     }
   };
@@ -250,7 +257,14 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook }) 
             <button
               onClick={() => {
                 const target = (previousPage && previousPage !== 'editBook') ? previousPage : 'myItems';
-                const extra = (target === 'itemDetails' && returnSelectedBook) ? { selectedBook: returnSelectedBook } : {};
+                const extra = (target === 'itemDetails' && returnSelectedBook)
+                  ? {
+                      selectedBook: returnSelectedBook,
+                      ...(returnItemDetailSource ? { itemDetailSource: returnItemDetailSource } : {}),
+                      ...(returnGroupShortName ? { groupShortName: returnGroupShortName } : {}),
+                      ...(returnSelectedItemType ? { selectedItemType: returnSelectedItemType } : {})
+                    }
+                  : {};
                 setCurrentPage(target, extra);
               }}
               className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
@@ -322,7 +336,14 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook }) 
                 type="button"
                 onClick={() => {
                   const target = (previousPage && previousPage !== 'editBook') ? previousPage : 'myItems';
-                  const extra = (target === 'itemDetails' && returnSelectedBook) ? { selectedBook: returnSelectedBook } : {};
+                const extra = (target === 'itemDetails' && returnSelectedBook)
+                  ? {
+                      selectedBook: returnSelectedBook,
+                      ...(returnItemDetailSource ? { itemDetailSource: returnItemDetailSource } : {}),
+                      ...(returnGroupShortName ? { groupShortName: returnGroupShortName } : {}),
+                      ...(returnSelectedItemType ? { selectedItemType: returnSelectedItemType } : {})
+                    }
+                  : {};
                   setCurrentPage(target, extra);
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"

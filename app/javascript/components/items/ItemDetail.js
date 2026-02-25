@@ -13,6 +13,7 @@ const ItemDetail = ({
   onOpenLoginModal,
   setRedirectReason,
   sourcePage,
+  groupBrowseItemType,
   config
 }) => {
   const { getItem, requestItem } = useItems();
@@ -63,7 +64,9 @@ const ItemDetail = ({
     } else {
       const { isGroupPage, groupShortName } = getGroupPageInfo();
       if ((sourcePage === 'groupPage' || isGroupPage) && groupShortName) {
-        setCurrentPage('groupPage', { groupShortName });
+        const itemType = groupBrowseItemType || null;
+        const extra = itemType ? { groupShortName, itemType } : { groupShortName };
+        setCurrentPage('groupBrowse', extra);
       } else {
         setCurrentPage('books');
       }
@@ -254,7 +257,13 @@ const ItemDetail = ({
   const formatPickupMethod = (m) => m ? m.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
   const handleBrowseMore = () => {
     const { isGroupPage, groupShortName } = getGroupPageInfo();
-    setCurrentPage(isGroupPage && groupShortName ? 'groupPage' : 'books', isGroupPage && groupShortName ? { groupShortName } : {});
+    if (isGroupPage && groupShortName) {
+      const itemType = groupBrowseItemType || null;
+      const extra = itemType ? { groupShortName, itemType } : { groupShortName };
+      setCurrentPage('groupBrowse', extra);
+    } else {
+      setCurrentPage('books');
+    }
   };
 
   const subtitle = getSubtitle(item);

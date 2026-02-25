@@ -73,6 +73,18 @@ const AppShellContent = ({ onNavigate }) => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
     return (hist?.page === 'editBook' || hist?.page === 'editToy') ? (hist.editReturnSelectedBook || null) : null;
   });
+  const [editReturnItemDetailSource, setEditReturnItemDetailSource] = useState(() => {
+    const hist = typeof window !== 'undefined' ? window.history.state : null;
+    return (hist?.page === 'editBook' || hist?.page === 'editToy') ? (hist.editReturnItemDetailSource || null) : null;
+  });
+  const [editReturnGroupShortName, setEditReturnGroupShortName] = useState(() => {
+    const hist = typeof window !== 'undefined' ? window.history.state : null;
+    return (hist?.page === 'editBook' || hist?.page === 'editToy') ? (hist.editReturnGroupShortName || null) : null;
+  });
+  const [editReturnSelectedItemType, setEditReturnSelectedItemType] = useState(() => {
+    const hist = typeof window !== 'undefined' ? window.history.state : null;
+    return (hist?.page === 'editBook' || hist?.page === 'editToy') ? (hist.editReturnSelectedItemType || null) : null;
+  });
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zipCode, setZipCode] = useState('');
@@ -220,6 +232,9 @@ const AppShellContent = ({ onNavigate }) => {
         if (state.selectedItemType !== undefined) setSelectedItemType(state.selectedItemType);
         if (state.editReturnPage !== undefined) setEditReturnPage(state.editReturnPage);
         if (state.editReturnSelectedBook !== undefined) setEditReturnSelectedBook(state.editReturnSelectedBook);
+        if (state.editReturnItemDetailSource !== undefined) setEditReturnItemDetailSource(state.editReturnItemDetailSource);
+        if (state.editReturnGroupShortName !== undefined) setEditReturnGroupShortName(state.editReturnGroupShortName);
+        if (state.editReturnSelectedItemType !== undefined) setEditReturnSelectedItemType(state.editReturnSelectedItemType);
         if (state.groupShortName) setGroupShortName(state.groupShortName);
         if (state.itemType) setCurrentItemType(state.itemType);
         if (state.donateItemType) setDonateItemType(state.donateItemType);
@@ -248,10 +263,16 @@ const AppShellContent = ({ onNavigate }) => {
     if (extraState.selectedItemType !== undefined) setSelectedItemType(extraState.selectedItemType);
     if (extraState.editReturnPage !== undefined) setEditReturnPage(extraState.editReturnPage);
     if (extraState.editReturnSelectedBook !== undefined) setEditReturnSelectedBook(extraState.editReturnSelectedBook);
+    if (extraState.editReturnItemDetailSource !== undefined) setEditReturnItemDetailSource(extraState.editReturnItemDetailSource);
+    if (extraState.editReturnGroupShortName !== undefined) setEditReturnGroupShortName(extraState.editReturnGroupShortName);
+    if (extraState.editReturnSelectedItemType !== undefined) setEditReturnSelectedItemType(extraState.editReturnSelectedItemType);
     if (extraState.groupShortName) setGroupShortName(extraState.groupShortName);
     if (extraState.itemType) setCurrentItemType(extraState.itemType);
     _setPageState(page);
-    const url = getUrlForPage(page, { ...extraState, groupShortName: extraState.groupShortName || groupShortName, itemType: extraState.itemType || currentItemType });
+    const mergedState = { ...extraState, groupShortName: extraState.groupShortName || groupShortName, itemType: extraState.itemType || currentItemType };
+    const url = (page === 'itemDetails' || page === 'editBook' || page === 'editToy' || page === 'itemRequestDetails' || page === 'myGroups')
+      ? (typeof window !== 'undefined' ? window.location.pathname : '/')
+      : getUrlForPage(page, mergedState);
     window.history.pushState({ page, ...extraState }, '', url);
     if (typeof onNavigate === 'function') onNavigate();
   };
@@ -284,13 +305,27 @@ const AppShellContent = ({ onNavigate }) => {
 
   const handleEditBook = (bookId) => {
     setEditingBookId(bookId);
-    const extra = { editingBookId: bookId, editReturnPage: currentPage, editReturnSelectedBook: selectedBook };
+    const extra = {
+      editingBookId: bookId,
+      editReturnPage: currentPage,
+      editReturnSelectedBook: selectedBook,
+      editReturnItemDetailSource: itemDetailSource,
+      editReturnGroupShortName: groupShortName,
+      editReturnSelectedItemType: selectedItemType
+    };
     setCurrentPage('editBook', extra);
   };
 
   const handleEditToy = (toyId) => {
     setEditingToyId(toyId);
-    const extra = { editingToyId: toyId, editReturnPage: currentPage, editReturnSelectedBook: selectedBook };
+    const extra = {
+      editingToyId: toyId,
+      editReturnPage: currentPage,
+      editReturnSelectedBook: selectedBook,
+      editReturnItemDetailSource: itemDetailSource,
+      editReturnGroupShortName: groupShortName,
+      editReturnSelectedItemType: selectedItemType
+    };
     setCurrentPage('editToy', extra);
   };
 
@@ -322,6 +357,9 @@ const AppShellContent = ({ onNavigate }) => {
           bookId={editingBookId}
           previousPage={editReturnPage ?? previousPage}
           returnSelectedBook={editReturnSelectedBook}
+          returnItemDetailSource={editReturnItemDetailSource}
+          returnGroupShortName={editReturnGroupShortName}
+          returnSelectedItemType={editReturnSelectedItemType}
         />;
       case 'editToy':
         return <EditToy
@@ -329,6 +367,9 @@ const AppShellContent = ({ onNavigate }) => {
           toyId={editingToyId}
           previousPage={editReturnPage ?? previousPage}
           returnSelectedBook={editReturnSelectedBook}
+          returnItemDetailSource={editReturnItemDetailSource}
+          returnGroupShortName={editReturnGroupShortName}
+          returnSelectedItemType={editReturnSelectedItemType}
         />;
       case 'itemDetails': {
         const parsed = typeof window !== 'undefined' ? parsePageFromPath(window.location.pathname) : {};
@@ -343,6 +384,7 @@ const AppShellContent = ({ onNavigate }) => {
           onOpenLoginModal={handleOpenLoginModal}
           setRedirectReason={setRedirectReason}
           sourcePage={itemDetailSource}
+          groupBrowseItemType={itemDetailSource === 'groupPage' ? (selectedItemType || currentItemType) : null}
         />;
       }
       case 'books':
@@ -387,6 +429,7 @@ const AppShellContent = ({ onNavigate }) => {
         return <MyGroups
           currentUser={currentUser}
           setCurrentPage={setCurrentPage}
+          fromProfile={previousPage === 'profile'}
         />;
       case 'groupLanding':
         return <GroupLanding groupShortName={groupShortName} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
