@@ -13,3 +13,17 @@ two:
   owner: two
   status: 0
   message: "This looks like an interesting read. I'm very interested in borrowing it."
+
+toy_request_one:
+  requester: two
+  item: toy_one
+  owner: one
+  status: 0
+  message: "I would love this toy for my kids!"
+
+toy_request_two:
+  requester: one
+  item: toy_two
+  owner: two
+  status: 0
+  message: "Requesting this playset."

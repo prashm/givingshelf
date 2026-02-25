@@ -22,3 +22,22 @@ two:
   genre: "Fiction"
   published_year: 1960
   status: 0
+
+# Toys (STI). Reference as items(:toy_one), items(:toy_two) in tests.
+toy_one:
+  type: Toy
+  user: one
+  title: "Building Blocks Set"
+  brand: "Lego"
+  condition: "excellent"
+  summary: "Classic building blocks."
+  status: 0
+
+toy_two:
+  type: Toy
+  user: two
+  title: "Little People Farm"
+  brand: "Fisher-Price"
+  condition: "good"
+  summary: "Farm playset."
+  status: 0

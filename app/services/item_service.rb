@@ -113,9 +113,9 @@ class ItemService
     items = base_scope.joins(:user, :group_item_availabilities)
 
     if query_string.present?
-      # Search title and author (author is used by Book; Toy has nil author)
+      # Search title, author (Book), and brand (Toy)
       items = items.where(
-        "items.title ILIKE :query OR items.author ILIKE :query",
+        "items.title ILIKE :query OR items.author ILIKE :query OR items.brand ILIKE :query",
         query: "%#{ActiveRecord::Base.sanitize_sql_like(query_string)}%"
       )
     end

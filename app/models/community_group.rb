@@ -1,8 +1,8 @@
 class CommunityGroup < ApplicationRecord
   ZIPCODE_SHORT_NAME = "zipcode".freeze
   ZIPCODE_GROUP_NAME = "ZIP Code Community".freeze
-  ZIPCODE_GROUP_DESCRIPTION = "Discover and Share Books Within Your ZIP Code".freeze
-  DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books Within This Group".freeze
+  ZIPCODE_GROUP_DESCRIPTION = "Discover and Share Books and Toys Within Your ZIP Code".freeze
+  DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books and Toys Within This Group".freeze
   GROUP_ADMINS_SHORT_NAME = "group-admins".freeze
 
   has_many :sub_groups, dependent: :destroy

@@ -324,6 +324,9 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
   describe "#requests_for_user" do
     it "returns received requests for user" do
+      # Isolate from fixture requests (e.g. toy_request_one) so we only count the 2 we create
+      ItemRequest.where(owner: @owner).destroy_all
+
       # Both books should be owned by @owner to test "received" requests
       book1 = setup_book_for_request(items(:one))
       # Create a second book owned by @owner
@@ -363,6 +366,9 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns sent requests for user" do
+      # Isolate from fixture requests (e.g. toy_request_one) so we only count the 2 we create
+      ItemRequest.where(requester: @requester).destroy_all
+
       # Both books should be owned by @owner, and @requester sends requests
       book1 = setup_book_for_request(items(:one))
       # Create a second book owned by @owner

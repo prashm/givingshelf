@@ -1,12 +1,14 @@
 # SSL Certificate Setup Guide
 
-This guide walks through setting up SSL certificates for givingshelf.net using Let's Encrypt.
+This guide walks through setting up SSL certificates for givingshelf.net and booksharecommunity.org (redirects to givingshelf.net) using Let's Encrypt.
 
 ## Prerequisites
 
-1. DNS must be configured and propagated (givingshelf.net must resolve to your EC2 IP)
+1. DNS must be configured and propagated:
+   - **givingshelf.net** and **www.givingshelf.net** must resolve to your EC2 IP
+   - **booksharecommunity.org** and **www.booksharecommunity.org** must resolve to the same EC2 IP (for one cert covering all four)
 2. Ports 80 and 443 must be open in your EC2 security group
-3. The domain must be accessible via HTTP before requesting certificates
+3. The domains must be accessible via HTTP before requesting certificates
 
 ## Step 1: Get EC2 Public IP Address
 
@@ -17,35 +19,42 @@ curl -s http://169.254.169.254/latest/meta-data/public-ipv4
 
 Or check the AWS Console → EC2 → Your Instance → Public IPv4 address
 
-## Step 2: Configure DNS in Namecheap
+## Step 2: Configure DNS (Namecheap or your provider)
 
-1. Log into your Namecheap account
-2. Go to **Domain List** → Click **Manage** for `givingshelf.net`
-3. Navigate to **Advanced DNS** tab
-4. Add/Update A Record:
-   - **Type**: A Record
-   - **Host**: `@` (or leave blank for root domain)
-   - **Value**: [Your EC2 Public IP]
-   - **TTL**: Automatic (or 30 min)
-5. (Optional) Add A Record for www subdomain:
-   - **Type**: A Record
-   - **Host**: `www`
-   - **Value**: [Your EC2 Public IP]
-   - **TTL**: Automatic
-6. Save changes
+**givingshelf.net:**  
+1. Domain List → **Manage** for `givingshelf.net` → **Advanced DNS**  
+2. A record `@` → [EC2 IP]  
+3. A record `www` → [EC2 IP]  
+
+**booksharecommunity.org** (redirects to givingshelf.net; same cert):  
+1. Domain List → **Manage** for `booksharecommunity.org` → **Advanced DNS**  
+2. A record `@` → [same EC2 IP]  
+3. A record `www` → [same EC2 IP]  
+
+Save changes and wait for propagation (5–30 min).
 
 ## Step 3: Verify DNS Propagation
 
-Wait 5-30 minutes for DNS to propagate, then verify:
+Wait 5–30 minutes, then verify all four resolve to your EC2 IP:
 
 ```bash
-# On your local machine or EC2
 dig givingshelf.net
-# or
-nslookup givingshelf.net
+dig www.givingshelf.net
+dig booksharecommunity.org
+dig www.booksharecommunity.org
 ```
 
-Verify it resolves to your EC2 IP address before proceeding.
+## Fresh EC2 / Re-create from scratch
+
+Nginx uses a single certificate path: `/etc/letsencrypt/live/givingshelf.net/`. On a new instance:
+
+1. **DNS:** Point all four hostnames (givingshelf.net, www, booksharecommunity.org, www) to the new EC2 IP.
+2. **Bootstrap:** Create dummy certs in `deploy/nginx/certbot/live/givingshelf.net/` so nginx can start (see deploy steps).
+3. **Webroot:** Run `mkdir -p deploy/nginx/www` so the certbot volume mount works.
+4. **First cert:** Request the certificate **once** with all four domains and `--cert-name givingshelf.net` (Step 5). The cert is written to `givingshelf.net/` and nginx works without path changes.
+5. **Renewal:** `deploy/nginx/renew-certificates.sh` renews all certs; no config change needed.
+
+If you already have a cert in `givingshelf.net-0001/` (e.g. after expanding), see the symlink instructions in Step 5.
 
 ## Step 4: Ensure Security Group Allows Ports 80 and 443
 
@@ -58,17 +67,26 @@ In AWS Console:
 
 ## Step 5: Obtain SSL Certificate
 
-On your EC2 instance, navigate to the project directory and run:
+**Important for fresh EC2 / re-create:** Request **all four domains in one command** and use `--cert-name givingshelf.net` so the certificate is saved at `givingshelf.net/`. Nginx is configured to use that path only.
+
+Ensure the webroot directory exists (Docker mounts it for ACME challenges):
 
 ```bash
 cd ~/givingshelf
+mkdir -p deploy/nginx/www
+```
 
-# Request certificate for both root domain and www subdomain
+Then run certbot **via Docker** (so it uses the same volume as nginx):
+
+```bash
 docker compose -f docker-compose.production.yml --profile certbot run --rm certbot certonly \
   --webroot \
   -w /var/www/certbot \
+  --cert-name givingshelf.net \
   -d givingshelf.net \
   -d www.givingshelf.net \
+  -d booksharecommunity.org \
+  -d www.booksharecommunity.org \
   --email your-email@example.com \
   --agree-tos \
   --non-interactive
@@ -76,7 +94,24 @@ docker compose -f docker-compose.production.yml --profile certbot run --rm certb
 
 Replace `your-email@example.com` with your actual email address.
 
-Certificates will be saved to: `/etc/letsencrypt/live/givingshelf.net/`
+Certificates will be saved to: `deploy/nginx/certbot/live/givingshelf.net/` (inside containers: `/etc/letsencrypt/live/givingshelf.net/`).
+
+### If you already have a certificate in `givingshelf.net-0001/` (e.g. after expanding an existing cert)
+
+Nginx expects the cert at `givingshelf.net/`. Create a symlink **from the project directory** so the path is correct for Docker:
+
+```bash
+cd ~/givingshelf/deploy/nginx/certbot/live
+# Remove existing givingshelf.net (directory or broken symlink)
+rm -rf givingshelf.net
+# Symlink must be relative and created in this directory so Docker sees it
+ln -s givingshelf.net-0001 givingshelf.net
+# Verify: should show givingshelf.net -> givingshelf.net-0001 and fullchain.pem under the target
+ls -la
+ls -la givingshelf.net-0001/
+```
+
+Then reload nginx: `docker compose -f docker-compose.production.yml exec nginx nginx -s reload`
 
 ## Step 6: Enable HTTPS in Nginx Configuration
 

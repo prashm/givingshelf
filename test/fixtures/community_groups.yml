@@ -2,16 +2,16 @@ one:
   name: "Test Group"
   domain: "test.com"
   short_name: "test-group"
-  group_description: "Discover and Share Books Within This Group"
+  group_description: "Discover and Share Books and Toys Within This Group"
 
 two:
   name: "Another Group"
   domain: "another.com"
   short_name: "another-group"
-  group_description: "Discover and Share Books Within This Group"
+  group_description: "Discover and Share Books and Toys Within This Group"
 
 three:
   name: "Original Group"
   domain: "original.com"
   short_name: "original-group"
-  group_description: "Discover and Share Books Within This Group"
+  group_description: "Discover and Share Books and Toys Within This Group"

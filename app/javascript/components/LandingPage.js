@@ -260,7 +260,7 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Verified Users</h3>
-                <p className="text-gray-600">All users are verified for safety. Secure messaging protects your privacy.</p>
+                <p className="text-gray-600">Every user signs in with a verified email. Trust scores reflect profile completeness and optional address validation. Secure messaging protects your privacy.</p>
               </div>
             </div>
           </div>

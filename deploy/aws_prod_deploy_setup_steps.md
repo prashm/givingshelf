@@ -399,15 +399,17 @@ Enable HTTPS using Let's Encrypt certificates. Nginx is already configured for S
 
 ### Step 2.5.1: Prerequisites
 
-- DNS: `givingshelf.net` and `www.givingshelf.net` must resolve to your EC2 public IP
+- DNS: All four must resolve to your EC2 public IP:
+  - `givingshelf.net`, `www.givingshelf.net`
+  - `booksharecommunity.org`, `www.booksharecommunity.org` (redirect to givingshelf.net; same cert)
 - Security group: Ports 80 and 443 open (Step 2.6)
 - App running: Containers (including nginx) must be up
 
 ### Step 2.5.2: Point DNS to EC2
 
 1. Get EC2 public IP: `curl -s http://169.254.169.254/latest/meta-data/public-ipv4` (from EC2) or AWS Console
-2. In your DNS provider (e.g. Namecheap): Add A records `@` and `www` → EC2 IP
-3. Wait 5–30 min for propagation. Verify: `dig givingshelf.net`
+2. In your DNS provider (e.g. Namecheap): Add A records for **givingshelf.net** (`@` and `www`) and **booksharecommunity.org** (`@` and `www`) → same EC2 IP
+3. Wait 5–30 min for propagation. Verify: `dig givingshelf.net` and `dig booksharecommunity.org`
 
 ### Step 2.5.3: Create Dummy Certificates (Bootstrap)
 
@@ -431,19 +433,27 @@ docker compose -f docker-compose.production.yml up -d
 
 ### Step 2.5.5: Obtain Let's Encrypt Certificates
 
+**Fresh EC2:** Request all four domains in one go with `--cert-name givingshelf.net` so the cert is saved at `givingshelf.net/` (nginx expects this path).
+
 ```bash
 cd /home/ubuntu/givingshelf
+mkdir -p deploy/nginx/www
 docker compose -f docker-compose.production.yml --profile certbot run --rm certbot certonly \
   --webroot \
   -w /var/www/certbot \
+  --cert-name givingshelf.net \
   -d givingshelf.net \
   -d www.givingshelf.net \
+  -d booksharecommunity.org \
+  -d www.booksharecommunity.org \
   --email your-email@example.com \
   --agree-tos \
   --non-interactive
 ```
 
 Replace `your-email@example.com` with your email. Certificates overwrite the dummy certs.
+
+**If your cert is in `givingshelf.net-0001/`** (e.g. after expanding on an existing server): from project dir run `cd deploy/nginx/certbot/live && rm -rf givingshelf.net && ln -s givingshelf.net-0001 givingshelf.net`, then `docker compose -f docker-compose.production.yml exec nginx nginx -s reload`. Ensure you run `cd` from `~/givingshelf` so the symlink lives in the mounted certbot dir.
 
 ### Step 2.5.6: Reload Nginx
 
