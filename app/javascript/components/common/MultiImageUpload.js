@@ -15,9 +15,11 @@ const MultiImageUpload = ({
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const menuRef = useRef(null);
+  const focusCleanupRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
 
   // Detect if device is mobile
   const isMobile = () => {
@@ -103,22 +105,50 @@ const MultiImageUpload = ({
     }
   };
 
+  const clearFileDialogState = () => {
+    setIsFileDialogOpen(false);
+    if (focusCleanupRef.current) {
+      focusCleanupRef.current();
+      focusCleanupRef.current = null;
+    }
+  };
+
+  const openFileDialog = (inputRef) => {
+    if (!inputRef?.current) return;
+    clearFileDialogState();
+    setIsFileDialogOpen(true);
+    const onWindowFocus = () => {
+      window.removeEventListener('focus', onWindowFocus, true);
+      focusCleanupRef.current = null;
+      setIsFileDialogOpen(false);
+    };
+    focusCleanupRef.current = () => {
+      window.removeEventListener('focus', onWindowFocus, true);
+    };
+    window.addEventListener('focus', onWindowFocus, true);
+    inputRef.current.click();
+  };
+
+  const handleFileDialogChange = (files, handler) => {
+    clearFileDialogState();
+    handler(files);
+  };
+
   const handleAddPhotosClick = () => {
     if (isMobile()) {
       setShowImageSourceMenu(!showImageSourceMenu);
     } else {
-      // On desktop, just open file picker
-      fileInputRef.current?.click();
+      openFileDialog(fileInputRef);
     }
   };
 
   const handleTakePhoto = () => {
-    cameraInputRef.current?.click();
+    openFileDialog(cameraInputRef);
     setShowImageSourceMenu(false);
   };
 
   const handleChooseFromGallery = () => {
-    galleryInputRef.current?.click();
+    openFileDialog(galleryInputRef);
     setShowImageSourceMenu(false);
   };
 
@@ -329,9 +359,10 @@ const MultiImageUpload = ({
               <button
                 type="button"
                 onClick={handleAddPhotosClick}
-                className="text-emerald-600 hover:text-emerald-700 font-medium"
+                disabled={isFileDialogOpen}
+                className="px-4 py-2 rounded-md font-medium bg-emerald-600 text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
               >
-                Add Photos
+                {isFileDialogOpen ? 'Choosing...' : 'Add Photos'}
               </button>
               {!isMobile() && <span className="text-gray-600 ml-2"> or drag and drop</span>}
             </div>
@@ -373,7 +404,7 @@ const MultiImageUpload = ({
             accept="image/*"
             className="hidden"
             style={{ display: 'none' }}
-            onChange={(e) => handleFileSelect(e.target.files)}
+            onChange={(e) => handleFileDialogChange(e.target.files, handleFileSelect)}
           />
           <input
             ref={cameraInputRef}
@@ -384,9 +415,9 @@ const MultiImageUpload = ({
             style={{ display: 'none' }}
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) {
-                handleFileSelect([file]);
-              }
+              handleFileDialogChange(e.target.files, (files) => {
+                if (file) handleFileSelect([file]);
+              });
             }}
           />
           <input
@@ -396,7 +427,7 @@ const MultiImageUpload = ({
             accept="image/*"
             className="hidden"
             style={{ display: 'none' }}
-            onChange={(e) => handleFileSelect(e.target.files)}
+            onChange={(e) => handleFileDialogChange(e.target.files, handleFileSelect)}
           />
         </div>
       )}

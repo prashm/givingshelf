@@ -233,17 +233,20 @@ const GroupLanding = ({ groupShortName, currentUser, setCurrentPage, onOpenLogin
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-2 text-center">
-          <p className="text-gray-700 text-lg flex items-center justify-center gap-2">
-            <MagnifyingGlassIcon className="w-5 h-5 flex-shrink-0 text-gray-500" />
-            Looking for the local community site? Click{' '}
-            <button
-              type="button"
-              onClick={() => setCurrentPage('home')}
-              className="text-emerald-600 hover:text-emerald-700 font-medium underline cursor-pointer"
-            >
-              here
-            </button>
+        <div className="flex flex-col items-center justify-center gap-2 text-center px-2 sm:px-0">
+          <p className="text-gray-700 text-base sm:text-lg flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <MagnifyingGlassIcon className="w-5 h-5 flex-shrink-0 text-gray-500" aria-hidden />
+            <span>Looking for the local community site?</span>
+            <span className="inline-flex items-center gap-1">
+              Click
+              <button
+                type="button"
+                onClick={() => setCurrentPage('home')}
+                className="text-emerald-600 hover:text-emerald-700 font-medium underline cursor-pointer"
+              >
+                here
+              </button>
+            </span>
           </p>
         </div>
       </div>

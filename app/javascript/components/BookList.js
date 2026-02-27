@@ -93,6 +93,7 @@ const BookList = ({ books, searchQuery, setSearchQuery, zipCode, setZipCode, han
             onSearch={handleSearchWithRadius}
             submitOnEnter={true}
             searchDisabled={!hasValidZipCode}
+            searchLoading={booksLoading}
             secondaryField={
               <>
                 <label className="block text-gray-700 mb-2">

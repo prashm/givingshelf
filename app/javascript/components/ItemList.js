@@ -325,6 +325,7 @@ const ItemList = ({
             onSearch={searchHandler}
             submitOnEnter={!isGroupBrowse}
             searchDisabled={!isGroupBrowse && !hasValidZipCode}
+            searchLoading={itemsLoading}
             secondaryField={secondaryField}
           />
 
