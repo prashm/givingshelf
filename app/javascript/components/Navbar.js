@@ -32,6 +32,19 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
 
   const { isGroupPage, groupShortName } = typeof window !== 'undefined' ? getGroupPageInfo() : { isGroupPage: false, groupShortName: null };
 
+  const logoClickTarget = isGroupPage && groupShortName ? () => handleNavClick('groupLanding', { groupShortName }) : () => handleNavClick('home');
+
+  const goToBrowsePage = (itemType) => {
+    if (parsed.page === 'groupBrowse' && groupShortName) {
+      setCurrentPage('groupBrowse', { groupShortName, itemType });
+    } else if (itemType === Constants.ITEM_TYPE_TOY) {
+      setCurrentPage('toys');
+    } else {
+      setCurrentPage('books');
+    }
+    setIsMobileMenuOpen(false);
+  };
+
   const handleLogout = () => {
     onLogout();
     setIsMobileMenuOpen(false);
@@ -54,31 +67,44 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
     };
   }, [isMobileMenuOpen]);
 
-  const menuItems = currentUser ? (
-    <>
-      {isGroupPage && groupShortName && (
-        <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('groupLanding', { groupShortName })}>Group Home</li>
-      )}
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('donate', donateExtra)}>{donateLabel}</li>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myItems')}>My Items</li>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('messages')}>My Requests</li>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('myGroups')}>My Groups</li>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={() => handleNavClick('profile')}>
-        {currentUser.first_name || currentUser.email_address || 'Profile'}
-      </li>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={handleLogout}>Logout</li>
-    </>
-  ) : (
-    <>
-      <li className="cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded" onClick={handleLoginClick}>Login</li>
-    </>
-  );
+  const renderNavItems = (variant) => {
+    const isMobile = variant === 'mobile';
+    const itemClass = isMobile ? 'cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded' : 'cursor-pointer hover:underline';
+    const nav = isMobile ? handleNavClick : (page, extra = {}) => setCurrentPage(page, extra);
+    const onLogoutClick = isMobile ? handleLogout : onLogout;
+
+    if (!currentUser) {
+      return (
+        <li className={itemClass} onClick={handleLoginClick}>Sign In</li>
+      );
+    }
+
+    return (
+      <>
+        {parsed.page !== 'groupLanding' && (
+          <>
+            {isToysContext ? (
+              <li className={itemClass} onClick={() => goToBrowsePage(Constants.ITEM_TYPE_TOY)}>Browse Toys</li>
+            ) : (
+              <li className={itemClass} onClick={() => goToBrowsePage(Constants.ITEM_TYPE_BOOK)}>Browse Books</li>
+            )}
+            <li className={itemClass} onClick={() => nav('donate', donateExtra)}>{donateLabel}</li>
+          </>
+        )}
+        <li className={itemClass} onClick={() => nav('myItems')}>My Items</li>
+        <li className={itemClass} onClick={() => nav('messages')}>My Requests</li>
+        <li className={itemClass} onClick={() => nav('myGroups')}>My Groups</li>
+        <li className={itemClass} onClick={() => nav('profile')}>Profile</li>
+        <li className={itemClass} onClick={onLogoutClick}>Sign Out</li>
+      </>
+    );
+  };
 
   return (
     <>
       <header className="bg-emerald-600 text-white shadow-sd relative h-16 w-full">
         <div className="flex justify-between items-center h-full w-full">
-          <div className="flex items-center h-full cursor-pointer shrink-0" onClick={() => handleNavClick('home')}>
+          <div className="flex items-center h-full cursor-pointer shrink-0" onClick={logoClickTarget}>
             <div className="bg-white h-full flex items-center justify-center px-2 py-1.5 max-h-16">
               <img src="/gs-logo.png" alt="GivingShelf" className="h-full w-auto max-w-[12rem] object-contain object-center" />
             </div>
@@ -87,25 +113,7 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
           {/* Desktop Menu */}
           <nav className="hidden md:block mr-4">
             <ul className="flex space-x-6">
-              {currentUser ? (
-                <>
-                  {isGroupPage && groupShortName && (
-                    <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('groupLanding', { groupShortName })}>Group Home</li>
-                  )}
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('donate', donateExtra)}>{donateLabel}</li>
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myItems')}>My Items</li>
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('messages')}>My Requests</li>
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('myGroups')}>My Groups</li>
-                  <li className="cursor-pointer hover:underline" onClick={() => setCurrentPage('profile')}>
-                    Profile
-                  </li>
-                  <li className="cursor-pointer hover:underline" onClick={onLogout}>Logout</li>
-                </>
-              ) : (
-                <>
-                  <li className="cursor-pointer hover:underline" onClick={handleLoginClick}>Login</li>
-                </>
-              )}
+              {renderNavItems('desktop')}
             </ul>
           </nav>
 
@@ -130,7 +138,7 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
             className="md:hidden absolute top-full left-0 right-0 bg-emerald-600 shadow-lg z-50"
           >
             <ul className="flex flex-col py-2">
-              {menuItems}
+              {renderNavItems('mobile')}
             </ul>
           </nav>
         )}

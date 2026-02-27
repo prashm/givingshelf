@@ -51,7 +51,7 @@ const ItemDetail = ({
     DetailIcon = null
   } = config || {};
 
-  const isOwner = item?.owner?.id === currentUser?.id || item?.owner_id === currentUser?.id;
+  const isOwner = !!currentUser && item?.owner?.id === currentUser.id;
 
   const handleBackNavigation = () => {
     if (sourcePage === 'myItems') {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRightIcon, BookOpenIcon, GiftIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, BookOpenIcon, GiftIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { fetchGroupByShortName } from '../../lib/communityGroupsApi';
 import { fetchCommunityStats } from '../../lib/booksApi';
 import * as Constants from '../../lib/constants';
@@ -231,6 +231,20 @@ const GroupLanding = ({ groupShortName, currentUser, setCurrentPage, onOpenLogin
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center gap-2 text-center">
+          <p className="text-gray-700 text-lg flex items-center justify-center gap-2">
+            <MagnifyingGlassIcon className="w-5 h-5 flex-shrink-0 text-gray-500" />
+            Looking for the local community site? Click{' '}
+            <button
+              type="button"
+              onClick={() => setCurrentPage('home')}
+              className="text-emerald-600 hover:text-emerald-700 font-medium underline cursor-pointer"
+            >
+              here
+            </button>
+          </p>
         </div>
       </div>
     </div>
