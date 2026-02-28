@@ -1,16 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, BookOpenIcon, ChevronDownIcon, ChevronRightIcon, GiftIcon, CubeIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MagnifyingGlassIcon, BookOpenIcon, ChevronDownIcon, GiftIcon } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/solid';
+import axios from '../lib/axios';
 import * as Constants from '../lib/constants';
 
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const HERO_IMAGE_BASE = '/images/hero';
+const FALLBACK_HERO_FILES = ['hero-1.png', 'hero-2.png', 'hero-3.png', 'hero-4.png'];
+
 const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
-  const [offsetY, setOffsetY] = useState(0);
+  const [heroImages, setHeroImages] = useState(FALLBACK_HERO_FILES);
+
+  const fetchHeroImages = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/hero_images', { withCredentials: true });
+      const filenames = data.filenames || [];
+      if (filenames.length > 0) {
+        const shuffled = shuffleArray(filenames);
+        setHeroImages(shuffled.slice(0, 4));
+      }
+    } catch (_err) {
+      // Keep fallback filenames so collage still shows
+    }
+  }, []);
 
   useEffect(() => {
-    const handleScroll = () => setOffsetY(window.scrollY);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    fetchHeroImages();
+  }, [fetchHeroImages]);
+
+  const displayHeroImages = heroImages.slice(0, 4);
 
   const handleBrowseBooks = () => setCurrentPage('books');
   const handleDonateBooks = () => {
@@ -28,105 +54,104 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
     if (element) element.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const heroRotations = ['-rotate-2', 'rotate-2', '-rotate-1', 'rotate-1'];
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section - keep existing background */}
-      <div
-        className="relative overflow-hidden flex flex-col"
+      <style>{`
+        @keyframes hero-blob-morph {
+          0%, 100% { border-radius: 35% 65% 60% 40% / 55% 45% 55% 45%; }
+          25% { border-radius: 50% 50% 40% 60% / 45% 55% 50% 50%; }
+          50% { border-radius: 60% 40% 50% 50% / 50% 50% 45% 55%; }
+          75% { border-radius: 40% 60% 55% 45% / 55% 45% 50% 50%; }
+        }
+        .hero-blob {
+          animation: hero-blob-morph 10s ease-in-out infinite;
+        }
+      `}</style>
+      {/* Hero: left = text + green buttons, right = swatch (morphs) + 4 image cards */}
+      <section
+        className="relative min-h-[calc(100vh-80px)] flex flex-col"
         style={{
-          minHeight: 'calc(100vh - 80px)',
           background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%)'
         }}
       >
-        {/* Decorative background icons */}
-        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden>
-          <BookOpenIcon className="absolute top-12 left-12 w-16 h-16 md:w-20 md:h-20 text-emerald-300/40" style={{ transform: `translateY(${offsetY * 0.3}px)` }} />
-          <CubeIcon className="absolute top-1/2 right-16 w-14 h-14 md:w-16 md:h-16 text-emerald-300/40" style={{ transform: `translateY(${offsetY * 0.2}px)` }} />
-          <GiftIcon className="absolute bottom-24 right-20 w-14 h-14 md:w-16 md:h-16 text-emerald-300/40" style={{ transform: `translateY(${-offsetY * 0.2}px)` }} />
-        </div>
-
-        <div className="container mx-auto px-4 py-12 flex-grow flex flex-col relative z-10">
-          <div className="flex-grow flex flex-col justify-center w-full items-center max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 drop-shadow-lg">
-              Share. Discover. Connect.
+        <div className="flex-grow flex flex-col md:flex-row md:items-center md:min-h-0 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-4 md:py-16 md:pt-16">
+          {/* Left column — text and CTAs, left-aligned on desktop */}
+          <div className="flex-1 flex flex-col justify-center order-2 md:order-1 text-center md:text-left md:pr-10 lg:pr-14">
+            <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3 md:mb-5">
+              <span className="block">Welcome to GivingShelf</span>
             </h1>
-            <p className="text-xl md:text-2xl text-gray-700 mb-12 leading-relaxed drop-shadow-md max-w-2xl">
-              Give things you no longer need. Find treasures for free. Build community connections through local sharing.
+            <p className="text-lg sm:text-xl text-gray-700 mb-5 md:mb-8 max-w-lg">
+              Give Books and Toys you no longer need and find new ones in your community.
             </p>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start mb-4 md:mb-5">
+              <button
+                type="button"
+                onClick={handleBrowseBooks}
+                className="inline-flex items-center justify-center rounded-lg px-6 py-3 bg-emerald-600 text-white font-semibold shadow hover:bg-emerald-700 transition-colors"
+              >
+                Browse Books
+              </button>
+              <button
+                type="button"
+                onClick={handleBrowseToys}
+                className="inline-flex items-center justify-center rounded-lg px-6 py-3 bg-white text-emerald-600 font-semibold border-2 border-emerald-600 hover:bg-emerald-50 transition-colors"
+              >
+                Browse Toys
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              <button type="button" onClick={handleDonateBooks} className="text-emerald-600 font-semibold hover:underline cursor-pointer">Donate books</button>
+              {' · '}
+              <button type="button" onClick={handleDonateToys} className="text-emerald-600 font-semibold hover:underline cursor-pointer">Donate toys</button>
+            </p>
+          </div>
 
-            {/* Two cards side-by-side */}
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mb-20">
-              {/* Books card */}
-              <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center text-center border border-gray-100">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4 border-2 border-emerald-200">
-                  <BookOpenIcon className="w-7 h-7 text-emerald-700" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Books</h2>
-                <p className="text-gray-600 mb-6 flex-grow">
-                  Share your favorite reads and discover new stories from your neighbors
-                </p>
-                <div className="flex flex-row justify-between items-center w-full mt-auto">
-                  <button
-                    onClick={handleBrowseBooks}
-                    className="text-emerald-600 font-semibold hover:underline flex items-center gap-2 cursor-pointer"
-                  >
-                    Browse Books
-                    <ChevronRightIcon className="w-4 h-4 flex-shrink-0" />
-                  </button>
-                  <button
-                    onClick={handleDonateBooks}
-                    className="text-emerald-600 font-semibold hover:underline flex items-center gap-2 cursor-pointer"
-                  >
-                    Donate Books
-                    <ChevronRightIcon className="w-4 h-4 flex-shrink-0" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Toys card */}
-              <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center text-center border border-gray-100">
-                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-4 border-2 border-red-200">
-                  <GiftIcon className="w-7 h-7 text-red-700" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Toys</h2>
-                <p className="text-gray-600 mb-6 flex-grow">
-                  Pass on toys your kids outgrew and find new favorites for them
-                </p>
-                <div className="flex flex-row justify-between items-center w-full mt-auto">
-                  <button
-                    onClick={handleBrowseToys}
-                    className="text-red-600 font-semibold hover:underline flex items-center gap-2 cursor-pointer"
-                  >
-                    Browse Toys
-                    <ChevronRightIcon className="w-4 h-4 flex-shrink-0" />
-                  </button>
-                  <button
-                    onClick={handleDonateToys}
-                    className="text-red-600 font-semibold hover:underline flex items-center gap-2 cursor-pointer"
-                  >
-                    Donate Toys
-                    <ChevronRightIcon className="w-4 h-4 flex-shrink-0" />
-                  </button>
+          {/* Right column — swatch + morphing + 4 image cards; on mobile kept compact so arrow shows without scrolling */}
+          <div className="flex-1 flex items-center justify-center order-1 md:order-2 min-h-0 md:min-h-[400px] w-full md:pl-4 relative -mt-2 md:mt-0">
+            <div className="relative w-full max-w-lg aspect-[4/3] min-h-[200px] md:min-h-[320px] flex items-center justify-center max-h-[38vh] md:max-h-none">
+              {/* Blob: orange matching "Shelf" in logo (#F77B24), organic shape with morphing */}
+              <div
+                className="hero-blob absolute inset-0 w-full h-full rounded-[35%_65%_60%_40%_/_55%_45%_55%_45%]"
+                style={{ backgroundColor: '#F77B24' }}
+                aria-hidden
+              />
+              {/* Image cards on top of blob — spread out */}
+              <div className="absolute inset-0 flex items-center justify-center p-6 sm:p-8 lg:p-10 z-10">
+                <div className="grid grid-cols-2 grid-rows-2 gap-5 sm:gap-6 lg:gap-8 w-full max-w-sm sm:max-w-md lg:max-w-lg max-h-[200px] sm:max-h-[280px] lg:max-h-[320px]">
+                  {displayHeroImages.map((filename, i) => (
+                    <div
+                      key={`${filename}-${i}`}
+                      className={`rounded-xl shadow-lg overflow-hidden bg-white ${heroRotations[i % 4]}`}
+                    >
+                      <img
+                        src={`${HERO_IMAGE_BASE}/${filename}`}
+                        alt="Featured book or toy"
+                        className="w-full h-full min-h-[70px] sm:min-h-[110px] object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Scroll indicator */}
-          <div
-            onClick={handleScrollClick}
-            className="flex justify-center pb-8 cursor-pointer hover:scale-110 transition-transform"
-            aria-label="Scroll to content"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') handleScrollClick();
-            }}
-          >
-              <ChevronDownIcon className="h-6 w-6 text-emerald-700 animate-bounce" />
-          </div>
         </div>
-      </div>
+
+        {/* Scroll indicator — visible on mobile without scrolling */}
+        <div
+          onClick={handleScrollClick}
+          className="flex justify-center pt-2 pb-4 md:pb-6 cursor-pointer hover:scale-110 transition-transform shrink-0"
+          aria-label="Scroll to content"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') handleScrollClick();
+          }}
+        >
+          <ChevronDownIcon className="h-6 w-6 text-emerald-700 animate-bounce" />
+        </div>
+      </section>
 
       {/* How It Works Section */}
       <div id="how-it-works" className="min-h-screen flex items-center justify-center bg-white py-16">

@@ -51,6 +51,7 @@ Rails.application.routes.draw do
   get "/g/:short_name", to: "group_pages#show", as: :group_page
   get "/g/:short_name/books", to: "group_pages#show"
   get "/g/:short_name/toys", to: "group_pages#show"
+  get "hero_images", to: "home#hero_images"
 
   # API routes
   namespace :api do
@@ -120,6 +121,7 @@ Rails.application.routes.draw do
   # Catch all for React routing - but exclude system paths
   get "*path", to: "home#index", constraints: ->(request) do
     !request.path.start_with?("/.well-known") &&
+    request.path != "/hero_images" &&
     !request.path.start_with?("/api") &&
     !request.path.start_with?("/assets") &&
     !request.path.start_with?("/packs") &&
