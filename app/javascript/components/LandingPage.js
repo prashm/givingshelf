@@ -65,8 +65,13 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
           50% { border-radius: 60% 40% 50% 50% / 50% 50% 45% 55%; }
           75% { border-radius: 40% 60% 55% 45% / 55% 45% 50% 50%; }
         }
+        @keyframes hero-blob-color {
+          0%, 100% { background-color: #a7f3d0; }
+          50% { background-color: #fed7aa; }
+        }
         .hero-blob {
-          animation: hero-blob-morph 10s ease-in-out infinite;
+          animation: hero-blob-morph 10s ease-in-out infinite,
+                     hero-blob-color 6s ease-in-out infinite;
         }
       `}</style>
       {/* Hero: left = text + green buttons, right = swatch (morphs) + 4 image cards */}
@@ -80,11 +85,9 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
           {/* Left column — text and CTAs, left-aligned on desktop */}
           <div className="flex-1 flex flex-col justify-center order-2 md:order-1 text-center md:text-left md:pr-10 lg:pr-14">
             <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3 md:mb-5">
-              <span className="block">Welcome to GivingShelf</span>
+              <span className="block">Share and Discover Free Books & Toys Near You.</span>
             </h1>
-            <p className="text-lg sm:text-xl text-gray-700 mb-5 md:mb-8 max-w-lg">
-              Give Books and Toys you no longer need and find new ones in your community.
-            </p>
+
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start mb-4 md:mb-5">
               <button
                 type="button"
@@ -111,10 +114,10 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
           {/* Right column — swatch + morphing + 4 image cards; on mobile kept compact so arrow shows without scrolling */}
           <div className="flex-1 flex items-center justify-center order-1 md:order-2 min-h-0 md:min-h-[400px] w-full md:pl-4 relative -mt-2 md:mt-0">
             <div className="relative w-full max-w-lg aspect-[4/3] min-h-[200px] md:min-h-[320px] flex items-center justify-center max-h-[38vh] md:max-h-none">
-              {/* Blob: orange matching "Shelf" in logo (#F77B24), organic shape with morphing */}
+              {/* Blob: color cycles light green → light orange → light green; shape morphs */}
               <div
                 className="hero-blob absolute inset-0 w-full h-full rounded-[35%_65%_60%_40%_/_55%_45%_55%_45%]"
-                style={{ backgroundColor: '#F77B24' }}
+                style={{ backgroundColor: '#a7f3d0' }}
                 aria-hidden
               />
               {/* Image cards on top of blob — spread out */}
@@ -176,7 +179,7 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                         1
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">Browse by Category</h3>
+                        <h3 className="font-semibold text-gray-900 mb-1">Browse by Location</h3>
                         <p className="text-gray-600">Search books or toys available in your ZIP code or nearby</p>
                         <p className="text-gray-500 text-sm mt-2 italic">Your browser may ask for location permission. We only use this information to help you find books in your local area. Your exact location is never stored or shared - we only use it to show you books nearby.</p>
                       </div>
@@ -203,17 +206,17 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                 </div>
               </div>
 
-              {/* Have Books to Share Card */}
-              <div className="bg-white rounded-lg border border-blue-200 shadow-lg p-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-blue-100 opacity-50" style={{ borderRadius: '0 0 0 100%' }}></div>
+              {/* Have Books to Share Card — orange scheme (Shelf logo color) */}
+              <div className="bg-white rounded-lg border shadow-lg p-8 relative overflow-hidden" style={{ borderColor: '#fdba74' }}>
+                <div className="absolute top-0 right-0 w-40 h-40 opacity-50" style={{ borderRadius: '0 0 0 100%', backgroundColor: '#ffedd5' }}></div>
                 <div className="relative">
                   <div className="flex items-center gap-3 mb-6">
-                    <BookOpenIcon className="h-8 w-8 text-blue-700" />
+                    <BookOpenIcon className="h-8 w-8" style={{ color: '#F77B24' }} />
                     <h2 className="text-2xl font-bold text-gray-900">Have Things to Give?</h2>
                   </div>
                   <div className="space-y-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-blue-700 text-white rounded-full flex items-center justify-center font-semibold">
+                      <div className="flex-shrink-0 w-8 h-8 text-white rounded-full flex items-center justify-center font-semibold" style={{ backgroundColor: '#F77B24' }}>
                         1
                       </div>
                       <div>
@@ -222,7 +225,7 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                       </div>
                     </div>
                     <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-blue-700 text-white rounded-full flex items-center justify-center font-semibold">
+                      <div className="flex-shrink-0 w-8 h-8 text-white rounded-full flex items-center justify-center font-semibold" style={{ backgroundColor: '#F77B24' }}>
                         2
                       </div>
                       <div>
@@ -231,7 +234,7 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                       </div>
                     </div>
                     <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-blue-700 text-white rounded-full flex items-center justify-center font-semibold">
+                      <div className="flex-shrink-0 w-8 h-8 text-white rounded-full flex items-center justify-center font-semibold" style={{ backgroundColor: '#F77B24' }}>
                         3
                       </div>
                       <div>
@@ -263,14 +266,14 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">100% Free</h3>
-                <p className="text-gray-600">No hidden costs, no selling. Just neighbors helping neighbors discover treasures.</p>
+                <p className="text-gray-600">No hidden costs, no selling. Just neighbors helping neighbors discover books and toys.</p>
               </div>
 
               {/* Local Focus Card */}
               <div className="bg-white rounded-lg shadow-md p-8 text-center">
                 <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                    <MapPinIcon className="h-8 w-8 text-blue-600" />
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ffedd5' }}>
+                    <MapPinIcon className="h-8 w-8" style={{ color: '#F77B24' }} />
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Local Focus</h3>
