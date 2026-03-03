@@ -1,42 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { MagnifyingGlassIcon, BookOpenIcon, ChevronDownIcon, GiftIcon } from '@heroicons/react/24/outline';
+import React from 'react';
+import { MagnifyingGlassIcon, BookOpenIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/solid';
-import axios from '../lib/axios';
 import * as Constants from '../lib/constants';
 
-function shuffleArray(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 const HERO_IMAGE_BASE = '/images/hero';
-const FALLBACK_HERO_FILES = ['hero-1.png', 'hero-2.png', 'hero-3.png', 'hero-4.png'];
+// Row 1: hero-book-1, hero-toy-1; Row 2: hero-toy-2, hero-book-2
+const HERO_IMAGES = ['hero-book-1.png', 'hero-toy-1.png', 'hero-toy-2.png', 'hero-book-2.png'];
 
 const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
-  const [heroImages, setHeroImages] = useState(FALLBACK_HERO_FILES);
-
-  const fetchHeroImages = useCallback(async () => {
-    try {
-      const { data } = await axios.get('/hero_images', { withCredentials: true });
-      const filenames = data.filenames || [];
-      if (filenames.length > 0) {
-        const shuffled = shuffleArray(filenames);
-        setHeroImages(shuffled.slice(0, 4));
-      }
-    } catch (_err) {
-      // Keep fallback filenames so collage still shows
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchHeroImages();
-  }, [fetchHeroImages]);
-
-  const displayHeroImages = heroImages.slice(0, 4);
 
   const handleBrowseBooks = () => setCurrentPage('books');
   const handleDonateBooks = () => {
@@ -123,9 +94,9 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
               {/* Image cards on top of blob — spread out */}
               <div className="absolute inset-0 flex items-center justify-center p-6 sm:p-8 lg:p-10 z-10">
                 <div className="grid grid-cols-2 grid-rows-2 gap-5 sm:gap-6 lg:gap-8 w-full max-w-sm sm:max-w-md lg:max-w-lg max-h-[200px] sm:max-h-[280px] lg:max-h-[320px]">
-                  {displayHeroImages.map((filename, i) => (
+                  {HERO_IMAGES.map((filename, i) => (
                     <div
-                      key={`${filename}-${i}`}
+                      key={filename}
                       className={`rounded-xl shadow-lg overflow-hidden bg-white ${heroRotations[i % 4]}`}
                     >
                       <img
