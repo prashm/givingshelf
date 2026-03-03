@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, BookOpenIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/solid';
+import axios from '../lib/axios';
 import * as Constants from '../lib/constants';
 
 const HERO_IMAGE_BASE = '/images/hero';
@@ -8,6 +9,7 @@ const HERO_IMAGE_BASE = '/images/hero';
 const HERO_IMAGES = ['hero-book-1.png', 'hero-toy-1.png', 'hero-toy-2.png', 'hero-book-2.png'];
 
 const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
+  const [growthStats, setGrowthStats] = useState([]);
 
   const handleBrowseBooks = () => setCurrentPage('books');
   const handleDonateBooks = () => {
@@ -24,6 +26,28 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
     const element = document.getElementById('how-it-works');
     if (element) element.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchGrowthStats = async () => {
+      try {
+        const { data } = await axios.get('/growth_stats', { withCredentials: true });
+        const stats = (data && Array.isArray(data.stats)) ? data.stats : [];
+        if (isMounted) {
+          setGrowthStats(stats);
+        }
+      } catch (_err) {
+        // Silently ignore; stats strip simply won't render
+      }
+    };
+
+    fetchGrowthStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const heroRotations = ['-rotate-2', 'rotate-2', '-rotate-1', 'rotate-1'];
 
@@ -111,6 +135,26 @@ const LandingPage = ({ setCurrentPage, currentUser, onOpenLoginModal }) => {
             </div>
           </div>
         </div>
+
+        {/* Growth stats strip + scroll indicator */}
+        {growthStats.length > 0 && (
+          <div className="flex justify-center px-4 pt-2">
+            <div className="w-full max-w-3xl bg-white/70 backdrop-blur rounded-xl shadow-sm border border-emerald-100 py-5 px-6">
+              <div className="grid grid-cols-3 gap-6 text-center">
+                {growthStats.map((stat) => (
+                  <div key={stat.id || stat.label}>
+                    <div className="text-3xl md:text-4xl font-semibold text-gray-900">
+                      {stat.value}
+                    </div>
+                    <div className="mt-2 text-base text-gray-600">
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Scroll indicator — visible on mobile without scrolling */}
         <div

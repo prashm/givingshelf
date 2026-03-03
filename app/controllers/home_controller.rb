@@ -1,5 +1,5 @@
 class HomeController < ApplicationController
-  allow_unauthenticated_access only: [ :index ]
+  allow_unauthenticated_access only: [ :index, :growth_stats ]
 
   def index
     # Detect if this is an item detail page (/books/:id or /toys/:id)
@@ -16,6 +16,16 @@ class HomeController < ApplicationController
         render json: { message: "Please use /api/items for JSON requests" }, status: :not_acceptable
       end
     end
+  end
+
+  def growth_stats
+    stats = [
+      { id: "local_givers", value: "100+", label: "Local Givers" },
+      { id: "items_shared", value: "200+", label: "Books & Toys Shared" },
+      { id: "groups_created", value: "15+", label: "Local Groups Created" }
+    ]
+    # TODO: Implement actual growth stats
+    render json: { stats: [] }
   end
 
   private
