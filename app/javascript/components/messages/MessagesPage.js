@@ -4,47 +4,46 @@ import { parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
 
 const MessagesPage = ({ setCurrentPage }) => {
-  const [activeTab, setActiveTab] = useState('received');
   const [receivedRequests, setReceivedRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [hasLoadedReceived, setHasLoadedReceived] = useState(false);
-  const [hasLoadedSent, setHasLoadedSent] = useState(false);
+  const [loadingReceived, setLoadingReceived] = useState(false);
+  const [loadingSent, setLoadingSent] = useState(false);
+  const [errorReceived, setErrorReceived] = useState(null);
+  const [errorSent, setErrorSent] = useState(null);
 
-  const loadRequests = async (type) => {
-    setLoading(true);
-    setError(null);
+  const loadReceived = async () => {
+    setLoadingReceived(true);
+    setErrorReceived(null);
     try {
-      const data = await fetchItemRequests(type);
-      if (type === 'received') {
-        setReceivedRequests(data);
-        setHasLoadedReceived(true);
-      } else if (type === 'sent') {
-        setSentRequests(data);
-        setHasLoadedSent(true);
-      }
+      const data = await fetchItemRequests('received');
+      setReceivedRequests(data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load requests');
+      setErrorReceived(err.response?.data?.error || 'Failed to load requests received');
     } finally {
-      setLoading(false);
+      setLoadingReceived(false);
+    }
+  };
+
+  const loadSent = async () => {
+    setLoadingSent(true);
+    setErrorSent(null);
+    try {
+      const data = await fetchItemRequests('sent');
+      setSentRequests(data);
+    } catch (err) {
+      setErrorSent(err.response?.data?.error || 'Failed to load requests sent');
+    } finally {
+      setLoadingSent(false);
     }
   };
 
   useEffect(() => {
-    if (!hasLoadedReceived) {
-      loadRequests('received');
-    }
-  }, [hasLoadedReceived]);
+    loadReceived();
+  }, []);
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    if (tab === 'received' && !hasLoadedReceived) {
-      loadRequests('received');
-    } else if (tab === 'sent' && !hasLoadedSent) {
-      loadRequests('sent');
-    }
-  };
+  useEffect(() => {
+    loadSent();
+  }, []);
 
   const handleViewDetails = (requestId) => {
     setCurrentPage('itemRequestDetails', { itemRequestId: requestId });
@@ -74,13 +73,11 @@ const MessagesPage = ({ setCurrentPage }) => {
                   Requester
                 </th>
               )}
-              {type === 'received' && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Message
-                </th>
-              )}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {type === 'received' ? 'Received At' : 'Requested At'}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -115,13 +112,11 @@ const MessagesPage = ({ setCurrentPage }) => {
                     </div>
                   </td>
                 )}
-                {type === 'received' && (
-                  <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">
-                    {request.message}
-                  </td>
-                )}
                 <td className="px-4 py-3 text-sm text-gray-700">
                   {new Date(request.created_at).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-700">
+                  {request.status_display || 'Pending'}
                 </td>
                 <td className="px-4 py-3 text-sm text-right">
                   <button
@@ -167,49 +162,37 @@ const MessagesPage = ({ setCurrentPage }) => {
           </button>
         </div>
 
-        <div className="border-b border-gray-200 mb-4">
-          <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-            <button
-              type="button"
-              onClick={() => handleTabChange('received')}
-              className={`whitespace-nowrap pb-2 px-1 border-b-2 text-sm font-medium ${
-                activeTab === 'received'
-                  ? 'border-emerald-500 text-emerald-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Requests received
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('sent')}
-              className={`whitespace-nowrap pb-2 px-1 border-b-2 text-sm font-medium ${
-                activeTab === 'sent'
-                  ? 'border-emerald-500 text-emerald-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Requests sent
-            </button>
-          </nav>
+        <div className="overflow-y-auto max-h-[calc(100vh-12rem)] space-y-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.08),0_2px_4px_-2px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)] ring-1 ring-black/5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">Requests received</h3>
+            {errorReceived && (
+              <div className="mb-4 p-3 rounded-md bg-red-50 text-sm text-red-700">
+                {errorReceived}
+              </div>
+            )}
+            {loadingReceived ? (
+              <p className="text-sm text-gray-500 py-6">Loading...</p>
+            ) : (
+              renderTable(receivedRequests, 'received')
+            )}
+          </section>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.08),0_2px_4px_-2px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)] ring-1 ring-black/5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">Requests sent</h3>
+            {errorSent && (
+              <div className="mb-4 p-3 rounded-md bg-red-50 text-sm text-red-700">
+                {errorSent}
+              </div>
+            )}
+            {loadingSent ? (
+              <p className="text-sm text-gray-500 py-6">Loading...</p>
+            ) : (
+              renderTable(sentRequests, 'sent')
+            )}
+          </section>
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-md bg-red-50 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {loading && (
-          <p className="text-sm text-gray-500 mb-4">Loading...</p>
-        )}
-
-        {activeTab === 'received' && renderTable(receivedRequests, 'received')}
-        {activeTab === 'sent' && renderTable(sentRequests, 'sent')}
       </div>
     </div>
   );
 };
 
 export default MessagesPage;
-
