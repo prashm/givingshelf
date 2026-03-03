@@ -13,7 +13,6 @@ import ItemRequestDetail from './messages/ItemRequestDetail';
 import MessagesPage from './messages/MessagesPage';
 import Profile from './profile/Profile';
 import MyItems from './profile/MyItems';
-import MyRequests from './profile/MyRequests';
 import MyGroups from './profile/MyGroups';
 import GroupLanding from './group/GroupLanding';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
@@ -419,11 +418,6 @@ const AppShellContent = ({ onNavigate }) => {
           onEditToy={handleEditToy}
           onViewBook={(item) => handleItemSelect(item, 'myItems', item?.type)}
           fromProfile={previousPage === 'profile'}
-        />;
-      case 'myRequests':
-        return <MyRequests
-          currentUser={currentUser}
-          setCurrentPage={setCurrentPage}
         />;
       case 'myGroups':
         return <MyGroups

@@ -35,7 +35,7 @@ class Api::ItemRequestsController < ApplicationController
 
   def destroy
     if item_request_service.cancel_request(Current.user)
-      render json: { message: "Request cancelled successfully" }
+      render json: item_request_service.request_json(item_request_service.item_request)
     else
       render json: { errors: item_request_service.errors }, status: :unprocessable_entity
     end

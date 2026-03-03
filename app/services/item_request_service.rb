@@ -39,20 +39,26 @@ class ItemRequestService
   end
 
   def update_request(current_user, action_type)
-    # Only the item owner can update the request status
-    raise "Not authorized" unless self.item_request.item.owner?(current_user)
-
     case action_type
-    when "accept"
-      self.item_request.accept!
-    when "decline"
-      self.item_request.decline!
-    when "complete"
-      self.item_request.complete!
-    when "mark_as_viewed"
-      self.item_request.mark_as_in_review!
+    when "uncancel"
+      raise "Not authorized" unless self.item_request.requester == current_user
+      self.item_request.uncancel!
     else
-      raise "Invalid action"
+      raise "Not authorized" unless self.item_request.item.owner?(current_user)
+      raise "Cannot update a cancelled request" if self.item_request.cancelled?
+
+      case action_type
+      when "accept"
+        self.item_request.accept!
+      when "decline"
+        self.item_request.decline!
+      when "complete"
+        self.item_request.complete!
+      when "mark_as_viewed"
+        self.item_request.mark_as_in_review!
+      else
+        raise "Invalid action"
+      end
     end
     true
   rescue => e
@@ -66,7 +72,7 @@ class ItemRequestService
       raise "Not authorized"
     end
 
-    self.item_request.destroy
+    self.item_request.cancel!
     true
   rescue => e
     @errors << e.message
@@ -129,6 +135,8 @@ class ItemRequestService
       "Declined"
     when ItemRequest::IN_REVIEW_STATUS
       "In Review"
+    when ItemRequest::CANCELLED_STATUS
+      "Cancelled"
     else
       "Pending"
     end

@@ -44,6 +44,11 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
     delete api_item_request_url(item_requests(:one))
     assert_response :success
+    json = response.parsed_body
+    assert_equal "Cancelled", json["status_display"]
+    assert_equal item_requests(:one).id, json["id"]
+    assert ItemRequest.exists?(item_requests(:one).id)
+    assert_equal ItemRequest::CANCELLED_STATUS, ItemRequest.find(item_requests(:one).id).status
   end
 
   test "should get messages" do

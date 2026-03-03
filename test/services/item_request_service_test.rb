@@ -284,7 +284,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   end
 
   describe "#cancel_request" do
-    it "cancels a request successfully" do
+    it "cancels a request successfully and preserves the record" do
       book = setup_book_for_request(items(:one))
       item_request = ItemRequest.create!(
         item: book,
@@ -298,7 +298,30 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       result = service.cancel_request(@requester)
 
       assert result
-      assert_nil ItemRequest.find_by(id: item_request.id)
+      item_request.reload
+      assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
+      assert ItemRequest.exists?(item_request.id)
+      assert service.errors.empty?
+    end
+
+    it "reverts item to Available when cancelling an accepted request" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      item_request.accept!
+      service = ItemRequestService.new(item_request.reload)
+
+      result = service.cancel_request(@requester)
+
+      assert result
+      item_request.reload
+      assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
+      assert_equal BookStatus::AVAILABLE, book.reload.status
       assert service.errors.empty?
     end
 
@@ -319,6 +342,48 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_not result
       assert_includes service.errors.join(" "), "Not authorized"
       assert ItemRequest.exists?(item_request.id)
+    end
+  end
+
+  describe "#update_request with uncancel" do
+    it "uncancels a request when requester calls update_request with uncancel" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      item_request.cancel!
+      service = ItemRequestService.new(item_request.reload)
+
+      result = service.update_request(@requester, "uncancel")
+
+      assert result
+      item_request.reload
+      assert_equal ItemRequest::PENDING_STATUS, item_request.status
+      assert service.errors.empty?
+    end
+
+    it "returns false when non-requester tries to uncancel" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      item_request.cancel!
+      service = ItemRequestService.new(item_request.reload)
+
+      result = service.update_request(@owner, "uncancel")
+
+      assert_not result
+      assert_includes service.errors.join(" "), "Not authorized"
+      item_request.reload
+      assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
     end
   end
 
@@ -481,6 +546,10 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "returns 'Pending' for PENDING_STATUS" do
       assert_equal "Pending", service.display_status(ItemRequest::PENDING_STATUS)
+    end
+
+    it "returns 'Cancelled' for CANCELLED_STATUS" do
+      assert_equal "Cancelled", service.display_status(ItemRequest::CANCELLED_STATUS)
     end
 
     it "returns 'Pending' for unknown status" do

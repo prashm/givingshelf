@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { fetchItemRequestDetails, updateItemRequestStatus } from '../../lib/itemRequestsApi';
-import { CheckIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { fetchItemRequestDetails, updateItemRequestStatus, cancelItemRequest } from '../../lib/itemRequestsApi';
+import { CheckIcon, XMarkIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import * as Constants from '../../lib/constants';
 import { CheckIcon as CheckIconSolid, XMarkIcon as XMarkIconSolid, CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import ChatSection from './ChatSection';
@@ -71,6 +71,38 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
       setRequest(updatedRequest);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update status. Please try again.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (updatingStatus) return;
+    if (!window.confirm('Are you sure you want to cancel this request?')) return;
+
+    setUpdatingStatus(true);
+    setError(null);
+    try {
+      const updatedRequest = await cancelItemRequest(itemRequestId);
+      setRequest(updatedRequest);
+    } catch (err) {
+      setError(err.response?.data?.errors?.[0] || err.response?.data?.error || 'Failed to cancel request. Please try again.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleUncancelRequest = async () => {
+    if (updatingStatus) return;
+    if (!window.confirm('Reactivate this request? The owner will see it as pending again.')) return;
+
+    setUpdatingStatus(true);
+    setError(null);
+    try {
+      const updatedRequest = await updateItemRequestStatus(itemRequestId, 'uncancel');
+      setRequest(updatedRequest);
+    } catch (err) {
+      setError(err.response?.data?.errors?.[0] || err.response?.data?.error || 'Failed to reactivate request. Please try again.');
     } finally {
       setUpdatingStatus(false);
     }
@@ -170,7 +202,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
             onClick={() => setCurrentPage('messages')}
             className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
           >
-            Back to Messages
+            Back to My Item Requests
           </button>
         </div>
       </div>
@@ -178,6 +210,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   }
 
   const createdAt = new Date(request.created_at).toLocaleString();
+  const updatedAt = new Date(request.updated_at).toLocaleString();
   const item = request.book || request.toy;
   const itemLabel = request.book ? 'Book' : 'Item';
   const itemTitle = item?.title;
@@ -193,7 +226,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
             onClick={() => setCurrentPage('messages')}
             className="text-sm text-emerald-700 hover:text-emerald-900"
           >
-            Back to Messages
+            Back to My Item Requests
           </button>
         </div>
 
@@ -248,6 +281,11 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           <div>
             <p className="font-medium text-gray-500">Requested at</p>
             <p>{createdAt}</p>
+            {isOwner && currentStatusDisplay === 'Cancelled' && request.updated_at && (
+              <p className="mt-2 text-gray-600 bold">
+                <strong>User canceled request at {updatedAt}</strong>
+              </p>
+            )}
           </div>
           <div>
             {isOwner ? (
@@ -264,10 +302,36 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                 </div>
               </div>
             ) : (
-              <>
-                <p className="font-medium text-gray-500">Status</p>
-                <p className="capitalize">{request.status_display || 'Pending'}</p>
-              </>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium text-gray-500">Status</p>
+                  <p className="capitalize">{request.status_display || 'Pending'}</p>
+                  {currentStatusDisplay !== 'Cancelled' && currentStatusDisplay !== 'Completed' && (
+                    <button
+                      type="button"
+                      onClick={handleCancelRequest}
+                      disabled={updatingStatus}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Cancel your request"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                      <span>Cancel request</span>
+                    </button>
+                  )}
+                  {currentStatusDisplay === 'Cancelled' && (
+                    <button
+                      type="button"
+                      onClick={handleUncancelRequest}
+                      disabled={updatingStatus}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-emerald-100 hover:text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Reactivate this request"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                      <span>Uncancel request</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </section>

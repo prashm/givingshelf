@@ -69,7 +69,7 @@ const ItemDetailPage = ({
         setItemType(null);
       })
       .finally(() => setLoading(false));
-  }, [selectedItem?.id, getItem, effectiveHint]);
+  }, [selectedItem?.id, getItem, effectiveHint, currentUser?.id]);
 
   // Sync with prop when selectedItem changes (e.g. from history restore)
   useEffect(() => {

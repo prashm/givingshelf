@@ -24,6 +24,7 @@ const ItemForm = ({
   shareHelpText = 'This item will only be shared in the groups you select.',
   pickupAddressPlaceholder = 'Enter the address for pickup',
   excludePickupMethods = [],
+  isToy = false,
 }) => {
   const pickupMethodOptions = [
     { value: 'meet_in_person', label: 'Meet in person' },
@@ -180,7 +181,9 @@ const ItemForm = ({
         >
           <option value="excellent">Excellent - Like new, minimal wear</option>
           <option value="good">Good - Light wear, still in good shape</option>
-          <option value="fair">Fair - Moderate wear, readable condition</option>
+          <option value="fair">
+            Fair - Moderate wear, {isToy ? 'playable' : 'readable'} condition
+          </option>
           <option value="poor">Poor - Heavy wear, may have damage</option>
         </select>
       </div>

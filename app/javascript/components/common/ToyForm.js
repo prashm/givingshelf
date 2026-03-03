@@ -31,6 +31,7 @@ const ToyForm = ({
       shareHelpText="This toy will only be shared in the groups you select."
       pickupAddressPlaceholder="Enter the address for pickup"
       excludePickupMethods={['pickup_little_library_drop']}
+      isToy={true}
       renderTypeSpecificFields={() => (
         <>
           {/* Brand */}

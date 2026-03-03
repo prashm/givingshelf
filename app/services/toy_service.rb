@@ -61,7 +61,7 @@ class ToyService < ItemService
         verified: toy.user.verified?,
         trust_score: toy.user.trust_score || 0
       },
-      request_count: toy.item_requests.count,
+      request_count: toy.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
       created_at: toy.created_at,
       updated_at: toy.updated_at,
       can_request: item_can_be_requested_by?(requester)
@@ -69,6 +69,8 @@ class ToyService < ItemService
     if @user_request
       result[:user_request_id] = @user_request.id
       result[:user_request_dt] = @user_request.created_at
+      result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
+      result[:user_request_updated_at] = @user_request.updated_at
     end
     if @item_cannot_be_requested_by_reason.present?
       result[:cannot_request_reason] = @item_cannot_be_requested_by_reason

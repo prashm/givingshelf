@@ -30,3 +30,10 @@ export const updateItemRequestStatus = async (itemRequestId, actionType) => {
   });
   return response.data;
 };
+
+export const cancelItemRequest = async (itemRequestId) => {
+  const response = await axios.delete(`/api/item_requests/${itemRequestId}`, {
+    withCredentials: true,
+  });
+  return response.data;
+};

@@ -7,6 +7,7 @@ class ItemRequest < ApplicationRecord
   DECLINED_STATUS = 2
   IN_REVIEW_STATUS = 3
   COMPLETED_STATUS = 4
+  CANCELLED_STATUS = 5
 
   belongs_to :requester, class_name: "User"
   belongs_to :item
@@ -16,7 +17,7 @@ class ItemRequest < ApplicationRecord
   alias_method :book, :item
 
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
-  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS ] }
+  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS, CANCELLED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
   validate :requester_cannot_request_own_item
   validate :item_must_be_available, on: :create
@@ -25,6 +26,7 @@ class ItemRequest < ApplicationRecord
   scope :accepted, -> { where(status: ACCEPTED_STATUS) }
   scope :completed, -> { where(status: COMPLETED_STATUS) }
   scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
+  scope :cancelled, -> { where(status: CANCELLED_STATUS) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_item_owner, ->(user) { where(owner: user) }
   scope :recent, -> { order(created_at: :desc) }
@@ -47,6 +49,7 @@ class ItemRequest < ApplicationRecord
   after_update :notify_status_change
 
   def accept!
+    raise "Cannot accept a cancelled request" if cancelled?
     update!(status: ACCEPTED_STATUS)
     item.update!(status: ShareableItemStatus::REQUESTED)
     # Mark all other requests for this item as In Review
@@ -54,10 +57,12 @@ class ItemRequest < ApplicationRecord
   end
 
   def decline!
+    raise "Cannot decline a cancelled request" if cancelled?
     update!(status: DECLINED_STATUS)
   end
 
   def complete!
+    raise "Cannot complete a cancelled request" if cancelled?
     raise "Can only complete an accepted request" unless accepted?
     update!(status: COMPLETED_STATUS)
     item.update!(status: ShareableItemStatus::DONATED)
@@ -83,7 +88,25 @@ class ItemRequest < ApplicationRecord
     status == COMPLETED_STATUS
   end
 
+  def cancelled?
+    status == CANCELLED_STATUS
+  end
+
+  def cancel!
+    raise "Cannot cancel a completed request" if completed?
+    if accepted?
+      item.update!(status: ShareableItemStatus::AVAILABLE)
+    end
+    update!(status: CANCELLED_STATUS)
+  end
+
+  def uncancel!
+    raise "Can only uncancel a cancelled request" unless cancelled?
+    update!(status: PENDING_STATUS)
+  end
+
   def can_update_status?
+    return false if cancelled?
     status == ACCEPTED_STATUS || !item.item_requests.exists?(status: ACCEPTED_STATUS)
   end
 

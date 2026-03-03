@@ -95,7 +95,12 @@ const ItemDetail = ({
 
   const deriveUserRequest = (itemData) => {
     if (itemData?.user_request_id != null && itemData?.user_request_dt != null) {
-      return { id: itemData.user_request_id, created_at: itemData.user_request_dt };
+      return {
+        id: itemData.user_request_id,
+        created_at: itemData.user_request_dt,
+        status: itemData.user_request_status,
+        updated_at: itemData.user_request_updated_at
+      };
     }
     return null;
   };
@@ -114,7 +119,7 @@ const ItemDetail = ({
         })
         .catch(error => console.error('Error fetching full item details:', error));
     }
-  }, [initialItem?.id, getItem]);
+  }, [initialItem?.id, getItem, initialItem]);
 
   useEffect(() => {
     if (item) {
@@ -252,7 +257,17 @@ const ItemDetail = ({
     return map[c] || 'bg-gray-100 text-gray-800';
   };
   const getConditionDescription = (c) => {
-    const map = { excellent: 'Like new, minimal wear', good: 'Light wear, still in good shape', fair: 'Moderate wear, readable condition', poor: 'Heavy wear, may have damage' };
+    const fairDescription = item?.type === Constants.ITEM_TYPE_TOY
+      ? 'Moderate wear, playable condition'
+      : 'Moderate wear, readable condition';
+
+    const map = {
+      excellent: 'Like new, minimal wear',
+      good: 'Light wear, still in good shape',
+      fair: fairDescription,
+      poor: 'Heavy wear, may have damage',
+    };
+
     return map[c] || 'Unknown condition';
   };
   const formatPickupMethod = (m) => m ? m.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
@@ -277,7 +292,7 @@ const ItemDetail = ({
         <div className="p-6 border-b border-gray-200">
           <button onClick={handleBackNavigation} className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            {sourcePage === 'myItems' ? 'Back to My Items' : sourcePage === 'messages' ? 'Back to Messages' : sourcePage === 'books' ? 'Back to Books' : sourcePage === 'toys' ? 'Back to Toys' : sourcePage === 'groupPage' ? 'Back to Group' : 'Back to search results'}
+            {sourcePage === 'myItems' ? 'Back to My Items' : sourcePage === 'messages' ? 'Back to My Item Requests' : sourcePage === 'books' ? 'Back to Books' : sourcePage === 'toys' ? 'Back to Toys' : sourcePage === 'groupPage' ? 'Back to Group' : 'Back to search results'}
           </button>
           <h1 className="text-3xl font-bold text-gray-900">{item.title}</h1>
           {subtitle && <p className="text-xl text-gray-600">{subtitle}</p>}
@@ -313,7 +328,9 @@ const ItemDetail = ({
                       onClick={() => setCurrentPage('itemRequestDetails', { itemRequestId: userRequest.id })}
                       className="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
                     >
-                      Requested on {new Date(userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {userRequest.status === 'Cancelled'
+                        ? `Canceled request on ${new Date(userRequest.updated_at || userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                        : `Requested on ${new Date(userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                     </button>
                   ) : (
                     <button
