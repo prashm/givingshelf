@@ -25,6 +25,7 @@ Rails.application.configure do
   config.active_storage.service = :amazon_production
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
+  # Only needed if/when there is LB in front of the app
   # config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.

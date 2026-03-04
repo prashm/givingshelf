@@ -32,8 +32,8 @@
         end
         canonical_url = content_for(:canonical) || "https://givingshelf.net/#{item_path}"
       else
-        page_title = content_for(:title) || "GivingShelf | Free Book & Toy Exchange Near You | Donate Local"
-        page_description = content_for(:description) || "Donate books and toys for free in your local community. GivingShelf helps you donate books and toys you don't need anymore. Find books and toys near you. 100% free donation and sharing platform."
+        page_title = content_for(:title) || "GivingShelf | Local Community Book & Toy Sharing"
+        page_description = content_for(:description) || "A free platform for neighbors to share, swap, and donate books and toys. Join your local GivingShelf community to reduce waste and support local families."
         # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
         current_url = request.url
         # Remove query parameters for canonical URL
@@ -48,14 +48,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="description" content="<%= page_description %>">
-    
+    <meta name="keywords" content="book swap, toy donation, community sharing, local neighborhood, free books, sustainable living">
+    <meta name="classification" content="Non-Profit, Community, Education">
+    <meta name="category" content="Online Communities">
     <%# Canonical URL %>
     <link rel="canonical" href="<%= canonical_url %>">
     
     <%# Open Graph meta tags %>
     <meta property="og:type" content="website">
-    <meta property="og:title" content="<%= page_title %>">
-    <meta property="og:description" content="<%= page_description %>">
+    <meta property="og:title" content="GivingShelf - Share Locally, Give Freely">
+    <meta property="og:description" content="The easiest way to find and share free books and toys in your neighborhood.">
     <meta property="og:url" content="<%= page_url %>">
     <meta property="og:image" content="<%= page_image %>">
     <meta property="og:site_name" content="GivingShelf">
@@ -95,11 +97,12 @@
         "@context" => "https://schema.org",
         "@graph" => [
           {
-            "@type" => "Organization",
+            "@type" => "NGO",
+            "@id" => "https://givingshelf.net/#organization",
             "name" => "GivingShelf",
             "url" => base_url,
             "logo" => "#{base_url}/gs-logo.png",
-            "description" => "A community platform for sharing and discovering books and toys. Donate used books and toys to your community members.",
+            "description" => "A community-driven platform for local book and toy sharing.",
             "sameAs" => []
           }
         ]
@@ -139,6 +142,8 @@
       # Add WebSite schema
       structured_data["@graph"] << {
         "@type" => "WebSite",
+        "@id" => "https://givingshelf.net/#website",
+        "publisher" => { "@id" => "https://givingshelf.net/#organization" },
         "name" => "GivingShelf",
         "url" => base_url,
         "description" => page_description
