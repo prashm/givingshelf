@@ -30,8 +30,8 @@ Rails.application.configure do
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  config.ssl_options = { hsts: { expires: 31_536_000, subdomains: true, preload: true } }
+  # DISABLE HSTS in Rails entirely so it stops sending its own headers
+  config.ssl_options = { hsts: false }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
