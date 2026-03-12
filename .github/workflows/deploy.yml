@@ -27,7 +27,8 @@ jobs:
 
       - name: Deploy
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@34.208.25.211 << 'EOF'
+          # Replace 'your-ec2-hostname-or-ip' with your actual EC2 host or DNS name
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@your-ec2-hostname-or-ip << 'EOF'
             cd /home/ubuntu/givingshelf
             
             # Check disk space before starting deployment
