@@ -25,7 +25,7 @@ class HomeController < ApplicationController
       { id: "groups_created", value: "15+", label: "Local Groups Created" }
     ]
     # TODO: Implement actual growth stats
-    render json: { stats: [] }
+    render json: { stats: stats }
   end
 
   private
