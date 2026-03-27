@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -108,6 +108,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
     t.index ["requester_id"], name: "index_group_membership_requests_on_requester_id"
     t.index ["requester_type"], name: "index_group_membership_requests_on_requester_type"
     t.index ["status"], name: "index_group_membership_requests_on_status"
+  end
+
+  create_table "growth_stats", force: :cascade do |t|
+    t.bigint "community_group_id"
+    t.datetime "computed_at", null: false
+    t.datetime "created_at", null: false
+    t.string "stat_name", null: false
+    t.string "stat_type", null: false
+    t.string "stat_value", null: false
+    t.datetime "updated_at", null: false
+    t.index ["community_group_id"], name: "index_growth_stats_on_community_group_id"
+    t.index ["stat_type", "stat_name", "community_group_id"], name: "index_growth_stats_per_group_unique", unique: true, where: "(community_group_id IS NOT NULL)"
+    t.index ["stat_type", "stat_name"], name: "index_growth_stats_global_unique", unique: true, where: "(community_group_id IS NULL)"
   end
 
   create_table "item_requests", force: :cascade do |t|
@@ -228,6 +241,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_010000) do
   add_foreign_key "group_item_availabilities", "items"
   add_foreign_key "group_membership_requests", "community_groups"
   add_foreign_key "group_membership_requests", "users", column: "requester_id"
+  add_foreign_key "growth_stats", "community_groups"
   add_foreign_key "item_requests", "items"
   add_foreign_key "item_requests", "users", column: "owner_id"
   add_foreign_key "item_requests", "users", column: "requester_id"

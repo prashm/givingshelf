@@ -19,13 +19,7 @@ class HomeController < ApplicationController
   end
 
   def growth_stats
-    stats = [
-      { id: "local_givers", value: "100+", label: "Local Givers" },
-      { id: "items_shared", value: "200+", label: "Books & Toys Shared" },
-      { id: "groups_created", value: "15+", label: "Local Groups Created" }
-    ]
-    # TODO: Implement actual growth stats
-    render json: { stats: stats }
+    render json: GrowthStatsService.landing_payload
   end
 
   private

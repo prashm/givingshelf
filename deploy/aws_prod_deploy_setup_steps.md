@@ -481,6 +481,18 @@ crontab -e
 
 **Option B: systemd timer** (see [deploy/nginx/SSL_SETUP.md](deploy/nginx/SSL_SETUP.md) Step 8)
 
+### Step 2.5.8b: Weekly growth stats (Solid Cache warm)
+
+Landing-page growth stats are recalculated from the database and written to `Rails.cache` (Solid Cache in production). Schedule a weekly job on the EC2 host (adjust paths to match your install):
+
+```bash
+crontab -e
+# Example: Sundays 04:00 — run inside the web container (non-interactive TTY)
+0 4 * * 0 cd /home/ubuntu/givingshelf && docker compose -f docker-compose.production.yml exec -T web bundle exec rake growth_stats:recalculate >> /var/log/growth-stats.log 2>&1
+```
+
+After the first deploy, run `growth_stats:recalculate` once manually (or wait for cron) so the cache is warm; until then `/growth_stats` still serves values built from the `growth_stats` table (or `0+` placeholders if no rows exist yet).
+
 ### Step 2.5.9: Test Renewal (Dry Run)
 
 ```bash

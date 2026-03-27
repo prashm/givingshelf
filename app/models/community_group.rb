@@ -5,6 +5,7 @@ class CommunityGroup < ApplicationRecord
   DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books and Toys Within This Group".freeze
   GROUP_ADMINS_SHORT_NAME = "group-admins".freeze
 
+  has_many :growth_stats, dependent: :destroy
   has_many :sub_groups, dependent: :destroy
   has_many :community_group_memberships, dependent: :destroy
   has_many :members, through: :community_group_memberships, source: :user
