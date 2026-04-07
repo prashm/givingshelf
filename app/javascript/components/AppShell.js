@@ -20,6 +20,7 @@ import TermsOfServiceModal from './TermsOfServiceModal';
 import axios from '../lib/axios';
 import { parsePageFromPath } from '../lib/textUtils';
 import * as Constants from '../lib/constants';
+import { getBrowseZipCookie, normalizeBrowseZip, setBrowseZipCookie } from '../lib/browseZipStorage';
 
 const getUrlForPage = (page, extraState = {}) => {
   if (page === 'books') return '/books';
@@ -42,6 +43,17 @@ const getUrlForPage = (page, extraState = {}) => {
 };
 
 const AppShellContent = ({ onNavigate }) => {
+  const getInitialBrowseZip = () => {
+    if (typeof window === 'undefined') return '';
+    const parsedPage = parsePageFromPath(window.location.pathname).page;
+    if (parsedPage !== 'books' && parsedPage !== 'toys') return '';
+
+    const urlZipCode = normalizeBrowseZip(new URLSearchParams(window.location.search).get('zip_code') || '');
+    if (urlZipCode) return urlZipCode;
+
+    return getBrowseZipCookie() || '';
+  };
+
   const { currentUser, loading: authLoading } = useAuth();
   const { items, searchItems, fetchItems } = useItems();
 
@@ -86,7 +98,7 @@ const AppShellContent = ({ onNavigate }) => {
   });
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [zipCode, setZipCode] = useState('');
+  const [zipCode, setZipCode] = useState(() => getInitialBrowseZip());
   const [selectedBook, setSelectedBook] = useState(() => {
     const hist = typeof window !== 'undefined' ? window.history.state : null;
     return (hist?.page === 'itemDetails' && hist?.selectedBook) ? hist.selectedBook : null;
@@ -152,19 +164,32 @@ const AppShellContent = ({ onNavigate }) => {
     if (zipCodeDetected) return;
 
     const detectZipCode = async () => {
-      if (currentUser && currentUser.zip_code) {
-        setZipCode(currentUser.zip_code);
+      const existingZip = normalizeBrowseZip(zipCode);
+      if (existingZip) {
+        setZipCode(existingZip);
+        setBrowseZipCookie(existingZip);
         setZipCodeDetected(true);
-        searchItems('', currentUser.zip_code);
+        searchItems('', existingZip);
+        return;
+      }
+
+      const userZipCode = normalizeBrowseZip(currentUser?.zip_code || '');
+      if (userZipCode) {
+        setZipCode(userZipCode);
+        setBrowseZipCookie(userZipCode);
+        setZipCodeDetected(true);
+        searchItems('', userZipCode);
         return;
       }
       const detectZipFromIP = async () => {
         try {
           const response = await axios.get('/api/location/detect_zip', { withCredentials: true });
-          if (response.data.zip_code) {
-            setZipCode(response.data.zip_code);
+          const detectedZipCode = normalizeBrowseZip(response.data.zip_code || '');
+          if (detectedZipCode) {
+            setZipCode(detectedZipCode);
+            setBrowseZipCookie(detectedZipCode);
             setZipCodeDetected(true);
-            searchItems('', response.data.zip_code);
+            searchItems('', detectedZipCode);
           } else {
             setZipCodeDetected(true);
             fetchItems();
@@ -183,10 +208,12 @@ const AppShellContent = ({ onNavigate }) => {
                 params: { latitude: position.coords.latitude, longitude: position.coords.longitude },
                 withCredentials: true
               });
-              if (response.data.zip_code) {
-                setZipCode(response.data.zip_code);
+              const detectedZipCode = normalizeBrowseZip(response.data.zip_code || '');
+              if (detectedZipCode) {
+                setZipCode(detectedZipCode);
+                setBrowseZipCookie(detectedZipCode);
                 setZipCodeDetected(true);
-                searchItems('', response.data.zip_code);
+                searchItems('', detectedZipCode);
               } else detectZipFromIP();
             } catch (error) {
               detectZipFromIP();
@@ -200,7 +227,7 @@ const AppShellContent = ({ onNavigate }) => {
       }
     };
     detectZipCode();
-  }, [currentPage, currentUser, authLoading, zipCodeDetected, searchItems, fetchItems]);
+  }, [currentPage, currentUser, authLoading, zipCodeDetected, searchItems, fetchItems, zipCode]);
 
   // Scroll to top when page changes
   useEffect(() => {
@@ -281,8 +308,11 @@ const AppShellContent = ({ onNavigate }) => {
   }, [items]);
 
   const handleSearch = (searchRadius = null) => {
-    if (zipCode) {
-      searchItems(searchQuery, zipCode, false, searchRadius);
+    const normalizedZipCode = normalizeBrowseZip(zipCode || '');
+    if (normalizedZipCode) {
+      setZipCode(normalizedZipCode);
+      setBrowseZipCookie(normalizedZipCode);
+      searchItems(searchQuery, normalizedZipCode, false, searchRadius);
     } else {
       const query = searchQuery.toLowerCase();
       const results = Array.isArray(items) ? items.filter(item =>
