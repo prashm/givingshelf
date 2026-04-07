@@ -105,12 +105,23 @@ class AddressVerificationService
     # { latitude: coords[1], longitude: coords[0] }
 
     return nil if zip_code.blank?
+    requested_zip = zip_code.to_s.strip
 
     begin
-      results = Geocoder.search(zip_code)
+      results = Geocoder.search(requested_zip)
       raise "No results found" if results.empty?
-      # Get the last result since that matches US ZIP codes
-      result = results.last
+
+      # Geocoder may return global ZIP/postal-code matches; prefer exact US ZIP first.
+      result =
+        results.find do |candidate|
+          candidate.postal_code.to_s.start_with?(requested_zip) &&
+            candidate.country_code.to_s.casecmp("US").zero?
+        end
+
+      result ||= results.find { |candidate| candidate.postal_code.to_s.start_with?(requested_zip) }
+      result ||= results.find { |candidate| candidate.country_code.to_s.casecmp("US").zero? }
+      result ||= results.first
+
       { latitude: result.latitude, longitude: result.longitude }
     rescue => e
       @errors << "Geocoding error for ZIP code #{zip_code}: #{e.message}"
