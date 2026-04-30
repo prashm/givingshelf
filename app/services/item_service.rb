@@ -2,7 +2,7 @@ require "open-uri"
 
 class ItemService
   attr_accessor :item
-  attr_reader :errors, :item_cannot_be_requested_by_reason
+  attr_reader :errors, :item_cannot_be_requested_by_reason, :item_request
 
   def initialize(item = nil)
     @item = item
@@ -38,7 +38,10 @@ class ItemService
     @item = user.items.build(item_params.merge(type: item_type))
     ActiveRecord::Base.transaction do
       @item.save!
+
+      community_group_ids = community_group_ids.to_h { |gid| [ gid.to_i, nil ] } if community_group_ids.is_a?(Array)
       sync_group_item_availabilities!(user, community_group_ids)
+
       handle_api_cover_image(api_cover_image)
       if user_images.present?
         Array(user_images).each do |image|
@@ -57,7 +60,11 @@ class ItemService
 
   def update_item(user, item_params)
     raise "Item can't be blank" unless self.item
-    raise "Not authorized" if self.item.user != user
+    if self.item.user.present?
+      raise "Not authorized" if self.item.user != user
+    else
+      raise "Not authorized" unless self.item.wishlist?
+    end
 
     # Exclude any image attributes if present. They're handled separately after saving the item.
     api_cover_image = item_params.delete(:cover_image)
@@ -67,7 +74,10 @@ class ItemService
 
     ActiveRecord::Base.transaction do
       self.item.update!(item_params)
-      sync_group_item_availabilities!(user, community_group_ids) unless community_group_ids.nil?
+      if community_group_ids.present?
+        community_group_ids = community_group_ids.to_h { |gid| [ gid.to_i, nil ] } if community_group_ids.is_a?(Array)
+        sync_group_item_availabilities!(user, community_group_ids)
+      end
 
       handle_api_cover_image(api_cover_image)
 
@@ -100,6 +110,56 @@ class ItemService
 
     self.item.destroy
     true
+  rescue => e
+    @errors << e.message
+    false
+  end
+
+  # Creates a book with no owner (wishlist) plus the requester's pending ItemRequest.
+  def create_wishlist_item(requester, params)
+    raise "User profile is incomplete." unless requester.profile_complete?
+    item_params = params.to_h.with_indifferent_access
+    cover_image_url = item_params.delete(:cover_image_url)
+    cg_id = item_params.delete(:community_group_id)
+    sg_id = item_params.delete(:sub_group_id)
+    raise "Invalid community group selection" if cg_id.blank?
+
+    community_group_ids = { cg_id.to_s => sg_id }
+    validate_requested_groups_for(requester, community_group_ids)
+    if @errors.blank?
+      ActiveRecord::Base.transaction do
+        @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
+        sync_group_item_availabilities!(requester, community_group_ids)
+        handle_api_cover_image(cover_image_url)
+        @item_request = ItemRequest.create!(
+          item: @item,
+          requester: requester,
+          owner: nil,
+          message: self.class::DEFAULT_WISHLIST_MESSAGE,
+          status: ItemRequest::PENDING_STATUS
+        )
+      end
+    end
+    @item
+  rescue => e
+    @errors << e.message
+    nil
+  end
+
+  # Assigns donor to wishlist book and sets item to available. Notifies all the requesters of the item.
+  def fulfill_wishlist_item(donor_user, item_params)
+    raise "Not a wishlist item" unless @item.wishlist?
+
+    data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
+    if update_item(donor_user, data)
+      @item.item_requests.pending.each do |pending_req|
+        pending_req.match_wishlist_donor!(donor_user)
+        UserService.new.notify_wishlist_available_to_requester(item: @item, item_request: pending_req)
+      end
+      true
+    else
+      false
+    end
   rescue => e
     @errors << e.message
     false
@@ -164,7 +224,7 @@ class ItemService
 
   def track_item_view(current_user)
     # Only increment view count if the viewer is not the item owner
-    unless self.item.owner?(current_user)
+    if self.item.user.blank? || !self.item.owner?(current_user)
       self.item.increment!(:view_count)
     end
     self.item.view_count
@@ -173,8 +233,8 @@ class ItemService
   def item_can_be_requested_by?(user)
     @item_cannot_be_requested_by_reason = nil
     return false if user.nil?
-    return false unless item.available?
-    return false if user == item.user
+    return false unless item.available? || item.wishlist?
+    return false if item.user.present? && user == item.user
     @user_request = item.item_requests.find_by(requester: user)
     if @user_request
       raise "You already requested this item"
@@ -228,36 +288,58 @@ class ItemService
   end
 
   def sync_group_item_availabilities!(user, community_group_ids)
-    zip_group = CommunityGroup.zipcode_group
-    default_ids = zip_group ? [ zip_group.id ] : []
-
-    ids =
-      if community_group_ids.nil?
-        default_ids
-      else
-        Array(community_group_ids).map(&:to_i).select { |id| id > 0 }.uniq
+    raise "community_group_ids must be a hash" if community_group_ids.present? && !community_group_ids.is_a?(Hash)
+    desired_community_group_ids = {}
+    if community_group_ids.present?
+      membership_pairs = user.group_memberships
+      # Set sub group id to the membership sub group id if not provided.
+      community_group_ids.each do |gid, sid|
+        if membership_pairs.key?(gid.to_i)
+          desired_community_group_ids[gid.to_i] = sid.present? ? sid.to_i : membership_pairs[gid.to_i]
+        end
       end
-
-    member_group_ids = user.community_groups.pluck(:id)
-    unless (ids - member_group_ids).empty?
-      raise "Invalid community group selection"
+    elsif (zip_group_id = CommunityGroup.zipcode_group&.id)
+      desired_community_group_ids = { zip_group_id => nil }
     end
 
-    current_ids = self.item.group_item_availabilities.pluck(:community_group_id)
+    ids = desired_community_group_ids.keys
+
+    current_availabilities = GroupItemAvailability.where(item_id: self.item.id).to_a
+    current_ids = current_availabilities.map(&:community_group_id)
     to_add = ids - current_ids
     to_remove = current_ids - ids
 
     if to_add.any?
       GroupItemAvailability.insert_all(
-        to_add.map { |gid| { item_id: self.item.id, community_group_id: gid, created_at: Time.current, updated_at: Time.current } },
+        to_add.map { |gid|
+          {
+            item_id: self.item.id,
+            community_group_id: gid,
+            sub_group_id: desired_community_group_ids[gid],
+            created_at: Time.current,
+            updated_at: Time.current
+          }
+        },
         unique_by: "index_gia_on_item_id_and_community_group_id"
       )
     end
 
+    keep_ids = ids - to_add
+    if keep_ids.any?
+      current_availabilities.each do |availability|
+        next unless keep_ids.include?(availability.community_group_id)
+        desired_sub_group_id = desired_community_group_ids[availability.community_group_id]
+        next if availability.sub_group_id == desired_sub_group_id
+
+        availability.update!(sub_group_id: desired_sub_group_id)
+      end
+    end
+
     if to_remove.any?
-      self.item.group_item_availabilities.where(community_group_id: to_remove).delete_all
+      GroupItemAvailability.where(item_id: self.item.id, community_group_id: to_remove).delete_all
     end
   end
+
 
   def zip_code_scope(zip_code, radius)
     if (radius_miles = radius.to_i) > 0
@@ -318,5 +400,20 @@ class ItemService
       false
     end
     true
+  end
+
+  # Validate the requested community group ids for the user.
+  # Returns true if the requested community group ids are part of the user's group memberships. Otherwise, returns false and sets @errors.
+  def validate_requested_groups_for(user, community_group_ids)
+    # Check if the requested community group ids are valid for the user.
+    raise "Invalid community group selection" if community_group_ids.blank?
+    community_group_ids.each do |gid, sid|
+      raise "Invalid community group selection" unless user.group_memberships.key?(gid.to_i)
+      raise "Invalid subgroup selection" if sid.present? && user.group_memberships[gid.to_i] != sid.to_i
+    end
+    true
+  rescue => e
+    @errors << e.message
+    false
   end
 end

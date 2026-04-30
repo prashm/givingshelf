@@ -107,6 +107,15 @@ export const parsePageFromPath = (path) => {
   if (path === '/item_request_details') {
     return { page: 'itemRequestDetails', groupShortName: null, itemType: null };
   }
+  const fulfillMatch = path.match(/^\/fulfill_wishlist\/(\d+)$/);
+  if (fulfillMatch) {
+    return {
+      page: 'fulfillWishlistItem',
+      fulfillItemId: parseInt(fulfillMatch[1], 10),
+      itemType: Constants.ITEM_TYPE_BOOK,
+      groupShortName: null
+    };
+  }
   return { page: 'home', groupShortName: null, itemType: null };
 };
 

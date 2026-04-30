@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_27_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -83,10 +83,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
     t.bigint "community_group_id", null: false
     t.datetime "created_at", null: false
     t.bigint "item_id", null: false
+    t.bigint "sub_group_id"
     t.datetime "updated_at", null: false
+    t.index ["community_group_id", "sub_group_id"], name: "index_gia_on_group_and_sub_group"
     t.index ["community_group_id"], name: "index_group_item_availabilities_on_community_group_id"
     t.index ["item_id", "community_group_id"], name: "index_gia_on_item_id_and_community_group_id", unique: true
     t.index ["item_id"], name: "index_group_item_availabilities_on_item_id"
+    t.index ["sub_group_id"], name: "index_group_item_availabilities_on_sub_group_id"
   end
 
   create_table "group_membership_requests", force: :cascade do |t|
@@ -127,7 +130,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
     t.datetime "created_at", null: false
     t.bigint "item_id", null: false
     t.text "message"
-    t.bigint "owner_id", null: false
+    t.bigint "owner_id"
     t.bigint "requester_id", null: false
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
@@ -155,7 +158,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
     t.string "title"
     t.string "type", null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.integer "view_count", default: 0, null: false
     t.index ["status"], name: "index_items_on_status"
     t.index ["type"], name: "index_items_on_type"
@@ -189,6 +192,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["community_group_id"], name: "index_sub_groups_on_community_group_id"
+  end
+
+  create_table "user_notifications", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.bigint "notifiable_id", null: false
+    t.string "notifiable_type", null: false
+    t.datetime "sent_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["notifiable_type", "notifiable_id"], name: "index_user_notifications_on_notifiable"
+    t.index ["user_id", "notifiable_type", "notifiable_id", "kind"], name: "index_user_notifications_dedup", unique: true
+    t.index ["user_id"], name: "index_user_notifications_on_user_id"
   end
 
   create_table "user_sessions", force: :cascade do |t|
@@ -239,6 +255,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
   add_foreign_key "community_group_memberships", "users"
   add_foreign_key "group_item_availabilities", "community_groups"
   add_foreign_key "group_item_availabilities", "items"
+  add_foreign_key "group_item_availabilities", "sub_groups"
   add_foreign_key "group_membership_requests", "community_groups"
   add_foreign_key "group_membership_requests", "users", column: "requester_id"
   add_foreign_key "growth_stats", "community_groups"
@@ -249,5 +266,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_120000) do
   add_foreign_key "messages", "item_requests"
   add_foreign_key "messages", "users"
   add_foreign_key "sub_groups", "community_groups"
+  add_foreign_key "user_notifications", "users"
   add_foreign_key "user_sessions", "users"
 end

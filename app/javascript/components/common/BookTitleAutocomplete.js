@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useBookAutocomplete } from '../../hooks/useBookAutocomplete';
+import {
+  GoogleBookSuggestionRow,
+  GoogleBookSuggestionDropdown,
+  GoogleBookNoResultsDropdown,
+} from './GoogleBookSuggestions';
 
 const BookTitleAutocomplete = ({ 
   value, 
@@ -175,80 +180,33 @@ const BookTitleAutocomplete = ({
 
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && inputValue.length >= 2 && (
-        <div 
-          className="fixed bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-y-auto" 
-          style={{ 
-            zIndex: 9999,
+        <GoogleBookSuggestionDropdown
+          style={{
             top: `${dropdownPosition.top}px`,
             left: `${dropdownPosition.left}px`,
-            width: `${dropdownPosition.width}px`
+            width: `${dropdownPosition.width}px`,
           }}
         >
-          {suggestions.map((book, index) => (
-            <div
+          {suggestions.map((book) => (
+            <GoogleBookSuggestionRow
               key={book.id}
-              onClick={() => handleBookSelect(book)}
-              className={`px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-50 ${
-                inputValue === book.title ? 'bg-blue-50' : ''
-              }`}
-            >
-              <div className="flex items-start space-x-3">
-                {book.thumbnail && (
-                  <img
-                    src={book.thumbnail.replace('http:', 'https:')}
-                    alt={book.title}
-                    className="w-12 h-16 object-cover rounded border"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                )}
-                <div className="flex-1 min-w-0 ml-4">
-                  <h4 className="text-sm font-medium text-gray-900 truncate">
-                    {book.title}
-                  </h4>
-                  <p className="text-sm text-gray-600 truncate">
-                    by {book.authors.join(', ')}
-                  </p>
-                  <div className="flex items-center space-x-2 mt-1">
-                    {book.publisher && (
-                      <span className="text-xs text-gray-500">
-                        {book.publisher}
-                      </span>
-                    )}
-                    {book.publishedDate && (
-                      <span className="text-xs text-gray-500">
-                        • {new Date(book.publishedDate).getFullYear()}
-                      </span>
-                    )}
-                  </div>
-                  {book.isbn && (
-                    <span className="text-xs text-gray-400">
-                      ISBN: {book.isbn}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+              book={book}
+              onSelect={handleBookSelect}
+              isHighlighted={inputValue === book.title}
+            />
           ))}
-        </div>
+        </GoogleBookSuggestionDropdown>
       )}
 
-      {/* No results message */}
       {showSuggestions && suggestions.length === 0 && inputValue.length >= 2 && !loading && (
-        <div 
-          className="fixed bg-white border border-gray-300 rounded-md shadow-lg" 
-          style={{ 
-            zIndex: 9999,
+        <GoogleBookNoResultsDropdown
+          style={{
             top: `${dropdownPosition.top}px`,
             left: `${dropdownPosition.left}px`,
-            width: `${dropdownPosition.width}px`
+            width: `${dropdownPosition.width}px`,
           }}
-        >
-          <div className="px-4 py-3 text-sm text-gray-500">
-            No books found for "{inputValue}"
-          </div>
-        </div>
+          searchText={inputValue}
+        />
       )}
     </div>
   );

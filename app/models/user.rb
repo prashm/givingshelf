@@ -11,6 +11,7 @@ class User < ApplicationRecord
   has_many :item_requests, class_name: "ItemRequest", foreign_key: "requester_id", dependent: :destroy
   has_many :received_item_requests, class_name: "ItemRequest", foreign_key: "owner_id", dependent: :destroy
   has_many :messages, dependent: :destroy
+  has_many :user_notifications, dependent: :destroy
   has_many :community_group_memberships, dependent: :destroy
   has_many :community_groups, through: :community_group_memberships
   has_many :admin_community_groups, -> { where(community_group_memberships: { admin: true }) }, through: :community_group_memberships, source: :community_group
@@ -205,6 +206,10 @@ class User < ApplicationRecord
   def join_request_for(group)
     GroupMembershipRequest.requested.find_by(community_group: group,
     requester: self, requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE)
+  end
+
+  def group_memberships
+    @group_memberships ||= community_group_memberships.pluck(:community_group_id, :sub_group_id).to_h
   end
 
   def auto_join_group_by_domain!

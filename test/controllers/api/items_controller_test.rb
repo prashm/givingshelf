@@ -127,4 +127,99 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, body["books_requested"]
     assert body.key?("members"), "Expected members count to be included for group stats"
   end
+
+  test "create_wishlist creates wishlist book and item request" do
+    user = users(:one)
+    sign_in_as(user)
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+    scoped_group = community_groups(:one)
+    CommunityGroupMembership.find_or_create_by!(user: user, community_group: zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+    CommunityGroupMembership.find_or_create_by!(user: user, community_group: scoped_group) do |m|
+      m.admin = false
+      m.auto_joined = false
+    end
+
+    assert_difference -> { Book.wishlist.count }, 1 do
+      post wishlist_api_items_url,
+        params: {
+          type: Book.name,
+          item: {
+            title: "Community Wish Title",
+            author: "Test Author",
+            summary: "This summary is definitely long enough for validation and describes the wish.",
+            published_year: 2020,
+            community_group_id: scoped_group.id
+          }
+        },
+        as: :json
+    end
+    assert_response :created
+    body = JSON.parse(response.body)
+    assert body["item_request_id"].present?
+    req = ItemRequest.find(body["item_request_id"])
+    assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, req.message
+    gia = req.item.group_item_availabilities.find_by(community_group_id: scoped_group.id)
+    assert gia
+    assert_nil gia.sub_group_id
+  end
+
+  test "fulfill_wishlist assigns donor and sets available" do
+    requester = users(:one)
+    donor = users(:two)
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+    group = community_groups(:one)
+    CommunityGroupMembership.find_or_create_by!(user: donor, community_group: group)
+    CommunityGroupMembership.find_or_create_by!(user: donor, community_group: zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+
+    book = Book.create!(
+      user_id: nil,
+      type: Book.name,
+      title: "Wishlist Book",
+      author: "Author",
+      summary: "Summary text long enough for validations on the book model here.",
+      published_year: 2020,
+      genre: "Fiction",
+      status: ShareableItemStatus::WISHLIST
+    )
+    GroupItemAvailability.create!(item: book, community_group: group)
+    ItemRequest.create!(
+      item: book,
+      requester: requester,
+      owner: nil,
+      message: "I would love this book if anyone in the community has a copy.",
+      status: ItemRequest::PENDING_STATUS
+    )
+
+    sign_in_as(donor)
+    post fulfill_wishlist_api_item_url(book),
+      params: {
+        item: {
+          condition: "good",
+          community_group_ids: [ group.id ]
+        }
+      },
+      as: :json
+
+    assert_response :success
+    book.reload
+    assert_equal donor.id, book.user_id
+    assert_equal ShareableItemStatus::AVAILABLE, book.status
+    ir = book.item_requests.find_by(requester: requester)
+    assert ir.in_review?
+    assert_equal donor.id, ir.owner_id
+  end
+
+  test "fulfill_wishlist rejects non wishlist item" do
+    sign_in_as(users(:two))
+    post fulfill_wishlist_api_item_url(items(:one)),
+      params: { item: { condition: "good" } },
+      as: :json
+    assert_response :unprocessable_entity
+  end
 end

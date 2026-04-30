@@ -1,5 +1,5 @@
 ActiveAdmin.register GroupItemAvailability do
-  permit_params :item_id, :community_group_id
+  permit_params :item_id, :community_group_id, :sub_group_id
 
   index do
     selectable_column
@@ -19,12 +19,14 @@ ActiveAdmin.register GroupItemAvailability do
     column :community_group do |availability|
       link_to availability.community_group.name, admin_community_group_path(availability.community_group)
     end
+    column :sub_group
     column :created_at
     actions
   end
 
   filter :item
   filter :community_group
+  filter :sub_group
   filter :created_at
 
   show do
@@ -45,6 +47,7 @@ ActiveAdmin.register GroupItemAvailability do
       row :community_group do |availability|
         link_to availability.community_group.name, admin_community_group_path(availability.community_group)
       end
+      row :sub_group
       row :created_at
       row :updated_at
     end
@@ -54,6 +57,7 @@ ActiveAdmin.register GroupItemAvailability do
     f.inputs "Group Item Availability Details" do
       f.input :item, collection: Item.all.map { |i| [ "#{i.type}: #{i.title}", i.id ] }
       f.input :community_group, collection: CommunityGroup.all.map { |g| [ g.name, g.id ] }
+      f.input :sub_group, collection: SubGroup.all.map { |sg| [ "#{sg.community_group.name}: #{sg.name}", sg.id ] }
     end
     f.actions
   end

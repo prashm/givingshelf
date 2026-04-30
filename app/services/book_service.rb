@@ -1,4 +1,6 @@
 class BookService < ItemService
+  DEFAULT_WISHLIST_MESSAGE = "I'd love this book if anyone in the community has a copy.".freeze
+
   def search_items(base_scope: Book.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     super(
       base_scope: base_scope,
@@ -34,7 +36,7 @@ class BookService < ItemService
     community_group_names = []
     community_groups.each do |grp|
       community_group_ids << grp.id
-      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? "#{book.user.zip_code} Community" : grp.name)
+      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? "#{book.user&.zip_code} Community" : grp.name)
     end
 
     result = {
@@ -57,13 +59,13 @@ class BookService < ItemService
       pickup_address: book.pickup_address,
       community_group_ids: community_group_ids,
       community_group_names: community_group_names,
-      owner: {
+      owner: book.user ? {
         id: book.user.id,
         name: book.user.display_name,
         location: book.user.location,
         verified: book.user.verified?,
         trust_score: book.user.trust_score || 0
-      },
+      } : nil,
       request_count: book.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
       created_at: book.created_at,
       updated_at: book.updated_at,

@@ -11,7 +11,7 @@ class ItemRequest < ApplicationRecord
 
   belongs_to :requester, class_name: "User"
   belongs_to :item
-  belongs_to :owner, class_name: "User"
+  belongs_to :owner, class_name: "User", optional: true
   has_many :messages, dependent: :destroy
 
   alias_method :book, :item
@@ -114,6 +114,12 @@ class ItemRequest < ApplicationRecord
     update!(status: IN_REVIEW_STATUS) if pending?
   end
 
+  # When a donor claims a wishlist book: mark request in review and set owner without moving item to REQUESTED.
+  def match_wishlist_donor!(donor_user)
+    return unless pending?
+    update!(status: IN_REVIEW_STATUS, owner: donor_user)
+  end
+
   private
 
   def set_default_status
@@ -121,16 +127,21 @@ class ItemRequest < ApplicationRecord
   end
 
   def set_owner
-    self.owner ||= item.user if item.present?
+    return unless item.present?
+    self.owner ||= item.user if item.user.present?
   end
 
   def requester_cannot_request_own_item
+    return if item.user.nil?
     if requester == item.user
       errors.add(:base, "You cannot request your own item")
     end
   end
 
   def item_must_be_available
+    if item.wishlist?
+      return
+    end
     unless item.available?
       errors.add(:base, "This item is not available for request")
     end

@@ -8,6 +8,7 @@ import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
 import { parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
+import { normalizedBookFieldsFromGoogleAutocomplete } from '../../lib/googleBookFieldsFromVolume';
 
 const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage }) => {
   const { currentUser } = useAuth();
@@ -125,50 +126,18 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
     }
   };
 
-  // Helper function to truncate summary intelligently at sentence boundary
-  const truncateSummary = (text, maxLength = 1000) => {
-    if (!text || text.length <= maxLength) {
-      return text;
-    }
-
-    // Truncate to max length
-    const truncated = text.substring(0, maxLength);
-
-    // Find the last complete sentence ending (., !, or ?)
-    // Use lastIndexOf for each sentence ending and take the maximum
-    const lastPeriod = truncated.lastIndexOf('.');
-    const lastExclamation = truncated.lastIndexOf('!');
-    const lastQuestion = truncated.lastIndexOf('?');
-    const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
-
-    // If we found a sentence ending (and it's not at the very start), truncate at that point (inclusive)
-    if (lastSentenceEnd > 0) {
-      return truncated.substring(0, lastSentenceEnd + 1).trim();
-    }
-
-    // If no sentence ending found, return the truncated text as-is
-    return truncated.trim();
-  };
-
-  // Handle book selection from autocomplete
+  // Handle book selection from autocomplete (shared normalization with wishlist flow)
   const handleBookSelect = (book) => {
-    const secureThumbnailUrl = book.thumbnail ? book.thumbnail.replace('http:', 'https:') : null;
-
-    // Truncate summary intelligently if it exceeds 1000 characters
-    const summary = book.description ? truncateSummary(book.description, 1000) : '';
-
-    // Update form data with book information
+    const fields = normalizedBookFieldsFromGoogleAutocomplete(book);
     updateFormData({
-      title: book.title,
-      author: book.authors.join(', '),
-      genre: book.categories.length > 0 ? book.categories[0] : '',
-      published_year: book.publishedDate ? new Date(book.publishedDate).getFullYear() : new Date().getFullYear(),
-      isbn: book.isbn || '',
-      summary: summary,
-      cover_image: secureThumbnailUrl, // Set for display in BookForm
-      // Don't overwrite condition - let user choose
+      title: fields.title,
+      author: fields.author,
+      genre: fields.genre,
+      published_year: fields.published_year,
+      isbn: fields.isbn,
+      summary: fields.summary,
+      cover_image: fields.cover_image_url || null,
     });
-
   };
 
   const handleSubmit = async (e) => {
@@ -218,13 +187,6 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
                 />
               }
             />
-
-            {/* Safety Tip */}
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
-                <strong>Safety reminder:</strong> Your address will be shared with other signed-in book lovers if you add it here. If you prefer more privacy, skip entering an address — you can arrange a meeting or pickup through the in-app chat instead.
-              </p>
-            </div>
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">

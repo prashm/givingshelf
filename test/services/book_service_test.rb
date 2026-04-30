@@ -105,7 +105,7 @@ class BookServiceTest < ActiveSupport::TestCase
       assert GroupItemAvailability.exists?(item: book, community_group: @zip_group)
     end
 
-    it "rejects selecting a group the user is not a member of" do
+    it "ignores selecting a group the user is not a member of" do
       outsider_group = community_groups(:two)
       CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
 
@@ -120,8 +120,8 @@ class BookServiceTest < ActiveSupport::TestCase
         community_group_ids: [ outsider_group.id ]
       })
 
-      assert_nil book
-      assert_includes service.errors.join(" "), "Invalid community group selection"
+      assert book, service.errors.to_sentence
+      assert_not GroupItemAvailability.exists?(item: book, community_group: outsider_group)
     end
   end
 
@@ -152,15 +152,15 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_equal 1, GroupItemAvailability.where(item: book).count
     end
 
-    it "rejects selecting a group the user is not a member of" do
+    it "ignores selecting a group the user is not a member of" do
       outsider_group = community_groups(:two)
       CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
 
       book = items(:one)
       service = BookService.new(book)
       ok = service.update_item(@user, { community_group_ids: [ outsider_group.id ] })
-      assert_not ok
-      assert_includes service.errors.join(" "), "Invalid community group selection"
+      assert ok, service.errors.to_sentence
+      assert_not GroupItemAvailability.exists?(item: book, community_group: outsider_group)
     end
   end
 
@@ -409,6 +409,33 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_not result
       assert_equal "You already requested this item", service.item_cannot_be_requested_by_reason
     end
+
+    it "allows a community member to request a wishlist book when not the original requester" do
+      book = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Shared Wish",
+        author: "Author",
+        summary: "Long enough summary for a wishlist item request eligibility test here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: book, community_group: @other_group)
+      ItemRequest.create!(
+        item: book,
+        requester: @user,
+        owner: nil,
+        message: "I would love this book if anyone in the community has a copy.",
+        status: ItemRequest::PENDING_STATUS
+      )
+      other = users(:two)
+      add_user_to_group(other, @other_group)
+
+      service = BookService.new(book)
+      assert service.item_can_be_requested_by?(other)
+      assert_nil service.item_cannot_be_requested_by_reason
+    end
   end
 
   describe "#book_json" do
@@ -594,6 +621,78 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_equal 0, stats[:items_shared]
       assert_equal 0, stats[:items_donated]
       assert_equal 0, stats[:items_requested]
+    end
+  end
+
+  describe "#create_wishlist_item" do
+    it "creates wishlist book, pending item request, and group availability" do
+      service = BookService.new
+      book = service.create_wishlist_item(@user, {
+        title: "New Wish",
+        author: "Author McAuthor",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id
+      })
+      assert book, service.errors.to_sentence
+      assert book.wishlist?
+      assert_nil book.user_id
+      assert_equal [ @other_group.id ], book.group_item_availabilities.pluck(:community_group_id)
+      ir = book.item_requests.find_by(requester: @user)
+      assert ir
+      assert_equal ItemRequest::PENDING_STATUS, ir.status
+      assert_nil ir.owner_id
+      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.message
+      gia = book.group_item_availabilities.find_by(community_group_id: @other_group.id)
+      assert gia
+      assert_nil gia.sub_group_id
+    end
+
+    it "stores subgroup scope on group item availability" do
+      user_membership = CommunityGroupMembership.find_by!(user: @user, community_group: @other_group)
+      user_membership.update!(sub_group_id: sub_groups(:one).id)
+      service = BookService.new
+      book = service.create_wishlist_item(@user, {
+        title: "Scoped Wish",
+        author: "Author",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id,
+        sub_group_id: sub_groups(:one).id
+      })
+      assert book, service.errors.to_sentence
+      gia = book.group_item_availabilities.find_by(community_group_id: @other_group.id)
+      assert_equal sub_groups(:one).id, gia.sub_group_id
+    end
+
+    it "returns nil when sub_group does not match requester membership" do
+      user_membership = CommunityGroupMembership.find_by!(user: @user, community_group: @other_group)
+      user_membership.update!(sub_group_id: sub_groups(:one).id)
+      service = BookService.new
+      book = service.create_wishlist_item(@user, {
+        title: "Scoped Wish",
+        author: "Author",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id,
+        sub_group_id: sub_groups(:two).id
+      })
+      assert_nil book
+      assert_includes service.errors.join(" "), "Invalid subgroup selection"
+    end
+
+    it "returns nil when profile is incomplete" do
+      service = BookService.new
+      @user.stub(:profile_complete?, false) do
+        book = service.create_wishlist_item(@user, {
+          title: "T",
+          author: "A",
+          summary: "A long enough default summary to avoid length errors here.",
+          published_year: 2020
+        })
+        assert_nil book
+        assert_includes service.errors.join(" ").downcase, "incomplete"
+      end
     end
   end
 end

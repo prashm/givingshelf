@@ -53,6 +53,7 @@ Rails.application.routes.draw do
   get "/g/:short_name/toys", to: "group_pages#show"
 
   get "growth_stats", to: "home#growth_stats"
+  get "fulfill_wishlist/:id", to: "home#index", as: :fulfill_wishlist
 
   # API routes
   namespace :api do
@@ -78,9 +79,11 @@ Rails.application.routes.draw do
         get :search
         get :my_items
         get :stats
+        post :wishlist, action: :create_wishlist
       end
       member do
         post :track_view
+        post :fulfill_wishlist
       end
     end
 

@@ -3,11 +3,13 @@ class ShareableItemStatus < ActiveHash::Base
   AVAILABLE = 0
   REQUESTED = 1
   DONATED = 2
+  WISHLIST = 3
 
   self.data = [
     { value: AVAILABLE, label: "Available" },
     { value: REQUESTED, label: "Requested" },
-    { value: DONATED, label: "Donated" }
+    { value: DONATED, label: "Donated" },
+    { value: WISHLIST, label: "Wishlist" }
   ]
 
   def self.display_status(status)

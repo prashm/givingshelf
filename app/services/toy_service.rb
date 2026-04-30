@@ -33,7 +33,11 @@ class ToyService < ItemService
     community_group_names = []
     community_groups.each do |grp|
       community_group_ids << grp.id
-      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? "#{toy.user.zip_code} Community" : grp.name)
+      if grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME
+        community_group_names << (toy.user ? "#{toy.user.zip_code} Community" : "ZIP Code Community")
+      else
+        community_group_names << grp.name
+      end
     end
 
     result = {
@@ -54,13 +58,13 @@ class ToyService < ItemService
       pickup_address: toy.pickup_address,
       community_group_ids: community_group_ids,
       community_group_names: community_group_names,
-      owner: {
+      owner: toy.user ? {
         id: toy.user.id,
         name: toy.user.display_name,
         location: toy.user.location,
         verified: toy.user.verified?,
         trust_score: toy.user.trust_score || 0
-      },
+      } : nil,
       request_count: toy.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
       created_at: toy.created_at,
       updated_at: toy.updated_at,

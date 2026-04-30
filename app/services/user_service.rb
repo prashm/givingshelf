@@ -106,6 +106,29 @@ class UserService
     requests.map { |r| group_membership_request_map(r) }
   end
 
+  # After a wishlist book is claimed and listed: notify original requester once.
+  def notify_wishlist_available_to_requester(item:, item_request:)
+    return if item_request.blank?
+    requester = item_request.requester
+    return if requester.blank?
+    return if UserNotification.exists?(
+      user: requester,
+      notifiable: item,
+      kind: UserNotification::KIND_WISHLIST_AVAILABLE
+    )
+
+    UserNotification.create!(
+      user: requester,
+      notifiable: item,
+      kind: UserNotification::KIND_WISHLIST_AVAILABLE,
+      sent_at: Time.current
+    )
+    WishlistMailer.wishlist_available(requester, item, item_request).deliver_later
+  rescue ActiveRecord::RecordNotUnique
+    # race on unique index
+    nil
+  end
+
   def my_group_invites
     requests = GroupMembershipRequest
       .invited

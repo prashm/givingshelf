@@ -2,7 +2,7 @@ class Item < ApplicationRecord
   self.table_name = "items"
 
 
-  belongs_to :user
+  belongs_to :user, optional: true
   has_many :item_requests, dependent: :destroy
   has_many :group_item_availabilities, dependent: :destroy
   has_many :available_community_groups, through: :group_item_availabilities, source: :community_group
@@ -11,12 +11,14 @@ class Item < ApplicationRecord
 
   # Shared validations
   validates :title, presence: true, length: { minimum: 1, maximum: 255 }
-  validates :condition, presence: true, inclusion: { in: %w[excellent good fair poor], message: "must be excellent, good, fair, or poor" }
+  validates :condition, presence: true, inclusion: { in: %w[excellent good fair poor], message: "must be excellent, good, fair, or poor" }, if: -> { user_id.present? }
   validates :summary, presence: true, length: { minimum: 10, maximum: 1000 }
   validates :status, inclusion: { in: ShareableItemStatus.values, default: ShareableItemStatus::AVAILABLE }
+  validate :user_id_consistency_with_wishlist_status
 
   # Shared scopes
-  scope :available, -> { where.not(status: ShareableItemStatus::DONATED) }
+  scope :available, -> { where(status: ShareableItemStatus::AVAILABLE) }
+  scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
@@ -42,7 +44,12 @@ class Item < ApplicationRecord
     cover_image.attached? ? cover_image : nil
   end
 
+  def wishlist?
+    status == ShareableItemStatus::WISHLIST
+  end
+
   def distance_from(zip_code)
+    return 0 if user.nil?
     return 0 if user.zip_code == zip_code
     # Simple distance calculation - in a real app, you'd use a geocoding service
     zip_code.to_s[0..1] == user.zip_code[0..1] ? 1 : 2
@@ -69,6 +76,14 @@ class Item < ApplicationRecord
   after_commit :regenerate_sitemap, on: [ :create, :update, :destroy ]
 
   private
+
+  def user_id_consistency_with_wishlist_status
+    if wishlist?
+      errors.add(:user_id, "must be blank for wishlist items") if user_id.present?
+    elsif user_id.blank?
+      errors.add(:user_id, "can't be blank")
+    end
+  end
 
   def regenerate_sitemap
     # Only regenerate in production or if explicitly enabled

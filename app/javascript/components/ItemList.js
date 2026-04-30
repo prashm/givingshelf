@@ -7,7 +7,9 @@ import AvailableItemsSection from './common/AvailableItemsSection';
 import PopularGenresSection from './common/PopularGenresSection';
 import StatsSection from './common/StatsSection';
 import CallToActionSection from './common/CallToActionSection';
+import WishlistBookCard from './common/WishlistBookCard';
 import SearchSection from './common/SearchSection';
+import BrowseSearchWithAutocomplete from './common/BrowseSearchWithAutocomplete';
 
 const getLabels = (itemType) => {
   const isBook = itemType === Constants.ITEM_TYPE_BOOK;
@@ -42,7 +44,8 @@ const ItemList = ({
   handleItemSelect,
   currentUser,
   setCurrentPage,
-  onOpenLoginModal
+  onOpenLoginModal,
+  setRedirectReason
 }) => {
   const { paginationMeta, loadMoreItems, searchItems, loading: itemsLoading } = useItems();
   const [searchRadius, setSearchRadius] = useState('exact');
@@ -62,6 +65,8 @@ const ItemList = ({
   const [impactStats, setImpactStats] = useState({ members: 0, items_shared: 0, items_donated: 0, items_requested: 0 });
   const [impactLoading, setImpactLoading] = useState(false);
   const impactRequestSeq = useRef(0);
+  const [selectedWishlistSuggestion, setSelectedWishlistSuggestion] = useState(null);
+  const [submittedWishlistQuery, setSubmittedWishlistQuery] = useState('');
 
   const isGroupBrowse = Boolean(groupShortName);
   const labels = getLabels(itemType);
@@ -136,6 +141,7 @@ const ItemList = ({
   const performGroupSearch = (queryOverride = null) => {
     if (!group) return;
     const query = queryOverride !== null ? queryOverride : (searchQuery || '');
+    setSubmittedWishlistQuery((query || '').trim());
     searchItems(query, zipCode || '', false, null, group.id, selectedSubGroupId);
     loadImpactStats(selectedSubGroupId);
   };
@@ -167,9 +173,43 @@ const ItemList = ({
   };
 
   const handleSearchWithRadius = () => {
+    setSubmittedWishlistQuery((searchQuery || '').trim());
     handleSearch(searchRadius === 'exact' ? null : searchRadius);
     if (zipCode && zipCode.length === 5) loadCommunityStats();
   };
+
+  const zipGroupMembership = Array.isArray(currentUser?.community_groups)
+    ? currentUser.community_groups.find((g) => g.short_name === Constants.ZIPCODE_SHORT_NAME)
+    : null;
+  const groupMembership = (isGroupBrowse && Array.isArray(currentUser?.community_groups))
+    ? currentUser.community_groups.find((g) => g.id === group?.id)
+    : null;
+  const selectedZip = (zipCode || '').trim();
+  const membershipZip = (zipGroupMembership?.sub_group?.name || '').trim();
+  const wishlistScope = (() => {
+    if (!currentUser) return null;
+    if (isGroupBrowse) {
+      if (!group || !groupMembership) return null;
+      if (selectedSubGroupId && groupMembership.sub_group?.id !== selectedSubGroupId) return null;
+      return {
+        community_group_id: group.id,
+        sub_group_id: selectedSubGroupId || null
+      };
+    }
+    if (!zipGroupMembership?.id || !zipGroupMembership?.sub_group?.id) return null;
+    if (selectedZip.length !== 5) return null;
+    if (membershipZip !== selectedZip) return null;
+    return {
+      community_group_id: zipGroupMembership.id,
+      sub_group_id: zipGroupMembership.sub_group.id
+    };
+  })();
+  const canShowWishlistCard = itemType === Constants.ITEM_TYPE_BOOK
+    && (items || []).length === 0
+    && !itemsLoading
+    && (submittedWishlistQuery || '').trim().length >= 2
+    && Boolean(currentUser)
+    && Boolean(wishlistScope);
 
   const getResultsLabel = () => {
     if (!paginationMeta.total || paginationMeta.total === 0) return labels.emptyGlobal;
@@ -317,17 +357,35 @@ const ItemList = ({
             <h2 className="text-3xl font-bold text-center mb-6">{labels.heroTitle}</h2>
           )}
 
-          <SearchSection
-            queryLabel={labels.searchLabel}
-            queryPlaceholder={labels.searchPlaceholder}
-            queryValue={searchQuery}
-            onQueryChange={(val) => setSearchQuery(val)}
-            onSearch={searchHandler}
-            submitOnEnter={!isGroupBrowse}
-            searchDisabled={!isGroupBrowse && !hasValidZipCode}
-            searchLoading={itemsLoading}
-            secondaryField={secondaryField}
-          />
+          {itemType === Constants.ITEM_TYPE_BOOK ? (
+            <BrowseSearchWithAutocomplete
+              queryLabel={labels.searchLabel}
+              queryPlaceholder={labels.searchPlaceholder}
+              queryValue={searchQuery}
+              onQueryChange={(val) => {
+                setSearchQuery(val);
+                setSelectedWishlistSuggestion(null);
+              }}
+              onSuggestionSelect={(suggestion) => setSelectedWishlistSuggestion(suggestion)}
+              onSearch={searchHandler}
+              submitOnEnter={!isGroupBrowse}
+              searchDisabled={!isGroupBrowse && !hasValidZipCode}
+              searchLoading={itemsLoading}
+              secondaryField={secondaryField}
+            />
+          ) : (
+            <SearchSection
+              queryLabel={labels.searchLabel}
+              queryPlaceholder={labels.searchPlaceholder}
+              queryValue={searchQuery}
+              onQueryChange={(val) => setSearchQuery(val)}
+              onSearch={searchHandler}
+              submitOnEnter={!isGroupBrowse}
+              searchDisabled={!isGroupBrowse && !hasValidZipCode}
+              searchLoading={itemsLoading}
+              secondaryField={secondaryField}
+            />
+          )}
 
           {!currentUser && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
@@ -364,6 +422,21 @@ const ItemList = ({
           loading={itemsLoading}
           emptyMessage={isGroupBrowse ? labels.emptyGroup : labels.emptyGlobal}
         />
+        {canShowWishlistCard && (
+          <div className="mb-12 flex w-full justify-center">
+            <div className="w-full max-w-sm md:max-w-md lg:max-w-[25.5rem]">
+              <WishlistBookCard
+                searchQuery={submittedWishlistQuery}
+                selectedSuggestion={selectedWishlistSuggestion}
+                wishlistScope={wishlistScope}
+                currentUser={currentUser}
+                setCurrentPage={setCurrentPage}
+                onOpenLoginModal={onOpenLoginModal}
+                setRedirectReason={setRedirectReason}
+              />
+            </div>
+          </div>
+        )}
 
         {itemType === Constants.ITEM_TYPE_BOOK && (
           <PopularGenresSection books={items || []} onGenreClick={handleGenreClick} />

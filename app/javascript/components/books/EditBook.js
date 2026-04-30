@@ -7,6 +7,7 @@ import ImageUpload from '../common/ImageUpload';
 import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { normalizedBookFieldsFromGoogleAutocomplete } from '../../lib/googleBookFieldsFromVolume';
 
 const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, returnItemDetailSource, returnGroupShortName, returnSelectedItemType }) => {
   const { currentUser } = useAuth();
@@ -180,29 +181,18 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, re
     setExistingUserImages(prev => prev.filter((_, i) => i !== displayIndex));
   };
 
-  // Handle book selection from autocomplete
+  // Handle book selection from autocomplete (same normalization as Add Book / wishlist)
   const handleBookSelect = (book) => {
-    console.log('Selected book:', book);
-    const secureThumbnailUrl = book.thumbnail ? book.thumbnail.replace('http:', 'https:') : null;
-
-    // Update form data with book information
+    const fields = normalizedBookFieldsFromGoogleAutocomplete(book);
     updateFormData({
-      title: book.title,
-      author: book.authors.join(', '),
-      genre: book.categories.length > 0 ? book.categories[0] : '',
-      published_year: book.publishedDate ? new Date(book.publishedDate).getFullYear() : new Date().getFullYear(),
-      isbn: book.isbn || '',
-      summary: book.description || '',
-      cover_image: secureThumbnailUrl, // Set for display in BookForm
-      // Don't overwrite condition - let user choose
+      title: fields.title,
+      author: fields.author,
+      genre: fields.genre,
+      published_year: fields.published_year,
+      isbn: fields.isbn,
+      summary: fields.summary,
+      cover_image: fields.cover_image_url || null,
     });
-
-    // If book has a cover image, we could potentially fetch and set it
-    // For now, we'll let the user upload their own image
-    if (book.thumbnail) {
-      console.log('Book cover available:', book.thumbnail);
-      // You could implement cover image fetching here if needed
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -322,13 +312,6 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, re
               onCropUserImage={handleUserImageCrop}
               onRemoveExistingImage={handleRemoveExistingImage}
             />
-
-            {/* Safety Tip */}
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
-                <strong>Safety reminder:</strong> Your address will be shared with other signed-in book lovers if you add it here. If you prefer more privacy, skip entering an address — you can arrange a meeting or pickup through the in-app chat instead.
-              </p>
-            </div>
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">

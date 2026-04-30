@@ -15,12 +15,13 @@ import Profile from './profile/Profile';
 import MyItems from './profile/MyItems';
 import MyGroups from './profile/MyGroups';
 import GroupLanding from './group/GroupLanding';
+import FulfillWishlistItemPage from './wishlist/FulfillWishlistItemPage';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import TermsOfServiceModal from './TermsOfServiceModal';
 import axios from '../lib/axios';
+import { getBrowseZipCookie, normalizeBrowseZip, setBrowseZipCookie } from '../lib/browseZipStorage';
 import { parsePageFromPath } from '../lib/textUtils';
 import * as Constants from '../lib/constants';
-import { getBrowseZipCookie, normalizeBrowseZip, setBrowseZipCookie } from '../lib/browseZipStorage';
 
 const getUrlForPage = (page, extraState = {}) => {
   if (page === 'books') return '/books';
@@ -38,6 +39,9 @@ const getUrlForPage = (page, extraState = {}) => {
     const type = extraState.selectedItemType || extraState.itemType;
     const slug = type === Constants.ITEM_TYPE_TOY ? 'toys' : 'books';
     return `/${slug}/${extraState.selectedBook.id}`;
+  }
+  if (page === 'fulfillWishlistItem' && extraState.fulfillItemId) {
+    return `/fulfill_wishlist/${extraState.fulfillItemId}`;
   }
   return window.location.pathname;
 };
@@ -64,7 +68,8 @@ const AppShellContent = ({ onNavigate }) => {
         return {
           page: hist.page,
           groupShortName: hist.groupShortName || null,
-          itemType: hist.itemType || null
+          itemType: hist.itemType || null,
+          fulfillItemId: hist.fulfillItemId || null
         };
       }
       return parsePageFromPath(window.location.pathname);
@@ -72,7 +77,12 @@ const AppShellContent = ({ onNavigate }) => {
     return { page: 'home', groupShortName: null, itemType: null };
   };
 
-  const [currentPage, _setPageState] = useState(() => getInitialState().page);
+  const [currentPage, _setPageState] = useState(() => {
+    if (typeof window === 'undefined') return 'home';
+    const hist = window.history.state;
+    if (hist?.page) return hist.page;
+    return parsePageFromPath(window.location.pathname).page;
+  });
   const [groupShortName, setGroupShortName] = useState(() => getInitialState().groupShortName);
   const [currentItemType, setCurrentItemType] = useState(() => getInitialState().itemType);
   const [previousPage, setPreviousPage] = useState(null);
@@ -120,6 +130,16 @@ const AppShellContent = ({ onNavigate }) => {
       if (path === '/item_request_details' && search.has('id')) return search.get('id');
     }
     return null;
+  });
+  const [fulfillItemId, setFulfillItemId] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const hist = window.history.state;
+    if (hist?.fulfillItemId) return hist.fulfillItemId;
+    return parsePageFromPath(window.location.pathname).fulfillItemId || null;
+  });
+  const [fulfillWishlistPreservePath, setFulfillWishlistPreservePath] = useState(() => {
+    const h = typeof window !== 'undefined' ? window.history.state : null;
+    return Boolean(h?.preservePath && h?.page === 'fulfillWishlistItem');
   });
   const [redirectReason, setRedirectReason] = useState(null);
   const [donateInitialTitle, setDonateInitialTitle] = useState(null);
@@ -264,11 +284,14 @@ const AppShellContent = ({ onNavigate }) => {
         if (state.groupShortName) setGroupShortName(state.groupShortName);
         if (state.itemType) setCurrentItemType(state.itemType);
         if (state.donateItemType) setDonateItemType(state.donateItemType);
+        if (state.fulfillItemId !== undefined) setFulfillItemId(state.fulfillItemId);
+        if (state.preservePath !== undefined) setFulfillWishlistPreservePath(Boolean(state.preservePath));
       } else {
         const parsed2 = parsePageFromPath(window.location.pathname);
         _setPageState(parsed2.page);
         setGroupShortName(parsed2.groupShortName);
         setCurrentItemType(parsed2.itemType);
+        if (parsed2.fulfillItemId) setFulfillItemId(parsed2.fulfillItemId);
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -281,6 +304,8 @@ const AppShellContent = ({ onNavigate }) => {
     if (extraState.editingBookId) setEditingBookId(extraState.editingBookId);
     if (extraState.editingToyId) setEditingToyId(extraState.editingToyId);
     if (extraState.itemRequestId) setSelectedItemRequestId(extraState.itemRequestId);
+    if (extraState.fulfillItemId !== undefined) setFulfillItemId(extraState.fulfillItemId);
+    if (extraState.preservePath !== undefined) setFulfillWishlistPreservePath(Boolean(extraState.preservePath));
     if (page === 'donate') {
       setDonateInitialTitle(extraState.donateInitialTitle ?? null);
       setDonateItemType(extraState.donateItemType ?? Constants.ITEM_TYPE_BOOK);
@@ -296,7 +321,9 @@ const AppShellContent = ({ onNavigate }) => {
     if (extraState.itemType) setCurrentItemType(extraState.itemType);
     _setPageState(page);
     const mergedState = { ...extraState, groupShortName: extraState.groupShortName || groupShortName, itemType: extraState.itemType || currentItemType };
-    const url = (page === 'itemDetails' || page === 'editBook' || page === 'editToy' || page === 'itemRequestDetails' || page === 'myGroups')
+    const keepPath = (page === 'itemDetails' || page === 'editBook' || page === 'editToy' || page === 'itemRequestDetails' || page === 'myGroups'
+      || (page === 'fulfillWishlistItem' && extraState.preservePath));
+    const url = keepPath
       ? (typeof window !== 'undefined' ? window.location.pathname : '/')
       : getUrlForPage(page, mergedState);
     window.history.pushState({ page, ...extraState }, '', url);
@@ -417,14 +444,23 @@ const AppShellContent = ({ onNavigate }) => {
         />;
       }
       case 'books':
-        return <ItemList itemType={Constants.ITEM_TYPE_BOOK} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
+        return <ItemList itemType={Constants.ITEM_TYPE_BOOK} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} setRedirectReason={setRedirectReason} />;
       case 'toys':
-        return <ItemList itemType={Constants.ITEM_TYPE_TOY} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
+        return <ItemList itemType={Constants.ITEM_TYPE_TOY} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} setRedirectReason={setRedirectReason} />;
       case 'messages':
         return <MessagesPage
           setCurrentPage={setCurrentPage}
           currentUser={currentUser}
         />;
+      case 'fulfillWishlistItem':
+        return (
+          <FulfillWishlistItemPage
+            itemId={fulfillItemId}
+            setCurrentPage={setCurrentPage}
+            preservePath={fulfillWishlistPreservePath}
+            onOpenLoginModal={handleOpenLoginModal}
+          />
+        );
       case 'itemRequestDetails':
         return (
           <ItemRequestDetail
@@ -458,7 +494,7 @@ const AppShellContent = ({ onNavigate }) => {
       case 'groupLanding':
         return <GroupLanding groupShortName={groupShortName} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
       case 'groupBrowse':
-        return <ItemList itemType={currentItemType || Constants.ITEM_TYPE_BOOK} groupShortName={groupShortName} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
+        return <ItemList itemType={currentItemType || Constants.ITEM_TYPE_BOOK} groupShortName={groupShortName} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} setRedirectReason={setRedirectReason} />;
       default:
         return <LandingPage
           setCurrentPage={setCurrentPage}
@@ -476,6 +512,31 @@ const AppShellContent = ({ onNavigate }) => {
       setCurrentPage('profile');
     } else if (pendingNavigation) {
       const nav = typeof pendingNavigation === 'object' ? pendingNavigation : { page: pendingNavigation };
+      if (nav.afterLoginAction?.type === 'createWishlist') {
+        (async () => {
+          try {
+            const res = await axios.post('/api/items/wishlist', nav.afterLoginAction.body, { withCredentials: true });
+            const id = res.data?.item_request_id;
+            if (id) {
+              setCurrentPage('itemRequestDetails', { itemRequestId: String(id) });
+            }
+          } catch (e) {
+            console.error('Wishlist create after login failed', e);
+            setCurrentPage('books');
+          } finally {
+            setPendingNavigation(null);
+          }
+        })();
+        return;
+      }
+      if (nav.afterLoginAction?.type === 'fulfillWishlist' && nav.afterLoginAction.itemId) {
+        setCurrentPage('fulfillWishlistItem', {
+          fulfillItemId: nav.afterLoginAction.itemId,
+          preservePath: !window.location.pathname.startsWith('/fulfill_wishlist')
+        });
+        setPendingNavigation(null);
+        return;
+      }
       const extraState = nav.page === 'itemDetails' ? { selectedBook } : nav.donateItemType ? { donateItemType: nav.donateItemType } : {};
       setCurrentPage(nav.page, { ...extraState, ...nav });
       setPendingNavigation(null);
@@ -547,6 +608,7 @@ const AppShell = () => {
   const providerItemType = effectivePage === 'books' ? Constants.ITEM_TYPE_BOOK
     : effectivePage === 'toys' ? Constants.ITEM_TYPE_TOY
     : effectivePage === 'editToy' ? Constants.ITEM_TYPE_TOY
+    : effectivePage === 'fulfillWishlistItem' ? Constants.ITEM_TYPE_BOOK
     : effectivePage === 'groupBrowse' ? (hist?.itemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
     : effectivePage === 'itemDetails' ? (hist?.selectedItemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
     : effectivePage === 'donate' ? donateItemTypeFromState

@@ -102,7 +102,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       assert GroupItemAvailability.exists?(item: toy, community_group: @zip_group)
     end
 
-    it "rejects selecting a group the user is not a member of" do
+    it "ignores selecting a group the user is not a member of" do
       outsider_group = community_groups(:two)
       CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
 
@@ -116,8 +116,8 @@ class ToyServiceTest < ActiveSupport::TestCase
         community_group_ids: [ outsider_group.id ]
       })
 
-      assert_nil toy
-      assert_includes service.errors.join(" "), "Invalid community group selection"
+      assert toy, service.errors.to_sentence
+      assert_not GroupItemAvailability.exists?(item: toy, community_group: outsider_group)
     end
   end
 
@@ -148,15 +148,15 @@ class ToyServiceTest < ActiveSupport::TestCase
       assert_equal 1, GroupItemAvailability.where(item: toy).count
     end
 
-    it "rejects selecting a group the user is not a member of" do
+    it "ignores selecting a group the user is not a member of" do
       outsider_group = community_groups(:two)
       CommunityGroupMembership.where(user: @user, community_group: outsider_group).delete_all
 
       toy = items(:toy_one)
       service = ToyService.new(toy)
       ok = service.update_item(@user, { community_group_ids: [ outsider_group.id ] })
-      assert_not ok
-      assert_includes service.errors.join(" "), "Invalid community group selection"
+      assert ok, service.errors.to_sentence
+      assert_not GroupItemAvailability.exists?(item: toy, community_group: outsider_group)
     end
   end
 

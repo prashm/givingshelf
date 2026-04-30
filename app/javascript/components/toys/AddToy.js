@@ -124,12 +124,6 @@ const AddToy = ({ setCurrentPage, setRedirectReason, previousPage }) => {
               onCropUserImage={handleUserImageCrop}
             />
 
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
-                <strong>Safety reminder:</strong> Your address will be shared if you add it. Skip if you prefer to arrange pickup via chat.
-              </p>
-            </div>
-
             <div className="flex gap-4 pt-4">
               <button
                 type="button"

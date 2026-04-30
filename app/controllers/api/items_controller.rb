@@ -1,7 +1,7 @@
 class Api::ItemsController < ApplicationController
   before_action :require_authentication, except: [ :index, :show, :search, :track_view, :stats ]
   before_action :resume_session, only: [ :show, :track_view ]
-  before_action :set_item, only: [ :show, :update, :destroy, :track_view ]
+  before_action :set_item, only: [ :show, :update, :destroy, :track_view, :fulfill_wishlist ]
 
   include ApiCursorPagination
 
@@ -75,6 +75,23 @@ class Api::ItemsController < ApplicationController
     render json: stats
   end
 
+  def create_wishlist
+    @item = item_service.create_wishlist_item(Current.user, create_wishlist_item_params)
+    if @item && item_service.item_request.present?
+      render json: { item_request_id: item_service.item_request.id }, status: :created
+    else
+      render json: { errors: item_service.errors }, status: :unprocessable_entity
+    end
+  end
+
+  def fulfill_wishlist
+    if item_service.fulfill_wishlist_item(Current.user, fulfill_wishlist_item_params)
+      render json: item_service.item_detail_map(@item, Current.user), status: :ok
+    else
+      render json: { errors: item_service.errors }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def item_service
@@ -83,6 +100,16 @@ class Api::ItemsController < ApplicationController
 
   def set_item
     @item = Item.find(params[:id])
+  end
+
+  def create_wishlist_item_params
+    params.require(:item).permit(:title, :author, :brand, :age_range, :condition, :summary, :isbn, :genre, :published_year,
+      :cover_image_url, :community_group_id, :sub_group_id
+    )
+  end
+
+  def fulfill_wishlist_item_params
+    params.require(:item).permit(:condition, :pickup_method, :personal_note, :pickup_address, community_group_ids: [])
   end
 
   def item_params

@@ -285,6 +285,7 @@ const ItemDetail = ({
 
   const subtitle = getSubtitle(item);
   const detailFields = getDetailFields(item);
+  const isWishlist = item?.status_display?.toLowerCase() === 'wishlist' || item?.status === 3;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -320,6 +321,25 @@ const ItemDetail = ({
             </div>
 
             <div className="space-y-3">
+              {!isOwner && item.type === 'Book' && item.status === 3 && !item.owner && !userRequest && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!currentUser) {
+                      onOpenLoginModal({
+                        page: 'fulfillWishlistItem',
+                        fulfillItemId: item.id,
+                        afterLoginAction: { type: 'fulfillWishlist', itemId: item.id }
+                      });
+                      return;
+                    }
+                    setCurrentPage('fulfillWishlistItem', { fulfillItemId: item.id, preservePath: true });
+                  }}
+                  className="w-full bg-amber-600 text-white py-3 px-4 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+                >
+                  I have this book — offer to fulfill
+                </button>
+              )}
               {!isOwner ? (
                 <>
                   {userRequest ? (
@@ -404,10 +424,21 @@ const ItemDetail = ({
 
           <div className="md:w-2/3 p-6">
             <div className="mb-6">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(item.condition)}`}>
-                {item.condition?.charAt(0).toUpperCase() + item.condition?.slice(1)} Condition
-              </span>
-              <p className="text-sm text-gray-600 mt-1">{getConditionDescription(item.condition)}</p>
+              {isWishlist ? (
+                <>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-900">
+                    Wishlist Item
+                  </span>
+                  <p className="text-sm text-gray-600 mt-1">This item is a community wishlist request.</p>
+                </>
+              ) : (
+                <>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(item.condition)}`}>
+                    {item.condition?.charAt(0).toUpperCase() + item.condition?.slice(1)} Condition
+                  </span>
+                  <p className="text-sm text-gray-600 mt-1">{getConditionDescription(item.condition)}</p>
+                </>
+              )}
             </div>
 
             {item.summary && (
@@ -417,59 +448,61 @@ const ItemDetail = ({
               </div>
             )}
 
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">About This {itemTypeLabel}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <UserIcon className="h-4 w-4 text-gray-400" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Donor</span>
-                      {currentUser ? (
-                        <div className="text-gray-900 flex items-center gap-2">
-                          {item.owner?.name || 'Anonymous'}
-                          {item.owner && <VerificationBadge trustScore={item.owner.trust_score} size="md" verified={item.owner.verified} />}
+            {!isWishlist && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">About This {itemTypeLabel}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <UserIcon className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Donor</span>
+                        {currentUser ? (
+                          <div className="text-gray-900 flex items-center gap-2">
+                            {item.owner?.name || 'Anonymous'}
+                            {item.owner && <VerificationBadge trustScore={item.owner.trust_score} size="md" verified={item.owner.verified} />}
+                          </div>
+                        ) : <p className="text-gray-900">Hidden</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CalendarIcon className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Added</span>
+                        <p className="text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {DetailIcon && <DetailIcon className="h-4 w-4 text-gray-400" />}
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Status</span>
+                        <p className="text-gray-900">{item.status_display || 'Available'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-500">Location</span>
+                      {item.pickup_method && <p className="text-gray-700 text-sm mt-0.5 mb-2">{formatPickupMethod(item.pickup_method)}</p>}
+                      {item.pickup_address && currentUser ? (
+                        <div>
+                          <p className="text-gray-900 mb-2">{item.pickup_address}</p>
+                          {pickupMapImageUrl && <img src={pickupMapImageUrl} alt={`Map of ${item.pickup_address}`} className="mt-2 w-full h-40 object-cover rounded-lg border border-gray-200" onError={e => { e.target.style.display = 'none'; }} />}
                         </div>
-                      ) : <p className="text-gray-900">Hidden</p>}
+                      ) : item.owner?.location ? (
+                        <div>
+                          <p className="text-gray-900 mb-2">{item.owner.location}</p>
+                          {mapImageUrl && <img src={mapImageUrl} alt={`Map of ${item.owner.location}`} className="mt-2 w-full h-40 object-cover rounded-lg border border-gray-200" onError={e => { e.target.style.display = 'none'; }} />}
+                        </div>
+                      ) : (
+                        <p className="text-gray-900">Not specified</p>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CalendarIcon className="h-4 w-4 text-gray-400" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Added</span>
-                      <p className="text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {DetailIcon && <DetailIcon className="h-4 w-4 text-gray-400" />}
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Status</span>
-                      <p className="text-gray-900">{item.status_display || 'Available'}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-500">Location</span>
-                    {item.pickup_method && <p className="text-gray-700 text-sm mt-0.5 mb-2">{formatPickupMethod(item.pickup_method)}</p>}
-                    {item.pickup_address && currentUser ? (
-                      <div>
-                        <p className="text-gray-900 mb-2">{item.pickup_address}</p>
-                        {pickupMapImageUrl && <img src={pickupMapImageUrl} alt={`Map of ${item.pickup_address}`} className="mt-2 w-full h-40 object-cover rounded-lg border border-gray-200" onError={e => { e.target.style.display = 'none'; }} />}
-                      </div>
-                    ) : item.owner?.location ? (
-                      <div>
-                        <p className="text-gray-900 mb-2">{item.owner.location}</p>
-                        {mapImageUrl && <img src={mapImageUrl} alt={`Map of ${item.owner.location}`} className="mt-2 w-full h-40 object-cover rounded-lg border border-gray-200" onError={e => { e.target.style.display = 'none'; }} />}
-                      </div>
-                    ) : (
-                      <p className="text-gray-900">Not specified</p>
-                    )}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {item.user_images_urls?.length > 0 && (
               <div className="mb-6">
