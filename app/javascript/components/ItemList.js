@@ -67,6 +67,8 @@ const ItemList = ({
   const impactRequestSeq = useRef(0);
   const [selectedWishlistSuggestion, setSelectedWishlistSuggestion] = useState(null);
   const [submittedWishlistQuery, setSubmittedWishlistQuery] = useState('');
+  const [zipForProfileComparison, setZipForProfileComparison] = useState((zipCode || '').trim());
+  const [hasUserEditedZip, setHasUserEditedZip] = useState(false);
 
   const isGroupBrowse = Boolean(groupShortName);
   const labels = getLabels(itemType);
@@ -138,6 +140,11 @@ const ItemList = ({
     loadImpactStats(null);
   }, [group, isGroupBrowse]);
 
+  useEffect(() => {
+    if (hasUserEditedZip) return;
+    setZipForProfileComparison((zipCode || '').trim());
+  }, [zipCode, hasUserEditedZip]);
+
   const performGroupSearch = (queryOverride = null) => {
     if (!group) return;
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
@@ -175,6 +182,8 @@ const ItemList = ({
   const handleSearchWithRadius = (queryOverride = null) => {
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
     setSubmittedWishlistQuery(query);
+    setZipForProfileComparison((zipCode || '').trim());
+    setHasUserEditedZip(false);
     handleSearch(searchRadius === 'exact' ? null : searchRadius, query);
     if (zipCode && zipCode.length === 5) loadCommunityStats();
   };
@@ -186,6 +195,9 @@ const ItemList = ({
     ? currentUser.community_groups.find((g) => g.id === group?.id)
     : null;
   const selectedZip = (zipCode || '').trim();
+  const profileZip = (currentUser?.zip_code || '').trim();
+  const hasValidProfileZip = /^\d{5}$/.test(profileZip);
+  const showProfileZipSwitch = hasValidProfileZip && profileZip !== zipForProfileComparison;
   const membershipZip = (zipGroupMembership?.sub_group?.name || '').trim();
   const wishlistScope = (() => {
     if (!currentUser) return null;
@@ -264,7 +276,22 @@ const ItemList = ({
       ) : null)
     : (
       <>
-        <label className="block text-gray-700 mb-2">Your ZIP Code</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-gray-700">Your ZIP Code</label>
+          {showProfileZipSwitch && (
+            <button
+              type="button"
+              className="text-sm text-emerald-600 hover:text-emerald-700 underline"
+              onClick={() => {
+                setZipCode(profileZip);
+                setZipForProfileComparison(profileZip);
+                setHasUserEditedZip(false);
+              }}
+            >
+              Use {profileZip} instead?
+            </button>
+          )}
+        </div>
         <div className="relative">
           <div className="flex items-center w-full border border-gray-200 rounded-md bg-white overflow-hidden transition-all focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-500/20">
             <input
@@ -273,7 +300,10 @@ const ItemList = ({
               style={{ border: 'none', boxShadow: 'none' }}
               placeholder="Enter ZIP code"
               value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
+              onChange={(e) => {
+                setHasUserEditedZip(true);
+                setZipCode(e.target.value);
+              }}
               onFocus={() => zipCode && setShowRadiusOptions(true)}
               onBlur={() => setTimeout(() => setShowRadiusOptions(false), 200)}
               onKeyDown={(e) => e.key === 'Enter' && hasValidZipCode && handleSearchWithRadius()}
