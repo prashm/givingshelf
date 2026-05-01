@@ -4,6 +4,7 @@ require "test_helper"
 
 class WishlistDigestJobTest < ActiveJob::TestCase
   def setup
+    ActionMailer::Base.deliveries.clear
     @requester = users(:one)
     @recipient = users(:two)
     @group = community_groups(:one)
@@ -43,10 +44,10 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     book
   end
 
-  test "enqueues digest mail and records user notification for a community member" do
+  test "delivers digest mail and records user notification for a community member" do
     book = build_wishlist_book
 
-    assert_enqueued_jobs(1, only: ActionMailer::MailDeliveryJob) do
+    assert_difference -> { ActionMailer::Base.deliveries.size }, 2 do
       WishlistDigestJob.perform_now
     end
 
@@ -56,6 +57,13 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       kind: UserNotification::KIND_WISHLIST_DIGEST
     )
     assert n
+
+    admin_email = ActionMailer::Base.deliveries.last
+    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_includes admin_email.subject, "Wishlist Digest Report"
+    assert_includes admin_email.body.encoded, "Recipients attempted:"
+    assert_includes admin_email.body.encoded, "Successful deliveries:"
+    assert_includes admin_email.body.encoded, "Failed deliveries:"
   end
 
   test "is idempotent: second run does not enqueue mail when notification exists" do
@@ -67,17 +75,57 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       sent_at: Time.current
     )
 
-    assert_enqueued_jobs(0, only: ActionMailer::MailDeliveryJob) do
+    assert_difference -> { ActionMailer::Base.deliveries.size }, 1 do
       WishlistDigestJob.perform_now
     end
+
+    admin_email = ActionMailer::Base.deliveries.last
+    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_includes admin_email.body.encoded, "Recipients attempted:</strong> 0"
+    assert_includes admin_email.body.encoded, "Successful deliveries:</strong> 0"
+    assert_includes admin_email.body.encoded, "Failed deliveries:</strong> 0"
   end
 
   test "targets only members of requested subgroup when sub_group_id is scoped" do
     CommunityGroupMembership.find_by!(user: @recipient, community_group: @group).update!(sub_group_id: @sg2.id)
     build_wishlist_book(sub_group_id: @sg1.id)
 
-    assert_enqueued_jobs(0, only: ActionMailer::MailDeliveryJob) do
+    assert_difference -> { ActionMailer::Base.deliveries.size }, 1 do
       WishlistDigestJob.perform_now
     end
+
+    admin_email = ActionMailer::Base.deliveries.last
+    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_includes admin_email.body.encoded, "Recipients attempted:</strong> 0"
+  end
+
+  test "does not create notification on delivery failure and emails admin report with failure count" do
+    book = build_wishlist_book
+
+    failing_delivery = Object.new
+    failing_delivery.define_singleton_method(:deliver_now!) do
+      raise StandardError, "smtp timeout"
+    end
+
+    WishlistMailer.stub(:digest, failing_delivery) do
+      assert_difference -> { ActionMailer::Base.deliveries.size }, 1 do
+        WishlistDigestJob.perform_now
+      end
+    end
+
+    notification = UserNotification.find_by(
+      user: @recipient,
+      notifiable: book,
+      kind: UserNotification::KIND_WISHLIST_DIGEST
+    )
+    assert_nil notification
+
+    admin_email = ActionMailer::Base.deliveries.last
+    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_includes admin_email.subject, "Wishlist Digest Report"
+    assert_includes admin_email.body.encoded, @recipient.email_address
+    assert_includes admin_email.body.encoded, "Recipients attempted:</strong> 1"
+    assert_includes admin_email.body.encoded, "Successful deliveries:</strong> 0"
+    assert_includes admin_email.body.encoded, "Failed deliveries:</strong> 1"
   end
 end

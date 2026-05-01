@@ -149,6 +149,9 @@ class ItemService
   # Assigns donor to wishlist book and sets item to available. Notifies all the requesters of the item.
   def fulfill_wishlist_item(donor_user, item_params)
     raise "Not a wishlist item" unless @item.wishlist?
+    if @item.item_requests.where(requester_id: donor_user.id).where.not(status: ItemRequest::CANCELLED_STATUS).exists?
+      raise "You cannot fulfill your own wishlist request"
+    end
 
     data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
     if update_item(donor_user, data)

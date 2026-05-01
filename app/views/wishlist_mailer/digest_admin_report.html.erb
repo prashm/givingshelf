@@ -1,0 +1,32 @@
+<h2>Wishlist Digest Admin Report</h2>
+
+<p>The wishlist digest job has completed.</p>
+
+<ul>
+  <li><strong>Run at:</strong> <%= @run_at %></li>
+  <li><strong>Recipients attempted:</strong> <%= @recipient_count %></li>
+  <li><strong>Successful deliveries:</strong> <%= @success_count %></li>
+  <li><strong>Failed deliveries:</strong> <%= @failure_count %></li>
+</ul>
+
+<% if @failures.any? %>
+  <h3>Failure Details</h3>
+  <table width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;">
+    <tr style="background:#f9fafb;">
+      <th align="left" style="border:1px solid #e5e7eb;">User ID</th>
+      <th align="left" style="border:1px solid #e5e7eb;">Email</th>
+      <th align="left" style="border:1px solid #e5e7eb;">Item IDs</th>
+      <th align="left" style="border:1px solid #e5e7eb;">Error</th>
+    </tr>
+    <% @failures.each do |failure| %>
+      <tr>
+        <td style="border:1px solid #e5e7eb;"><%= failure[:user_id] %></td>
+        <td style="border:1px solid #e5e7eb;"><%= failure[:user_email] %></td>
+        <td style="border:1px solid #e5e7eb;"><%= Array(failure[:item_ids]).join(", ") %></td>
+        <td style="border:1px solid #e5e7eb;">
+          <%= failure[:error_class] %>: <%= failure[:error_message] %>
+        </td>
+      </tr>
+    <% end %>
+  </table>
+<% end %>

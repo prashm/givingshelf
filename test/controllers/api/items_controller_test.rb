@@ -222,4 +222,51 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       as: :json
     assert_response :unprocessable_entity
   end
+
+  test "fulfill_wishlist rejects requester fulfilling their own request" do
+    requester = users(:one)
+    group = community_groups(:one)
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+    CommunityGroupMembership.find_or_create_by!(user: requester, community_group: group)
+    CommunityGroupMembership.find_or_create_by!(user: requester, community_group: zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+
+    book = Book.create!(
+      user_id: nil,
+      type: Book.name,
+      title: "Wishlist Self Fulfill",
+      author: "Author",
+      summary: "Summary text long enough for validations on the book model here.",
+      published_year: 2020,
+      genre: "Fiction",
+      status: ShareableItemStatus::WISHLIST
+    )
+    GroupItemAvailability.create!(item: book, community_group: group)
+    ItemRequest.create!(
+      item: book,
+      requester: requester,
+      owner: nil,
+      message: "I would love this book if anyone in the community has a copy.",
+      status: ItemRequest::PENDING_STATUS
+    )
+
+    sign_in_as(requester)
+    post fulfill_wishlist_api_item_url(book),
+      params: {
+        item: {
+          condition: "good",
+          community_group_ids: [ group.id ]
+        }
+      },
+      as: :json
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_includes body["errors"], "You cannot fulfill your own wishlist request"
+    book.reload
+    assert_nil book.user_id
+    assert_equal ShareableItemStatus::WISHLIST, book.status
+  end
 end

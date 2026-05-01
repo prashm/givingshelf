@@ -43,6 +43,11 @@ const FulfillWishlistItemPage = ({
         setBook(data);
         return;
       }
+      if (data.user_request_id) {
+        setError('You cannot fulfill your own wishlist request.');
+        setBook(data);
+        return;
+      }
       const gids = Array.isArray(data.community_group_ids) ? data.community_group_ids : [];
       const userGroups = (currentUser?.community_groups || []).map((g) => ({
         id: g.id,
@@ -185,6 +190,14 @@ const FulfillWishlistItemPage = ({
     return (
       <div className="container mx-auto py-8 px-4 max-w-2xl text-center">
         <p className="text-red-600 mb-4">{error || 'This book is not a wishlist request.'}</p>
+        <button type="button" onClick={goBack} className="text-emerald-600 underline">Go back</button>
+      </div>
+    );
+  }
+  if (book?.user_request_id) {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-2xl text-center">
+        <p className="text-red-600 mb-4">{error || 'You cannot fulfill your own wishlist request.'}</p>
         <button type="button" onClick={goBack} className="text-emerald-600 underline">Go back</button>
       </div>
     );

@@ -14,4 +14,16 @@ class WishlistMailer < ApplicationMailer
     @action_url = "#{root_url}item_request_details?id=#{item_request.id}"
     mail(to: @user.email_address, subject: "Good news: someone offered a #{@item.type.downcase} from your wishlist")
   end
+
+  def digest_admin_report(admin_email, run_at:, recipient_count:, success_count:, failure_count:, failures: [])
+    @run_at = run_at
+    @recipient_count = recipient_count
+    @success_count = success_count
+    @failure_count = failure_count
+    @failures = Array(failures)
+    mail(
+      to: admin_email,
+      subject: "Wishlist Digest Report"
+    )
+  end
 end
