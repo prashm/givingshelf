@@ -4,13 +4,13 @@ class WishlistDigestJob < ApplicationJob
   queue_as :default
 
   def perform
-    wishlist_books = Book.wishlist.includes(:item_requests, :group_item_availabilities, item_requests: :requester)
+    wishlist_items = Item.wishlist.includes(:item_requests, :group_item_availabilities, item_requests: :requester)
     by_recipient = Hash.new { |h, k| h[k] = [] }
 
-    wishlist_books.find_each do |book|
-      book.item_requests.where(status: ItemRequest::PENDING_STATUS).find_each do |ir|
+    wishlist_items.find_each do |item|
+      item.item_requests.where(status: ItemRequest::PENDING_STATUS).find_each do |ir|
         next unless ir.requester
-        scoped_availabilities = book.group_item_availabilities
+        scoped_availabilities = item.group_item_availabilities
         next if scoped_availabilities.blank?
         member_ids = []
 
@@ -27,10 +27,10 @@ class WishlistDigestJob < ApplicationJob
           next if u.nil?
           next if UserNotification.exists?(
             user: u,
-            notifiable: book,
+            notifiable: item,
             kind: UserNotification::KIND_WISHLIST_DIGEST
           )
-          by_recipient[u] << { item: book, requester: ir.requester }
+          by_recipient[u] << { item: item, requester: ir.requester }
         end
       end
     end
@@ -39,7 +39,7 @@ class WishlistDigestJob < ApplicationJob
       rows.uniq! { |r| r[:item].id }
       next if rows.empty?
 
-      WishlistMailer.digest(user, rows).deliver_later
+      WishlistMailer.digest(user, rows).deliver_now
       rows.each do |row|
         item = row[:item]
         next if UserNotification.exists?(user: user, notifiable: item, kind: UserNotification::KIND_WISHLIST_DIGEST)

@@ -2,6 +2,16 @@
   <tr>
     <td style="padding:16px 0;font-size:18px;font-weight:bold">Community Wishlist</td>
   </tr>
+  <tr>
+    <td style="padding:0 0 12px 0;color:#111827;font-size:14px;line-height:1.5;">
+      Hi <%= @user.display_name %>,
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:0 0 16px 0;color:#374151;font-size:14px;line-height:1.5;">
+      These wishlist posts mean someone is looking for an item and hasn&apos;t found one yet. If you have one to share, you can fulfill the wish and start chatting to coordinate pickup.
+    </td>
+  </tr>
   <% Array(@entries).each do |entry| %>
     <% e = entry.with_indifferent_access %>
     <% it = e[:item] %>
