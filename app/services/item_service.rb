@@ -296,9 +296,11 @@ class ItemService
     begin
       # Ensure URL uses HTTPS
       secure_url = api_url.gsub(/^http:/, "https:")
+      uri = URI.parse(secure_url)
+      return false unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
 
       # Fetch the image from the URL
-      downloaded_image = URI.open(secure_url, read_timeout: 10)
+      downloaded_image = uri.open(read_timeout: 10)
 
       # Determine content type from response or default to jpeg
       content_type = downloaded_image.content_type || "image/jpeg"
