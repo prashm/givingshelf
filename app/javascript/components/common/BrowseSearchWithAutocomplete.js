@@ -73,13 +73,13 @@ const BrowseSearchWithAutocomplete = ({
   };
 
   const handlePick = (s) => {
-    const label = `${s.title} ${s.authors?.join(' ') || ''}`.trim();
-    setLocal(label);
-    onQueryChange?.(label);
+    const title = (s.title || '').trim();
+    setLocal(title);
+    onQueryChange?.(title);
     selectBook(s);
     onSuggestionSelect?.(s);
     hideSuggestions();
-    onSearch?.();
+    onSearch?.(title);
   };
 
   const hasInput = (local || '').trim().length > 0;
@@ -105,7 +105,7 @@ const BrowseSearchWithAutocomplete = ({
               if (e.key === 'Enter') {
                 e.preventDefault();
                 hideSuggestions();
-                if (submitOnEnter && !buttonDisabled) onSearch?.();
+                if (submitOnEnter && !buttonDisabled) onSearch?.((local || '').trim());
               }
             }}
             autoComplete="off"
@@ -160,7 +160,7 @@ const BrowseSearchWithAutocomplete = ({
           className={`w-full py-3 px-4 rounded-md transition-colors ${
             buttonDisabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer'
           }`}
-          onClick={() => { hideSuggestions(); onSearch?.(); }}
+          onClick={() => { hideSuggestions(); onSearch?.((local || '').trim()); }}
           disabled={buttonDisabled}
         >
           {buttonLabel}

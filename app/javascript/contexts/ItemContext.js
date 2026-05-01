@@ -144,9 +144,10 @@ export const ItemProvider = ({ children, itemType = Constants.ITEM_TYPE_BOOK }) 
     setLoading(true);
     setError(null);
     try {
+      const normalizedQuery = (query || '').trim();
       const paginationParams = {
         'page[size]': 6,
-        query: query || '',
+        query: normalizedQuery,
         zip_code: zipCode,
         type: itemType
       };

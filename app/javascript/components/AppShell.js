@@ -334,14 +334,15 @@ const AppShellContent = ({ onNavigate }) => {
     if (Array.isArray(items)) setSearchResults(items);
   }, [items]);
 
-  const handleSearch = (searchRadius = null) => {
+  const handleSearch = (searchRadius = null, queryOverride = null) => {
+    const trimmedQuery = (queryOverride !== null ? queryOverride : searchQuery || '').trim();
     const normalizedZipCode = normalizeBrowseZip(zipCode || '');
     if (normalizedZipCode) {
       setZipCode(normalizedZipCode);
       setBrowseZipCookie(normalizedZipCode);
-      searchItems(searchQuery, normalizedZipCode, false, searchRadius);
+      searchItems(trimmedQuery, normalizedZipCode, false, searchRadius);
     } else {
-      const query = searchQuery.toLowerCase();
+      const query = trimmedQuery.toLowerCase();
       const results = Array.isArray(items) ? items.filter(item =>
         item.title?.toLowerCase().includes(query) ||
         (item.author && item.author.toLowerCase().includes(query)) ||

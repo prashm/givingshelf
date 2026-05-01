@@ -244,6 +244,16 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_not_includes ids2, items(:one).id
     end
 
+    it "trims surrounding spaces in query_string before searching" do
+      ensure_zip_availability_for(items(:one), items(:two))
+
+      service = BookService.new
+      result = service.search_items(query_string: "   gatsby   ", zip_code: nil, community_group_id: nil)
+      ids = result.pluck(:id)
+      assert_includes ids, items(:one).id
+      assert_not_includes ids, items(:two).id
+    end
+
     it "filters by zip_code (exact match) when radius is not provided" do
       ensure_zip_availability_for(items(:one), items(:two))
 

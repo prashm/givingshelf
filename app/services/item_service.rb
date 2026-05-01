@@ -174,12 +174,13 @@ class ItemService
 
   def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     items = base_scope.joins(:user, :group_item_availabilities)
+    normalized_query = query_string.to_s.strip
 
-    if query_string.present?
+    if normalized_query.present?
       # Search title, author (Book), and brand (Toy)
       items = items.where(
         "items.title ILIKE :query OR items.author ILIKE :query OR items.brand ILIKE :query",
-        query: "%#{ActiveRecord::Base.sanitize_sql_like(query_string)}%"
+        query: "%#{ActiveRecord::Base.sanitize_sql_like(normalized_query)}%"
       )
     end
 

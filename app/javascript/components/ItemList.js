@@ -140,8 +140,8 @@ const ItemList = ({
 
   const performGroupSearch = (queryOverride = null) => {
     if (!group) return;
-    const query = queryOverride !== null ? queryOverride : (searchQuery || '');
-    setSubmittedWishlistQuery((query || '').trim());
+    const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
+    setSubmittedWishlistQuery(query);
     searchItems(query, zipCode || '', false, null, group.id, selectedSubGroupId);
     loadImpactStats(selectedSubGroupId);
   };
@@ -172,9 +172,10 @@ const ItemList = ({
     setShowRadiusOptions(false);
   };
 
-  const handleSearchWithRadius = () => {
-    setSubmittedWishlistQuery((searchQuery || '').trim());
-    handleSearch(searchRadius === 'exact' ? null : searchRadius);
+  const handleSearchWithRadius = (queryOverride = null) => {
+    const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
+    setSubmittedWishlistQuery(query);
+    handleSearch(searchRadius === 'exact' ? null : searchRadius, query);
     if (zipCode && zipCode.length === 5) loadCommunityStats();
   };
 
@@ -316,7 +317,7 @@ const ItemList = ({
       </>
     );
 
-  const searchHandler = isGroupBrowse ? () => performGroupSearch() : handleSearchWithRadius;
+  const searchHandler = isGroupBrowse ? performGroupSearch : handleSearchWithRadius;
 
   const stats = isGroupBrowse
     ? [
