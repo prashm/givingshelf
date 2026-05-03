@@ -217,12 +217,13 @@ const ItemList = ({
       sub_group_id: zipGroupMembership.sub_group.id
     };
   })();
+  const canUseWishlistAuthFlow = !currentUser || !currentUser.profile_complete;
+  const canCreateWishlistNow = Boolean(currentUser?.profile_complete) && Boolean(wishlistScope);
   const canShowWishlistCard = itemType === Constants.ITEM_TYPE_BOOK
     && (items || []).length === 0
     && !itemsLoading
     && (submittedWishlistQuery || '').trim().length >= 2
-    && Boolean(currentUser)
-    && Boolean(wishlistScope);
+    && (canUseWishlistAuthFlow || canCreateWishlistNow);
 
   const getResultsLabel = () => {
     if (!paginationMeta.total || paginationMeta.total === 0) return labels.emptyGlobal;

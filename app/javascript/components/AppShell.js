@@ -141,7 +141,10 @@ const AppShellContent = ({ onNavigate }) => {
     const h = typeof window !== 'undefined' ? window.history.state : null;
     return Boolean(h?.preservePath && h?.page === 'fulfillWishlistItem');
   });
-  const [redirectReason, setRedirectReason] = useState(null);
+  const [redirectReason, setRedirectReason] = useState(() => {
+    const hist = typeof window !== 'undefined' ? window.history.state : null;
+    return hist?.redirectReason || null;
+  });
   const [donateInitialTitle, setDonateInitialTitle] = useState(null);
   const [donateItemType, setDonateItemType] = useState(() => {
     if (typeof window !== 'undefined' && window.history.state?.page === 'donate') {
@@ -300,6 +303,7 @@ const AppShellContent = ({ onNavigate }) => {
 
   const setCurrentPage = (page, extraState = {}) => {
     setPreviousPage(currentPage);
+    if (extraState.redirectReason !== undefined) setRedirectReason(extraState.redirectReason);
     if (extraState.selectedBook) setSelectedBook(extraState.selectedBook);
     if (extraState.editingBookId) setEditingBookId(extraState.editingBookId);
     if (extraState.editingToyId) setEditingToyId(extraState.editingToyId);
@@ -510,6 +514,17 @@ const AppShellContent = ({ onNavigate }) => {
   const handleLoginSuccess = (profileIncomplete) => {
     setIsLoginModalOpen(false);
     if (profileIncomplete) {
+      const nav = pendingNavigation && typeof pendingNavigation === 'object'
+        ? pendingNavigation
+        : null;
+      if (nav?.afterLoginAction?.type === 'createWishlist') {
+        const wishlistRedirectReason = 'Please complete your profile first before placing your request.';
+        setRedirectReason(wishlistRedirectReason);
+        setPendingNavigation(null);
+        setCurrentPage('profile', { redirectReason: wishlistRedirectReason });
+        return;
+      }
+      setPendingNavigation(null);
       setCurrentPage('profile');
     } else if (pendingNavigation) {
       const nav = typeof pendingNavigation === 'object' ? pendingNavigation : { page: pendingNavigation };

@@ -81,8 +81,33 @@ const WishlistBookCard = ({
 
   const placeRequest = async () => {
     if (!suggestion) return;
-    if (!wishlistScope?.community_group_id) return;
     setError(null);
+    if (!currentUser) {
+      const normalizedFields = normalizedBookFieldsFromGoogleAutocomplete(suggestion);
+      const body = wishlistScope?.community_group_id ? {
+        type: Constants.ITEM_TYPE_BOOK,
+        item: {
+          ...normalizedFields,
+          community_group_id: wishlistScope.community_group_id,
+          ...(wishlistScope.sub_group_id ? { sub_group_id: wishlistScope.sub_group_id } : {})
+        }
+      } : null;
+      onOpenLoginModal?.({
+        page: window.location.pathname.includes("/g/") ? "groupBrowse" : "books",
+        ...(body ? { afterLoginAction: { type: 'createWishlist', body } } : {})
+      });
+      return;
+    }
+    if (!currentUser.profile_complete) {
+      const profilePrompt = 'Please complete your profile first before placing your request.';
+      setRedirectReason?.(profilePrompt);
+      setCurrentPage('profile', { redirectReason: profilePrompt });
+      return;
+    }
+    if (!wishlistScope?.community_group_id) {
+      setError('You can request this book when your profile ZIP or group membership matches this search.');
+      return;
+    }
     const normalizedFields = normalizedBookFieldsFromGoogleAutocomplete(suggestion);
     const body = {
       type: Constants.ITEM_TYPE_BOOK,
@@ -92,18 +117,6 @@ const WishlistBookCard = ({
         ...(wishlistScope.sub_group_id ? { sub_group_id: wishlistScope.sub_group_id } : {})
       }
     };
-    if (!currentUser) {
-      onOpenLoginModal?.({
-        page: window.location.pathname.includes("/g/") ? "groupBrowse" : "books",
-        afterLoginAction: { type: 'createWishlist', body }
-      });
-      return;
-    }
-    if (!currentUser.profile_complete) {
-      setRedirectReason?.('Please complete your profile to request books.');
-      setCurrentPage('profile');
-      return;
-    }
     setSubmitting(true);
     try {
       const res = await axios.post('/api/items/wishlist', body, { withCredentials: true });
