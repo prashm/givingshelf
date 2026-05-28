@@ -1,5 +1,5 @@
 class Api::ItemsController < ApplicationController
-  before_action :require_authentication, except: [ :index, :show, :search, :track_view, :stats ]
+  before_action :require_authentication, except: [ :index, :show, :search, :wishlist, :track_view, :stats ]
   before_action :resume_session, only: [ :show, :track_view ]
   before_action :set_item, only: [ :show, :update, :destroy, :track_view, :fulfill_wishlist ]
 
@@ -51,6 +51,15 @@ class Api::ItemsController < ApplicationController
   def search
     paginated_items_response item_service.search_items(
       query_string: params[:query],
+      zip_code: params[:zip_code],
+      radius: params[:radius],
+      community_group_id: params[:community_group_id],
+      sub_group_id: params[:sub_group_id]
+    )
+  end
+
+  def wishlist
+    paginated_items_response item_service.wishlist_items(
       zip_code: params[:zip_code],
       radius: params[:radius],
       community_group_id: params[:community_group_id],

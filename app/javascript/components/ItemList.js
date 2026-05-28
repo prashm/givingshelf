@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchCommunityStats } from '../lib/booksApi';
+import { fetchCommunityStats, fetchWishlistItems } from '../lib/booksApi';
 import { fetchGroupByShortName } from '../lib/communityGroupsApi';
 import { useItems } from '../contexts/ItemContext';
 import * as Constants from '../lib/constants';
@@ -8,6 +8,7 @@ import PopularGenresSection from './common/PopularGenresSection';
 import StatsSection from './common/StatsSection';
 import CallToActionSection from './common/CallToActionSection';
 import WishlistBookCard from './common/WishlistBookCard';
+import WishlistItemsSection from './common/WishlistItemsSection';
 import SearchSection from './common/SearchSection';
 import BrowseSearchWithAutocomplete from './common/BrowseSearchWithAutocomplete';
 
@@ -16,6 +17,7 @@ const getLabels = (itemType) => {
   return {
     heroTitle: isBook ? 'Find Books in Your Community' : 'Find Toys in Your Community',
     availableTitle: isBook ? 'Available Books' : 'Available Toys',
+    wishlistTitle: isBook ? 'Community Wishlist Books' : 'Community Wishlist Toys',
     itemsLabel: isBook ? 'Books' : 'Toys',
     itemLabel: isBook ? 'Book' : 'Toy',
     emptyGlobal: isBook ? 'No books Found' : 'No toys Found',
@@ -54,7 +56,8 @@ const ItemList = ({
     items_shared: 0,
     items_donated: 0,
     items_requested: 0,
-    happy_users: 0
+    happy_users: 0,
+    items_wishlisted: 0
   });
   const [statsLoading, setStatsLoading] = useState(false);
   const hasLoadedInitialStats = useRef(false);
@@ -62,9 +65,14 @@ const ItemList = ({
   const [group, setGroup] = useState(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [selectedSubGroupId, setSelectedSubGroupId] = useState(null);
-  const [impactStats, setImpactStats] = useState({ members: 0, items_shared: 0, items_donated: 0, items_requested: 0 });
+  const [impactStats, setImpactStats] = useState({ members: 0, items_shared: 0, items_donated: 0, items_requested: 0, items_wishlisted: 0 });
   const [impactLoading, setImpactLoading] = useState(false);
   const impactRequestSeq = useRef(0);
+  const [showCommunityWishlist, setShowCommunityWishlist] = useState(false);
+  const [hasLoadedCommunityWishlist, setHasLoadedCommunityWishlist] = useState(false);
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [wishlistPaginationMeta, setWishlistPaginationMeta] = useState({ total: 0, hasMore: false, nextPageUrl: null });
   const [selectedWishlistSuggestion, setSelectedWishlistSuggestion] = useState(null);
   const [submittedWishlistQuery, setSubmittedWishlistQuery] = useState('');
   const [zipForProfileComparison, setZipForProfileComparison] = useState((zipCode || '').trim());
@@ -123,6 +131,65 @@ const ItemList = ({
     }
   }, [group, selectedSubGroupId, itemType]);
 
+  const resetCommunityWishlistState = useCallback(() => {
+    setShowCommunityWishlist(false);
+    setHasLoadedCommunityWishlist(false);
+    setWishlistItems([]);
+    setWishlistPaginationMeta({ total: 0, hasMore: false, nextPageUrl: null });
+    setWishlistLoading(false);
+  }, []);
+
+  const getWishlistScopeParams = useCallback((subGroupIdOverride = undefined) => {
+    if (isGroupBrowse) {
+      if (!group) return null;
+      const subGroupId = subGroupIdOverride === undefined ? selectedSubGroupId : subGroupIdOverride;
+      return {
+        communityGroupId: group.id,
+        subGroupId: subGroupId || null,
+        type: itemType
+      };
+    }
+
+    return {
+      zipCode: zipCode || '',
+      radius: searchRadius === 'exact' ? null : searchRadius,
+      type: itemType
+    };
+  }, [isGroupBrowse, group, selectedSubGroupId, zipCode, searchRadius, itemType]);
+
+  const loadCommunityWishlist = useCallback(async (append = false, nextPageUrl = null, subGroupIdOverride = undefined) => {
+    const scopeParams = getWishlistScopeParams(subGroupIdOverride);
+    if (!scopeParams) return;
+
+    setWishlistLoading(true);
+    try {
+      let pageParams = null;
+      if (append && nextPageUrl) {
+        let url = nextPageUrl;
+        if (url.startsWith('/')) url = `${window.location.origin}${url}`;
+        else if (!url.startsWith('http')) url = `${window.location.origin}/${url}`;
+        const urlObj = new URL(url);
+        pageParams = {};
+        urlObj.searchParams.forEach((value, key) => {
+          pageParams[key] = value;
+        });
+      }
+
+      const { items: fetchedItems, paginationMeta } = await fetchWishlistItems({
+        ...scopeParams,
+        pageParams
+      });
+
+      setWishlistItems(prev => append ? [...prev, ...fetchedItems] : fetchedItems);
+      setWishlistPaginationMeta(paginationMeta);
+      setHasLoadedCommunityWishlist(true);
+    } catch (error) {
+      console.error('Failed to load community wishlist:', error);
+    } finally {
+      setWishlistLoading(false);
+    }
+  }, [getWishlistScopeParams]);
+
   useEffect(() => {
     if (groupShortName) loadGroup();
   }, [groupShortName, loadGroup]);
@@ -136,9 +203,10 @@ const ItemList = ({
 
   useEffect(() => {
     if (!group || !isGroupBrowse) return;
+    resetCommunityWishlistState();
     searchItems('', zipCode || '', false, null, group.id, null);
     loadImpactStats(null);
-  }, [group, isGroupBrowse]);
+  }, [group, isGroupBrowse, resetCommunityWishlistState]);
 
   useEffect(() => {
     if (hasUserEditedZip) return;
@@ -148,6 +216,7 @@ const ItemList = ({
   const performGroupSearch = (queryOverride = null) => {
     if (!group) return;
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
+    resetCommunityWishlistState();
     setSubmittedWishlistQuery(query);
     searchItems(query, zipCode || '', false, null, group.id, selectedSubGroupId);
     loadImpactStats(selectedSubGroupId);
@@ -165,6 +234,7 @@ const ItemList = ({
   const handleSubGroupChange = (e) => {
     const subGroupId = e.target.value ? parseInt(e.target.value) : null;
     setSelectedSubGroupId(subGroupId);
+    resetCommunityWishlistState();
   };
 
   const hasValidZipCode = zipCode && zipCode.length === 5;
@@ -181,6 +251,7 @@ const ItemList = ({
 
   const handleSearchWithRadius = (queryOverride = null) => {
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
+    resetCommunityWishlistState();
     setSubmittedWishlistQuery(query);
     setZipForProfileComparison((zipCode || '').trim());
     setHasUserEditedZip(false);
@@ -367,6 +438,46 @@ const ItemList = ({
   const resultsLabel = isGroupBrowse
     ? (paginationMeta?.total > 0 ? `${paginationMeta.total} ${labels.itemsLabel} Found` : (itemsLoading ? 'Searching...' : labels.emptyGlobal))
     : getResultsLabel();
+  const wishlistCount = isGroupBrowse ? (impactStats.items_wishlisted || 0) : (communityStats.items_wishlisted || 0);
+  const wishlistItemWord = wishlistCount === 1 ? labels.itemLabel : labels.itemsLabel;
+
+  const handleCommunityWishlistToggle = async () => {
+    const nextExpandedState = !showCommunityWishlist;
+    setShowCommunityWishlist(nextExpandedState);
+    if (nextExpandedState && !hasLoadedCommunityWishlist) {
+      await loadCommunityWishlist(false, null, selectedSubGroupId);
+    }
+  };
+
+  const handleLoadMoreWishlistItems = () => {
+    if (!wishlistPaginationMeta?.nextPageUrl || wishlistLoading) return;
+    loadCommunityWishlist(true, wishlistPaginationMeta.nextPageUrl, selectedSubGroupId);
+  };
+
+  const wishlistItemSource = isGroupBrowse ? 'groupPage' : (itemType === Constants.ITEM_TYPE_TOY ? 'toys' : 'books');
+  const handleWishlistItemSelect = (item) => handleItemSelect(item, wishlistItemSource, itemType);
+
+  const handleFulfillWish = (item) => {
+    if (!currentUser) {
+      onOpenLoginModal({
+        page: 'fulfillWishlistItem',
+        fulfillItemId: item.id,
+        afterLoginAction: { type: 'fulfillWishlist', itemId: item.id }
+      });
+      return;
+    }
+    if (!currentUser.profile_complete) {
+      const reason = 'Please complete your profile first before offering to fulfill wishlist items.';
+      setRedirectReason(reason);
+      setCurrentPage('profile', { redirectReason: reason });
+      return;
+    }
+    setCurrentPage('fulfillWishlistItem', { fulfillItemId: item.id, preservePath: true });
+  };
+
+  const handleWishlistPlaceRequest = (item) => {
+    handleWishlistItemSelect(item);
+  };
 
   const otherItemName = itemType === Constants.ITEM_TYPE_BOOK ? 'toys' : 'books';
   const otherItemType = itemType === Constants.ITEM_TYPE_BOOK ? Constants.ITEM_TYPE_TOY : Constants.ITEM_TYPE_BOOK;
@@ -472,6 +583,34 @@ const ItemList = ({
 
         {itemType === Constants.ITEM_TYPE_BOOK && (
           <PopularGenresSection books={items || []} onGenreClick={handleGenreClick} />
+        )}
+
+        {wishlistCount > 0 && (
+          <div className="mb-4">
+            <button
+              type="button"
+              className="text-emerald-700 hover:text-emerald-800 underline font-medium"
+              onClick={handleCommunityWishlistToggle}
+            >
+              Community Wishlist - {wishlistCount} {wishlistItemWord} people requested for
+              {' '}
+              <span className="text-sm">{showCommunityWishlist ? '(Hide)' : '(Show)'}</span>
+            </button>
+          </div>
+        )}
+
+        {showCommunityWishlist && (
+          <WishlistItemsSection
+            title={labels.wishlistTitle}
+            items={wishlistItems}
+            itemType={itemType}
+            loading={wishlistLoading}
+            paginationMeta={wishlistPaginationMeta}
+            onLoadMore={handleLoadMoreWishlistItems}
+            onSelectItem={handleWishlistItemSelect}
+            onFulfillWish={handleFulfillWish}
+            onPlaceRequest={handleWishlistPlaceRequest}
+          />
         )}
 
         <StatsSection

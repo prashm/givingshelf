@@ -173,7 +173,7 @@ class ItemService
   end
 
   def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    items = base_scope.joins(:user, :group_item_availabilities)
+    items = base_scope.left_outer_joins(:user).joins(:group_item_availabilities)
     normalized_query = query_string.to_s.strip
 
     if normalized_query.present?
@@ -189,9 +189,14 @@ class ItemService
       items = items.where(group_item_availabilities: { community_group_id: community_group_id })
 
       if sub_group_id.present?
-        # Filter by the owner's membership subgroup for this community group.
-        items = items.joins(user: :community_group_memberships)
-                     .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
+        # Keep existing owner-membership based subgroup filtering, but also support
+        # subgroup scoping on availability rows (needed for ownerless wishlist items).
+        items = items.left_outer_joins(user: :community_group_memberships)
+                     .where(
+                       "(community_group_memberships.community_group_id = :community_group_id AND community_group_memberships.sub_group_id = :sub_group_id) OR group_item_availabilities.sub_group_id = :sub_group_id",
+                       community_group_id: community_group_id,
+                       sub_group_id: sub_group_id
+                     )
       end
     else
       # Default browse/search behavior: only show items available in the ZIP Code Community group.
@@ -202,15 +207,28 @@ class ItemService
     items.distinct
   end
 
+  def wishlist_items(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+    scoped_group_id = community_group_id.presence || CommunityGroup.find_or_create_zipcode_group!.id
+    search_items(
+      base_scope: type_class.wishlist,
+      zip_code: zip_code,
+      radius: radius,
+      community_group_id: scoped_group_id,
+      sub_group_id: sub_group_id
+    )
+  end
+
   def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     base_items = search_items(base_scope: type_class, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
+    wishlisted_items = wishlist_items(zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
       items_shared: base_items.where.not(status: ShareableItemStatus::DONATED).distinct.count(:id),
       items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
-      happy_users: base_requests.completed.distinct.count(:requester_id)
+      happy_users: base_requests.completed.distinct.count(:requester_id),
+      items_wishlisted: wishlisted_items.distinct.count(:id)
     }
   end
 

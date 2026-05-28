@@ -128,6 +128,78 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert body.key?("members"), "Expected members count to be included for group stats"
   end
 
+  test "wishlist endpoint returns paginated wishlist items for a community group" do
+    group = community_groups(:one)
+    wishlist_item = create_wishlist_book_for_scope(group: group, title: "Group Wish")
+    wishlist_item_two = create_wishlist_book_for_scope(group: group, title: "Group Wish Two")
+    non_wishlist_item = Book.create!(
+      user: users(:one),
+      title: "Available Book",
+      author: "Author",
+      condition: "good",
+      summary: "A long enough summary for an available book in this test.",
+      genre: "Fiction",
+      published_year: 2020,
+      status: ShareableItemStatus::AVAILABLE
+    )
+    GroupItemAvailability.create!(item: non_wishlist_item, community_group: group)
+
+    get "/api/items/wishlist", params: { type: Book.name, community_group_id: group.id, page: { size: 1 } }
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    data = body["data"] || []
+    assert_equal 1, data.length
+    ids = data.map { |item| item["id"] }
+    assert_includes ids, wishlist_item.id
+    assert_not_includes ids, wishlist_item_two.id
+    assert_not_includes ids, non_wishlist_item.id
+  end
+
+  test "wishlist endpoint filters by subgroup using availability subgroup" do
+    group = community_groups(:one)
+    sg1 = sub_groups(:one)
+    sg2 = sub_groups(:two)
+
+    in_scope = create_wishlist_book_for_scope(group: group, title: "Scoped Wish 1", sub_group: sg1)
+    out_of_scope = create_wishlist_book_for_scope(group: group, title: "Scoped Wish 2", sub_group: sg2)
+
+    get "/api/items/wishlist", params: { type: Book.name, community_group_id: group.id, sub_group_id: sg1.id }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, in_scope.id
+    assert_not_includes ids, out_of_scope.id
+  end
+
+  test "stats includes items_wishlisted count" do
+    group = CommunityGroup.create!(
+      name: "Stats Scope Group",
+      domain: "stats-scope.test",
+      short_name: "stats-scope-group",
+      group_description: "Stats scoped group for wishlist count tests"
+    )
+
+    available_item = Book.create!(
+      user: users(:one),
+      title: "Scoped Available Book",
+      author: "Author",
+      condition: "good",
+      summary: "A summary long enough for scoped available stats validation.",
+      genre: "Fiction",
+      published_year: 2020,
+      status: ShareableItemStatus::AVAILABLE
+    )
+    wishlisted_item = create_wishlist_book_for_scope(group: group, title: "Scoped Wishlist Book")
+    GroupItemAvailability.create!(item: available_item, community_group: group)
+
+    get stats_api_items_url, params: { type: Book.name, community_group_id: group.id }
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_equal 1, body["items_wishlisted"]
+  end
+
   test "create_wishlist creates wishlist book and item request" do
     user = users(:one)
     sign_in_as(user)
@@ -268,5 +340,26 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     book.reload
     assert_nil book.user_id
     assert_equal ShareableItemStatus::WISHLIST, book.status
+  end
+
+  private
+
+  def create_wishlist_book_for_scope(group:, title:, sub_group: nil)
+    item = Book.create!(
+      user_id: nil,
+      type: Book.name,
+      title: title,
+      author: "Wishlist Author",
+      summary: "Summary text long enough for validations on scoped wishlist tests.",
+      published_year: 2020,
+      genre: "Fiction",
+      status: ShareableItemStatus::WISHLIST
+    )
+    GroupItemAvailability.create!(
+      item: item,
+      community_group: group,
+      sub_group: sub_group
+    )
+    item
   end
 end

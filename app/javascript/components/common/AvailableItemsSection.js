@@ -1,7 +1,6 @@
 import React from 'react';
-import { GiftIcon } from '@heroicons/react/24/outline';
 import * as Constants from '../../lib/constants';
-import { truncateText } from '../../lib/textUtils';
+import ItemCard from './ItemCard';
 
 const AvailableItemsSection = ({
   title = 'Available Books',
@@ -15,28 +14,6 @@ const AvailableItemsSection = ({
   itemType = Constants.ITEM_TYPE_BOOK
 }) => {
   const hasMore = Boolean(paginationMeta?.hasMore) && books.length < (paginationMeta?.total ?? 0);
-  const isBook = itemType === Constants.ITEM_TYPE_BOOK;
-
-  const renderItemSubtitle = (item) => {
-    if (isBook) {
-      return item.author ? <p className="text-gray-600 mb-2">by {item.author}</p> : null;
-    }
-    return (item.brand || item.age_range) ? (
-      <p className="text-gray-600 mb-2">{[item.brand, item.age_range].filter(Boolean).join(' • ')}</p>
-    ) : null;
-  };
-
-  const renderItemMeta = (item) => {
-    if (isBook) {
-      return <span className="text-sm text-gray-500">{item.genre || '-'}</span>;
-    }
-    const summaryPreview = truncateText(item.summary);
-    return (
-      <span className="text-sm text-gray-500 truncate block min-w-0" title={item.summary}>
-        {summaryPreview || item.brand || item.age_range || '-'}
-      </span>
-    );
-  };
 
   return (
     <div className="mb-12">
@@ -53,46 +30,12 @@ const AvailableItemsSection = ({
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {books.map((item) => (
-              <div
+              <ItemCard
                 key={item.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => onBookSelect?.(item)}
-              >
-                <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
-                  {item.cover_image_url ? (
-                    <img
-                      src={item.cover_image_url}
-                      alt={item.title}
-                      className="img-box"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      {isBook ? (
-                        <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                      ) : (
-                        <GiftIcon className="w-16 h-16 mb-2" strokeWidth={1.5} />
-                      )}
-                      <span className="text-sm">No Cover</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">{item.title}</h3>
-                  {renderItemSubtitle(item)}
-                  <div className="flex items-center justify-between">
-                    {renderItemMeta(item)}
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.condition === 'excellent' ? 'bg-green-100 text-green-800' :
-                      item.condition === 'good' ? 'bg-blue-100 text-blue-800' :
-                        item.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                    }`}>
-                      {item.condition}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                item={item}
+                itemType={itemType}
+                onSelect={onBookSelect}
+              />
             ))}
           </div>
 

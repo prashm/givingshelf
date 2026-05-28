@@ -632,6 +632,98 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_equal 0, stats[:items_donated]
       assert_equal 0, stats[:items_requested]
     end
+
+    it "includes items_wishlisted count in stats payload" do
+      group = community_groups(:one)
+      wishlist_book = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Group Wishlist Stats Book",
+        author: "Author",
+        summary: "A long enough summary to validate wishlist counting in group stats.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: wishlist_book, community_group: group)
+
+      service = BookService.new
+      stats = service.community_group_stats(community_group_id: group.id)
+
+      assert_equal 1, stats[:items_wishlisted]
+    end
+  end
+
+  describe "#wishlist_items" do
+    it "returns only wishlist books in a community group" do
+      group = community_groups(:one)
+      wishlist_book = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Wishlist Group Book",
+        author: "Author",
+        summary: "A long enough summary for group wishlist filtering assertions here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      non_wishlist_book = Book.create!(
+        user: users(:one),
+        type: Book.name,
+        title: "Available Group Book",
+        author: "Author",
+        condition: "good",
+        summary: "A long enough summary for non-wishlist filtering assertions here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::AVAILABLE
+      )
+      GroupItemAvailability.create!(item: wishlist_book, community_group: group)
+      GroupItemAvailability.create!(item: non_wishlist_book, community_group: group)
+
+      service = BookService.new
+      result = service.wishlist_items(community_group_id: group.id)
+      ids = result.pluck(:id)
+
+      assert_includes ids, wishlist_book.id
+      assert_not_includes ids, non_wishlist_book.id
+    end
+
+    it "filters wishlist books by subgroup using availability subgroup" do
+      group = community_groups(:one)
+      sg1 = sub_groups(:one)
+      sg2 = sub_groups(:two)
+
+      in_scope = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Wishlist SG1",
+        author: "Author",
+        summary: "A long enough summary for subgroup wishlist filtering assertions one.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      out_scope = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Wishlist SG2",
+        author: "Author",
+        summary: "A long enough summary for subgroup wishlist filtering assertions two.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: in_scope, community_group: group, sub_group: sg1)
+      GroupItemAvailability.create!(item: out_scope, community_group: group, sub_group: sg2)
+
+      service = BookService.new
+      result = service.wishlist_items(community_group_id: group.id, sub_group_id: sg1.id)
+      ids = result.pluck(:id)
+
+      assert_includes ids, in_scope.id
+      assert_not_includes ids, out_scope.id
+    end
   end
 
   describe "#create_wishlist_item" do

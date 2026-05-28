@@ -77,6 +77,7 @@ Rails.application.routes.draw do
     resources :items, only: [ :index, :show, :create, :update, :destroy ] do
       collection do
         get :search
+        get :wishlist
         get :my_items
         get :stats
         post :wishlist, action: :create_wishlist
