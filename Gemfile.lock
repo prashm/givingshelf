@@ -426,7 +426,7 @@ GEM
       bigdecimal
       concurrent-ruby (~> 1.0, >= 1.0.2)
       logger
-    sitemap_generator (7.0.1)
+    sitemap_generator (7.0.2)
       builder (~> 3.0)
     solid_cable (4.0.0)
       actioncable (>= 7.2)
