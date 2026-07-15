@@ -21,6 +21,7 @@ import TermsOfServiceModal from './TermsOfServiceModal';
 import axios from '../lib/axios';
 import { getBrowseZipCookie, normalizeBrowseZip, setBrowseZipCookie } from '../lib/browseZipStorage';
 import { parsePageFromPath } from '../lib/textUtils';
+import { toyMatchesAgeBucket } from '../lib/toyAgeValidation';
 import * as Constants from '../lib/constants';
 
 const getUrlForPage = (page, extraState = {}) => {
@@ -338,20 +339,24 @@ const AppShellContent = ({ onNavigate }) => {
     if (Array.isArray(items)) setSearchResults(items);
   }, [items]);
 
-  const handleSearch = (searchRadius = null, queryOverride = null) => {
+  const handleSearch = (searchRadius = null, queryOverride = null, ageRange = null) => {
     const trimmedQuery = (queryOverride !== null ? queryOverride : searchQuery || '').trim();
     const normalizedZipCode = normalizeBrowseZip(zipCode || '');
     if (normalizedZipCode) {
       setZipCode(normalizedZipCode);
       setBrowseZipCookie(normalizedZipCode);
-      searchItems(trimmedQuery, normalizedZipCode, false, searchRadius);
+      searchItems(trimmedQuery, normalizedZipCode, false, searchRadius, null, null, ageRange || null);
     } else {
       const query = trimmedQuery.toLowerCase();
-      const results = Array.isArray(items) ? items.filter(item =>
-        item.title?.toLowerCase().includes(query) ||
-        (item.author && item.author.toLowerCase().includes(query)) ||
-        (item.brand && item.brand.toLowerCase().includes(query))
-      ) : [];
+      const results = Array.isArray(items) ? items.filter(item => {
+        const matchesQuery = !query || (
+          item.title?.toLowerCase().includes(query) ||
+          (item.author && item.author.toLowerCase().includes(query)) ||
+          (item.brand && item.brand.toLowerCase().includes(query))
+        );
+        const matchesAge = !ageRange || toyMatchesAgeBucket(item, ageRange);
+        return matchesQuery && matchesAge;
+      }) : [];
       setSearchResults(results);
     }
   };

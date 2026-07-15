@@ -1,5 +1,5 @@
 class Api::ItemsController < ApplicationController
-  before_action :require_authentication, except: [ :index, :show, :search, :wishlist, :track_view, :stats ]
+  before_action :require_authentication, except: [ :index, :show, :search, :wishlist, :track_view, :stats, :toy_age_ranges ]
   before_action :resume_session, only: [ :show, :track_view ]
   before_action :set_item, only: [ :show, :update, :destroy, :track_view, :fulfill_wishlist ]
 
@@ -54,8 +54,16 @@ class Api::ItemsController < ApplicationController
       zip_code: params[:zip_code],
       radius: params[:radius],
       community_group_id: params[:community_group_id],
-      sub_group_id: params[:sub_group_id]
+      sub_group_id: params[:sub_group_id],
+      age_range: params[:age_range]
     )
+  end
+
+  def toy_age_ranges
+    render json: {
+      age_ranges: ToyAgeRange.data,
+      accepted_inputs: ToyAgeRange.accepted_inputs
+    }
   end
 
   def wishlist

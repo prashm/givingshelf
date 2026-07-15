@@ -80,6 +80,7 @@ Rails.application.routes.draw do
         get :wishlist
         get :my_items
         get :stats
+        get :toy_age_ranges
         post :wishlist, action: :create_wishlist
       end
       member do

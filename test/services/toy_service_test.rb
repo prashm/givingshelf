@@ -254,6 +254,58 @@ class ToyServiceTest < ActiveSupport::TestCase
       assert_not_includes ids2, items(:toy_one).id
     end
 
+    it "filters by age bucket using range overlap" do
+      ensure_zip_availability_for(items(:toy_one), items(:toy_two))
+      items(:toy_one).update!(age_range: "5-7 years")
+      items(:toy_two).update!(age_range: "3-4 years")
+
+      service = ToyService.new
+      result = service.search_items(query_string: "", zip_code: nil, community_group_id: nil, age_range: "5-7 years")
+      ids = result.pluck(:id)
+      assert_includes ids, items(:toy_one).id
+      assert_not_includes ids, items(:toy_two).id
+    end
+
+    it "matches open-ended labels across every overlapping bucket" do
+      ensure_zip_availability_for(items(:toy_one), items(:toy_two))
+      items(:toy_one).update!(age_range: "8+")
+      items(:toy_two).update!(age_range: "3-4 years")
+
+      service = ToyService.new
+
+      %w[8-10\ years 11-12\ years 13+\ years].each do |bucket|
+        ids = service.search_items(query_string: "", zip_code: nil, community_group_id: nil, age_range: bucket).pluck(:id)
+        assert_includes ids, items(:toy_one).id, "expected 8+ toy to match #{bucket}"
+      end
+
+      lower_ids = service.search_items(query_string: "", zip_code: nil, community_group_id: nil, age_range: "5-7 years").pluck(:id)
+      assert_not_includes lower_ids, items(:toy_one).id
+    end
+
+    it "combines age bucket with query_string" do
+      ensure_zip_availability_for(items(:toy_one), items(:toy_two))
+      items(:toy_one).update!(age_range: "5-7 years", brand: "Lego")
+      items(:toy_two).update!(age_range: "5-7 years", brand: "Fisher-Price")
+
+      service = ToyService.new
+      result = service.search_items(query_string: "Lego", zip_code: nil, community_group_id: nil, age_range: "5-7 years")
+      ids = result.pluck(:id)
+      assert_includes ids, items(:toy_one).id
+      assert_not_includes ids, items(:toy_two).id
+    end
+
+    it "excludes toys without parsed age bounds when age filter is set" do
+      ensure_zip_availability_for(items(:toy_one), items(:toy_two))
+      items(:toy_one).update!(age_range: "5-7 years")
+      items(:toy_two).update!(age_range: nil)
+
+      service = ToyService.new
+      result = service.search_items(query_string: "", zip_code: nil, community_group_id: nil, age_range: "5-7 years")
+      ids = result.pluck(:id)
+      assert_includes ids, items(:toy_one).id
+      assert_not_includes ids, items(:toy_two).id
+    end
+
     it "filters by zip_code (exact match) when radius is not provided" do
       ensure_zip_availability_for(items(:toy_one), items(:toy_two))
 

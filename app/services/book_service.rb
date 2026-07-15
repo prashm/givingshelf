@@ -1,7 +1,7 @@
 class BookService < ItemService
   DEFAULT_WISHLIST_MESSAGE = "I'd love this book if anyone in the community has a copy.".freeze
 
-  def search_items(base_scope: Book.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+  def search_items(base_scope: Book.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil)
     super(
       base_scope: base_scope,
       query_string: query_string,

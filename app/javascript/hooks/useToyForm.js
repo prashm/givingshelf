@@ -70,6 +70,18 @@ export const useToyForm = (initialData = {}) => {
     setFormData(prev => ({ ...prev, ...updates }));
   }, []);
 
+  const setFieldError = useCallback((name, message) => {
+    setValidationErrors(prev => {
+      const next = { ...prev };
+      if (message) {
+        next[name] = message;
+      } else {
+        delete next[name];
+      }
+      return next;
+    });
+  }, []);
+
   const resetForm = useCallback((newData = {}) => {
     setFormData({
       title: '',
@@ -93,6 +105,7 @@ export const useToyForm = (initialData = {}) => {
     validationErrors,
     handleInputChange,
     updateFormData,
+    setFieldError,
     validateForm,
     resetForm
   };

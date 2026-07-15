@@ -140,7 +140,7 @@ export const ItemProvider = ({ children, itemType = Constants.ITEM_TYPE_BOOK }) 
     }
   }, [paginationMeta, loading, currentEndpoint]);
 
-  const searchItems = useCallback(async (query, zipCode, append = false, radius = null, communityGroupId = null, subGroupId = null) => {
+  const searchItems = useCallback(async (query, zipCode, append = false, radius = null, communityGroupId = null, subGroupId = null, ageRange = null) => {
     setLoading(true);
     setError(null);
     try {
@@ -154,6 +154,7 @@ export const ItemProvider = ({ children, itemType = Constants.ITEM_TYPE_BOOK }) 
       if (radius) paginationParams.radius = radius;
       if (communityGroupId) paginationParams.community_group_id = communityGroupId;
       if (subGroupId) paginationParams.sub_group_id = subGroupId;
+      if (ageRange) paginationParams.age_range = ageRange;
       const endpoint = '/api/items/search';
       setCurrentEndpoint(endpoint);
       const response = await axios.get(endpoint, { params: paginationParams, withCredentials: true });

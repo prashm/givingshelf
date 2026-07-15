@@ -6,6 +6,19 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "should get toy age ranges" do
+    get toy_age_ranges_api_items_url
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_equal ToyAgeRange.data.map { |r| r.stringify_keys }, body["age_ranges"]
+
+    accepted = body["accepted_inputs"]
+    assert_equal ToyAgeRange.values, accepted["bucket_labels"]
+    assert_includes accepted["examples"], "8+"
+    assert accepted["patterns"].all? { |p| p.key?("label") && p.key?("regex") }
+  end
+
   test "should get show" do
     get api_item_url(items(:one))
     assert_response :success

@@ -35,6 +35,8 @@ ActiveAdmin.register Toy do
       row :title
       row :brand
       row :age_range
+      row :min_age
+      row :max_age
       row :summary
       row :condition
       row :status do |toy|
@@ -57,7 +59,7 @@ ActiveAdmin.register Toy do
       f.input :user, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :title
       f.input :brand
-      f.input :age_range
+      f.input :age_range, hint: "As shown on packaging, e.g. 8+, 3-6 years, 5-7 years. min/max age are derived automatically on save."
       f.input :summary
       f.input :condition, as: :select, collection: %w[excellent good fair poor]
       f.input :status, as: :select, collection: ShareableItemStatus.collection

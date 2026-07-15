@@ -10,7 +10,9 @@ import CallToActionSection from './common/CallToActionSection';
 import WishlistBookCard from './common/WishlistBookCard';
 import WishlistItemsSection from './common/WishlistItemsSection';
 import SearchSection from './common/SearchSection';
+import ToySearchSection from './common/ToySearchSection';
 import BrowseSearchWithAutocomplete from './common/BrowseSearchWithAutocomplete';
+import { getToyAgeRanges } from '../lib/toysApi';
 
 const getLabels = (itemType) => {
   const isBook = itemType === Constants.ITEM_TYPE_BOOK;
@@ -77,6 +79,9 @@ const ItemList = ({
   const [submittedWishlistQuery, setSubmittedWishlistQuery] = useState('');
   const [zipForProfileComparison, setZipForProfileComparison] = useState((zipCode || '').trim());
   const [hasUserEditedZip, setHasUserEditedZip] = useState(false);
+  const [searchAgeRange, setSearchAgeRange] = useState('');
+  const [ageRangeOptions, setAgeRangeOptions] = useState([]);
+  const [ageRangeOptionsLoading, setAgeRangeOptionsLoading] = useState(false);
 
   const isGroupBrowse = Boolean(groupShortName);
   const labels = getLabels(itemType);
@@ -191,6 +196,25 @@ const ItemList = ({
   }, [getWishlistScopeParams]);
 
   useEffect(() => {
+    if (itemType !== Constants.ITEM_TYPE_TOY) return;
+
+    let cancelled = false;
+    setAgeRangeOptionsLoading(true);
+    getToyAgeRanges()
+      .then((options) => {
+        if (!cancelled) setAgeRangeOptions(options);
+      })
+      .catch((error) => {
+        console.error('Failed to load toy age ranges:', error);
+      })
+      .finally(() => {
+        if (!cancelled) setAgeRangeOptionsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [itemType]);
+
+  useEffect(() => {
     if (groupShortName) loadGroup();
   }, [groupShortName, loadGroup]);
 
@@ -218,7 +242,7 @@ const ItemList = ({
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
     resetCommunityWishlistState();
     setSubmittedWishlistQuery(query);
-    searchItems(query, zipCode || '', false, null, group.id, selectedSubGroupId);
+    searchItems(query, zipCode || '', false, null, group.id, selectedSubGroupId, searchAgeRange || null);
     loadImpactStats(selectedSubGroupId);
   };
 
@@ -255,7 +279,7 @@ const ItemList = ({
     setSubmittedWishlistQuery(query);
     setZipForProfileComparison((zipCode || '').trim());
     setHasUserEditedZip(false);
-    handleSearch(searchRadius === 'exact' ? null : searchRadius, query);
+    handleSearch(searchRadius === 'exact' ? null : searchRadius, query, searchAgeRange || null);
     if (zipCode && zipCode.length === 5) loadCommunityStats();
   };
 
@@ -517,7 +541,7 @@ const ItemList = ({
               secondaryField={secondaryField}
             />
           ) : (
-            <SearchSection
+            <ToySearchSection
               queryLabel={labels.searchLabel}
               queryPlaceholder={labels.searchPlaceholder}
               queryValue={searchQuery}
@@ -527,6 +551,10 @@ const ItemList = ({
               searchDisabled={!isGroupBrowse && !hasValidZipCode}
               searchLoading={itemsLoading}
               secondaryField={secondaryField}
+              ageRangeValue={searchAgeRange}
+              onAgeRangeChange={(e) => setSearchAgeRange(e.target.value)}
+              ageRangeOptions={ageRangeOptions}
+              ageRangeOptionsLoading={ageRangeOptionsLoading}
             />
           )}
 

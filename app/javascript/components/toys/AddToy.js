@@ -7,11 +7,35 @@ import ToyForm from '../common/ToyForm';
 import ImageCropper from '../common/ImageCropper';
 import { parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
+import { getToyAgeMetadata } from '../../lib/toysApi';
+import { isLikelyValidToyAge, toyAgeHint } from '../../lib/toyAgeValidation';
 
 const AddToy = ({ setCurrentPage, setRedirectReason, previousPage }) => {
   const { currentUser } = useAuth();
   const { createItem, loading, error } = useItems();
-  const { formData, validationErrors, handleInputChange, validateForm, updateFormData } = useToyForm();
+  const { formData, validationErrors, handleInputChange, validateForm, updateFormData, setFieldError } = useToyForm();
+  const [ageMetadata, setAgeMetadata] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getToyAgeMetadata()
+      .then((metadata) => {
+        if (!cancelled) setAgeMetadata(metadata);
+      })
+      .catch((error) => {
+        console.error('Failed to load toy age ranges:', error);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleAgeRangeBlur = (e) => {
+    if (isLikelyValidToyAge(e.target.value, ageMetadata)) {
+      setFieldError('age_range', '');
+    } else {
+      setFieldError('age_range', 'Use formats like 8+, 3-6, or 5-7 years');
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -122,6 +146,9 @@ const AddToy = ({ setCurrentPage, setRedirectReason, previousPage }) => {
               updateFormData={updateFormData}
               communityGroups={currentUser.community_groups || []}
               onCropUserImage={handleUserImageCrop}
+              ageRangeHint={toyAgeHint(ageMetadata)}
+              bucketLabels={ageMetadata?.bucket_labels || []}
+              onAgeRangeBlur={handleAgeRangeBlur}
             />
 
             <div className="flex gap-4 pt-4">

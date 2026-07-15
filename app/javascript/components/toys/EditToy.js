@@ -6,6 +6,8 @@ import { useImageCrop } from '../../hooks/useImageCrop';
 import ToyForm from '../common/ToyForm';
 import ImageCropper from '../common/ImageCropper';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { getToyAgeMetadata } from '../../lib/toysApi';
+import { isLikelyValidToyAge, toyAgeHint } from '../../lib/toyAgeValidation';
 
 const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, returnItemDetailSource, returnGroupShortName, returnSelectedItemType }) => {
   const { currentUser } = useAuth();
@@ -21,7 +23,7 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, retu
   }
 
   const { getItem, updateItem, loading, error } = useItems();
-  const { formData, validationErrors, handleInputChange, validateForm, updateFormData, resetForm } = useToyForm();
+  const { formData, validationErrors, handleInputChange, validateForm, updateFormData, resetForm, setFieldError } = useToyForm();
 
   const {
     imgRef: userImgRef,
@@ -47,6 +49,28 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, retu
   const [existingUserImages, setExistingUserImages] = useState([]);
   const [originalUserImages, setOriginalUserImages] = useState([]);
   const [removedExistingImageIndices, setRemovedExistingImageIndices] = useState(new Set());
+  const [ageMetadata, setAgeMetadata] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getToyAgeMetadata()
+      .then((metadata) => {
+        if (!cancelled) setAgeMetadata(metadata);
+      })
+      .catch((error) => {
+        console.error('Failed to load toy age ranges:', error);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleAgeRangeBlur = (e) => {
+    if (isLikelyValidToyAge(e.target.value, ageMetadata)) {
+      setFieldError('age_range', '');
+    } else {
+      setFieldError('age_range', 'Use formats like 8+, 3-6, or 5-7 years');
+    }
+  };
 
   useEffect(() => {
     const fetchToy = async () => {
@@ -211,6 +235,9 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, retu
               existingUserImages={existingUserImages}
               onCropUserImage={handleUserImageCrop}
               onRemoveExistingImage={handleRemoveExistingImage}
+              ageRangeHint={toyAgeHint(ageMetadata)}
+              bucketLabels={ageMetadata?.bucket_labels || []}
+              onAgeRangeBlur={handleAgeRangeBlur}
             />
 
             <div className="flex gap-4 pt-4">

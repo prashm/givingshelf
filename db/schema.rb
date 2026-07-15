@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_27_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_044327) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -149,6 +149,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_27_010000) do
     t.datetime "created_at", null: false
     t.string "genre"
     t.string "isbn"
+    t.integer "max_age"
+    t.integer "min_age"
     t.text "personal_note"
     t.text "pickup_address"
     t.string "pickup_method"
@@ -160,6 +162,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_27_010000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.integer "view_count", default: 0, null: false
+    t.index ["min_age", "max_age"], name: "index_items_on_min_age_and_max_age"
     t.index ["status"], name: "index_items_on_status"
     t.index ["type"], name: "index_items_on_type"
     t.index ["user_id"], name: "index_items_on_user_id"

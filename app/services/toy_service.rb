@@ -1,6 +1,6 @@
 class ToyService < ItemService
-  def search_items(base_scope: Toy.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    super(
+  def search_items(base_scope: Toy.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil)
+    items = super(
       base_scope: base_scope,
       query_string: query_string,
       zip_code: zip_code,
@@ -8,6 +8,8 @@ class ToyService < ItemService
       community_group_id: community_group_id,
       sub_group_id: sub_group_id
     )
+    items = items.merge(Toy.overlapping_age_bucket(age_range)) if age_range.present?
+    items
   end
 
   def item_map(toy)
@@ -18,6 +20,9 @@ class ToyService < ItemService
       summary: toy.summary,
       brand: toy.brand,
       age_range: toy.age_range,
+      age_range_display: ToyAgeRange.display_age_range(toy.age_range),
+      min_age: toy.min_age,
+      max_age: toy.max_age,
       condition: toy.condition,
       status: toy.status,
       status_display: ShareableItemStatus.display_status(toy.status),
@@ -46,6 +51,9 @@ class ToyService < ItemService
       title: toy.title,
       brand: toy.brand,
       age_range: toy.age_range,
+      age_range_display: ToyAgeRange.display_age_range(toy.age_range),
+      min_age: toy.min_age,
+      max_age: toy.max_age,
       condition: toy.condition,
       summary: toy.summary,
       status: toy.status,
