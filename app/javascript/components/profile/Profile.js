@@ -3,6 +3,7 @@ import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, PencilIcon, CameraIcon, 
 import { useAuth } from '../../contexts/AuthContext';
 import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageCropper from '../common/ImageCropper';
+import FormErrorBanner from '../common/FormErrorBanner';
 import AddressAutocomplete from '../common/AddressAutocomplete';
 import VerificationBadge from '../common/VerificationBadge';
 import PrivacyPolicyModal from '../PrivacyPolicyModal';
@@ -564,11 +565,10 @@ const Profile = ({ currentUser, setCurrentPage, redirectReason, clearRedirectRea
             </div>
 
             {/* Error Message */}
-            {errors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-red-600 text-sm">{errors.submit}</p>
-              </div>
-            )}
+            <FormErrorBanner
+              error={errors.submit}
+              className="bg-red-50 border border-red-200 rounded-md p-3 text-red-600 text-sm"
+            />
 
             {/* First Name */}
             <div>

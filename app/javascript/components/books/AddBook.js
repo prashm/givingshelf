@@ -6,6 +6,7 @@ import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageUpload from '../common/ImageUpload';
 import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
+import FormErrorBanner from '../common/FormErrorBanner';
 import { parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
 import { normalizedBookFieldsFromGoogleAutocomplete } from '../../lib/googleBookFieldsFromVolume';
@@ -160,11 +161,7 @@ const AddBook = ({ setCurrentPage, setRedirectReason, initialTitle, previousPage
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Add a New Book</h2>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
-          )}
+          <FormErrorBanner error={error} />
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Book Form Fields */}

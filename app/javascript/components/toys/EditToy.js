@@ -5,6 +5,7 @@ import { useToyForm } from '../../hooks/useToyForm';
 import { useImageCrop } from '../../hooks/useImageCrop';
 import ToyForm from '../common/ToyForm';
 import ImageCropper from '../common/ImageCropper';
+import FormErrorBanner from '../common/FormErrorBanner';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { getToyAgeMetadata } from '../../lib/toysApi';
 import { isLikelyValidToyAge, toyAgeHint } from '../../lib/toyAgeValidation';
@@ -219,11 +220,7 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, retu
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Edit Toy</h2>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
-          )}
+          <FormErrorBanner error={error} />
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <ToyForm

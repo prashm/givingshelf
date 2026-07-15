@@ -6,6 +6,7 @@ import { useImageCrop } from '../../hooks/useImageCrop';
 import ImageUpload from '../common/ImageUpload';
 import ImageCropper from '../common/ImageCropper';
 import BookForm from '../common/BookForm';
+import FormErrorBanner from '../common/FormErrorBanner';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { normalizedBookFieldsFromGoogleAutocomplete } from '../../lib/googleBookFieldsFromVolume';
 
@@ -273,11 +274,7 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, re
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Edit Book</h2>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
-          )}
+          <FormErrorBanner error={error} />
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Cover Image Display - Only show if no new cover image from search */}

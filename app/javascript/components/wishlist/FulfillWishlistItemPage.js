@@ -3,6 +3,7 @@ import axios from '../../lib/axios';
 import { useItems } from '../../contexts/ItemContext';
 import { useAuth } from '../../contexts/AuthContext';
 import FulfillWishlistItemForm from './FulfillWishlistItemForm';
+import FormErrorBanner from '../common/FormErrorBanner';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 const WISHLIST_STATUS = 3;
@@ -213,9 +214,7 @@ const FulfillWishlistItemPage = ({
     <div className="container mx-auto py-8 px-4 max-w-2xl">
       <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Fulfill a wish</h2>
       <p className="text-sm text-gray-600 mb-6 text-center">Set condition and pickup details. Your book will be listed and the requester will be notified.</p>
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">{error}</div>
-      )}
+      <FormErrorBanner error={error} className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded" />
       <div className="bg-white rounded-lg shadow-md p-6">
         <FulfillWishlistItemForm
           book={book}
