@@ -2,7 +2,6 @@
 
 class WishlistDigestJob < ApplicationJob
   queue_as :default
-  ADMIN_REPORT_EMAIL = "admin@givingshelf.net".freeze
 
   def perform
     run_at = Time.current
@@ -78,8 +77,9 @@ class WishlistDigestJob < ApplicationJob
     end
 
     begin
+      admin_report_email = ApplicationSite.email("admin")
       WishlistMailer.digest_admin_report(
-        ADMIN_REPORT_EMAIL,
+        admin_report_email,
         run_at: run_at,
         recipient_count: recipient_count,
         success_count: success_count,
@@ -88,7 +88,7 @@ class WishlistDigestJob < ApplicationJob
       ).deliver_now!
     rescue => e
       Rails.logger.error(
-        "[WishlistDigestJob] Failed to deliver admin report to #{ADMIN_REPORT_EMAIL}: " \
+        "[WishlistDigestJob] Failed to deliver admin report to #{admin_report_email}: " \
         "#{e.class} #{e.message}"
       )
     end

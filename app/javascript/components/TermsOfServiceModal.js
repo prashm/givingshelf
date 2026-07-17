@@ -1,6 +1,7 @@
 // Terms of Service Modal Component
 import React from 'react';
 import Modal from './Modal';
+import { applicationEmail } from '../lib/appConfig';
 
 const TermsOfServiceModal = ({ isOpen, onClose }) => {
   return (
@@ -93,7 +94,7 @@ const TermsOfServiceModal = ({ isOpen, onClose }) => {
             If you have questions about these terms, please contact us:
           </p>
           <p className="text-gray-700">
-            <strong>Email:</strong> support@givingshelf.net
+            <strong>Email:</strong> {applicationEmail('support')}
           </p>
           <p className="text-sm text-gray-600 mt-3">
             GivingShelf is operated by SimplifAI LLC

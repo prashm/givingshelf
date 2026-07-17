@@ -31,6 +31,13 @@ class Api::SessionsController < ApplicationController
   def create
     email = sanitize_email(params[:email])
 
+    if request_group&.domain.present? && !email_matches_group_domain?(email, request_group)
+      render json: {
+        error: "Please sign in with your @#{request_group.domain} email address"
+      }, status: :unprocessable_entity
+      return
+    end
+
     # Verify CAPTCHA if token is provided
     if ENV["CLOUDFLARE_TURNSTILE_SECRET_KEY"].present?
       # Only require CAPTCHA in production and staging
@@ -82,8 +89,7 @@ class Api::SessionsController < ApplicationController
     if user
       # Existing user - send OTP
       user.send_otp!
-      message = user_service.new_user ? "User created. " : ""
-      message << "Verification code sent to the email #{user.email_address}."
+      message = "#{user_service.new_user ? 'User created. ' : ''}Verification code sent to the email #{user.email_address}."
       logger.info message
       render json: {
         message: message,
@@ -92,8 +98,7 @@ class Api::SessionsController < ApplicationController
         profile_incomplete: !user.profile_complete?
       }, status: :created
     else
-      message = "Failed to fetch or create user with email #{email}."
-      message << " Error: #{user_service.errors.to_sentence}"
+      message = "Failed to fetch or create user with email #{email}. Error: #{user_service.errors.to_sentence}"
       logger.info message
         render json: {
           error: "Failed to fetch or create user with email #{email}",
@@ -104,6 +109,14 @@ class Api::SessionsController < ApplicationController
 
   def verify_otp
     email = sanitize_email(params[:email])
+
+    if request_group&.domain.present? && !email_matches_group_domain?(email, request_group)
+      render json: {
+        error: "Please sign in with your @#{request_group.domain} email address"
+      }, status: :unprocessable_entity
+      return
+    end
+
     verified = user_service.verify_otp(email, params[:otp_code]&.strip)
 
     if user_service.errors.present?

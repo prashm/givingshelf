@@ -1,10 +1,32 @@
 class CommunityGroupService
+  include Rails.application.routes.url_helpers
+
   attr_accessor :group
   attr_reader :errors
 
   def initialize(group = nil)
     @group = group
     @errors = []
+  end
+
+  def default_url_options
+    Rails.application.config.action_controller.default_url_options.presence ||
+      Rails.application.config.action_mailer.default_url_options ||
+      { host: ApplicationSite.host, protocol: ApplicationSite.protocol }
+  end
+
+  # Public URL for a community group (subdomain host in all environments).
+  def self.group_public_url(group, path: "/")
+    new(group).group_public_url(path: path)
+  end
+
+  def group_public_url(path: "/")
+    return nil unless group&.short_name.present?
+
+    path = "/" if path.blank?
+    path = "/#{path}" unless path.start_with?("/")
+
+    ApplicationSite.subdomain_url(group.short_name, path)
   end
 
   def create_group(admin_user, params)

@@ -39,7 +39,7 @@
                 <p class="text-gray-600"><%= group.group_description %></p>
               <% end %>
               <p class="text-sm text-gray-500">
-                Url: <%= link_to "/g/#{group.short_name}", "/g/#{group.short_name}", class: "text-emerald-600 hover:text-emerald-700 underline" %>
+                Url: <%= link_to CommunityGroupService.group_public_url(group), CommunityGroupService.group_public_url(group), class: "text-emerald-600 hover:text-emerald-700 underline", target: "_blank" %>
                 <%= group.domain.present? ? " | Email Domain: #{group.domain}" : "" %> 
               </p>
               <div class="mt-2 flex items-center gap-3 text-sm">
@@ -55,7 +55,7 @@
                   <span class="text-xl">⋯</span>
                 </summary>
                 <div class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg p-1 z-10">
-                  <%= link_to "/g/#{group.short_name}", target: "_blank", class: "flex items-center w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-700" do %>
+                  <%= link_to CommunityGroupService.group_public_url(group), target: "_blank", class: "flex items-center w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded text-gray-700" do %>
                     <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>

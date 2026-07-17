@@ -1,6 +1,10 @@
 // Privacy Policy Modal Component
 import React from 'react';
 import Modal from './Modal';
+import {
+  applicationEmail,
+  getApplicationDomain,
+} from '../lib/appConfig';
 
 const PrivacyPolicyModal = ({ isOpen, onClose }) => {
   return (
@@ -270,8 +274,8 @@ const PrivacyPolicyModal = ({ isOpen, onClose }) => {
             Have questions about your privacy or this policy? We're here to help.
           </p>
           <div className="space-y-2 text-gray-700">
-            <p><strong>Email:</strong> privacy@givingshelf.net</p>
-            <p><strong>Website:</strong> givingshelf.net</p>
+            <p><strong>Email:</strong> {applicationEmail('privacy')}</p>
+            <p><strong>Website:</strong> {getApplicationDomain()}</p>
             <p className="text-sm text-gray-600 mt-3">
               GivingShelf is operated by SimplifAI LLC
             </p>

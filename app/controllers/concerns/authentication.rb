@@ -64,13 +64,19 @@ module Authentication
 
       user.sessions.create!(session_params).tap do |session|
         Current.session = session
-        cookies.signed.permanent[:session_id] = { value: session.id, httponly: true, same_site: :lax }
+        cookies.signed.permanent[:session_id] = session_cookie_options.merge(value: session.id)
       end
     end
 
     def terminate_session
       Current.session&.destroy
       Current.session = nil
-      cookies.delete(:session_id)
+      cookies.delete(:session_id, session_cookie_options.slice(:domain))
+    end
+
+    def session_cookie_options
+      opts = { httponly: true, same_site: :lax }
+      opts[:domain] = ApplicationSite.production_cookie_domain if Rails.env.production?
+      opts
     end
 end

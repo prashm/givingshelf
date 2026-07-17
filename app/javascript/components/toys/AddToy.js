@@ -57,7 +57,7 @@ const AddToy = ({ setCurrentPage, setRedirectReason, previousPage }) => {
     const zipGroup = currentUser.community_groups.find((g) => g.short_name === Constants.ZIPCODE_SHORT_NAME);
     const selected = zipGroup?.id ? [zipGroup.id] : [];
     const parsed = parsePageFromPath(window.location.pathname);
-    if (parsed?.page === 'groupLanding' && parsed.groupShortName) {
+    if ((parsed?.page === 'groupLanding' || parsed?.page === 'groupBrowse') && parsed.groupShortName) {
       const fromGroup = currentUser.community_groups.find((g) => g.short_name === parsed.groupShortName);
       if (fromGroup?.id && !selected.includes(fromGroup.id)) selected.push(fromGroup.id);
     }

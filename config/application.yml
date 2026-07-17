@@ -1,0 +1,12 @@
+development:
+  domain: lvh.me
+  protocol: http
+  port: 3000
+
+test:
+  domain: givingshelf.test
+  protocol: http
+
+production:
+  domain: givingshelf.net
+  protocol: https

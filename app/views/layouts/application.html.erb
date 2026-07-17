@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <% 
-      # Normalize canonical URL - always use HTTPS and non-www
-      def normalize_canonical_url(url)
-        return url if url.blank?
+    <%
+      app_domain = ApplicationSite.domain
+      base_url = ApplicationSite.base_url
+
+      # Normalize canonical URL - always use HTTPS and non-www (preserve group subdomains)
+      normalize_canonical_url = lambda do |url|
+        next url if url.blank?
         # Replace http:// with https://
-        url = url.gsub(/^http:\/\//, 'https://')
-        # Remove www subdomain
+        url = url.gsub(/^http:\/\//, "#{ApplicationSite.protocol}://")
+        # Remove www only; preserve configured group subdomains.
         url = url.gsub(/^https:\/\/www\./, 'https://')
-        # For query parameters (like ?search=), use base URL
+        # For query parameters (like ?search=), use base URL of current host
         if url.include?('?search=')
-          return "https://givingshelf.net/"
+          uri = URI.parse(url) rescue nil
+          next uri ? "#{uri.scheme}://#{uri.host}/" : "#{base_url}/"
         end
         url
       end
@@ -24,24 +28,26 @@
           is_book ? "#{@item.title} by #{@item.author} - GivingShelf" : "#{@item.title} - Free Toy | GivingShelf"
         )
         page_description = content_for(:description) || @item.summary
-        page_url = content_for(:url) || "#{request.protocol}#{request.host}/#{item_path}"
+        page_url = content_for(:url) || "#{request.protocol}#{request.host_with_port}/#{item_path}"
         if @item.cover_image.attached?
           page_image = content_for(:image) || @item.cover_image.attachment.url
         else
-          page_image = content_for(:image) || "https://givingshelf.net/gs-logo.png"
+          page_image = content_for(:image) || "#{base_url}/gs-logo.png"
         end
-        canonical_url = content_for(:canonical) || "https://givingshelf.net/#{item_path}"
+        # Prefer current host so group subdomain item pages keep their canonical host
+        canonical_host = request.host.end_with?(".#{app_domain}") && request.host != "www.#{app_domain}" ?
+          "#{ApplicationSite.protocol}://#{request.host}" : base_url
+        canonical_url = content_for(:canonical) || "#{canonical_host}/#{item_path}"
       else
         page_title = content_for(:title) || "GivingShelf | Local Community Book & Toy Sharing"
         page_description = content_for(:description) || "A free platform for neighbors to share, swap, and donate books and toys. Join your local GivingShelf community to reduce waste and support local families."
         # Normalize page_url to always use HTTPS and non-www, and remove query params for canonical
         current_url = request.url
         # Remove query parameters for canonical URL
-        canonical_url = content_for(:canonical) || normalize_canonical_url(current_url.split('?').first)
-        page_url = content_for(:url) || normalize_canonical_url(current_url)
-        page_image = content_for(:image) || "https://givingshelf.net/gs-logo.png"
+        canonical_url = content_for(:canonical) || normalize_canonical_url.call(current_url.split('?').first)
+        page_url = content_for(:url) || normalize_canonical_url.call(current_url)
+        page_image = content_for(:image) || "#{base_url}/gs-logo.png"
       end
-      base_url = "https://givingshelf.net"
     %>
     <title><%= page_title %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -51,6 +57,10 @@
     <meta name="keywords" content="book swap, toy donation, community sharing, local neighborhood, free books, sustainable living">
     <meta name="classification" content="Non-Profit, Community, Education">
     <meta name="category" content="Online Communities">
+    <meta name="application-domain" content="<%= app_domain %>">
+    <meta name="application-protocol" content="<%= ApplicationSite.protocol %>">
+    <meta name="application-port" content="<%= ApplicationSite.port %>">
+    <meta name="application-base-url" content="<%= base_url %>">
     <%# Canonical URL %>
     <link rel="canonical" href="<%= canonical_url %>">
     
@@ -98,7 +108,7 @@
         "@graph" => [
           {
             "@type" => "NGO",
-            "@id" => "https://givingshelf.net/#organization",
+            "@id" => "#{base_url}/#organization",
             "name" => "GivingShelf",
             "url" => base_url,
             "logo" => "#{base_url}/gs-logo.png",
@@ -142,8 +152,8 @@
       # Add WebSite schema
       structured_data["@graph"] << {
         "@type" => "WebSite",
-        "@id" => "https://givingshelf.net/#website",
-        "publisher" => { "@id" => "https://givingshelf.net/#organization" },
+        "@id" => "#{base_url}/#website",
+        "publisher" => { "@id" => "#{base_url}/#organization" },
         "name" => "GivingShelf",
         "url" => base_url,
         "description" => page_description

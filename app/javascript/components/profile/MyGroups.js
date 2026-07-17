@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSiteGroup } from '../../contexts/SiteGroupContext';
+import { groupPublicPathOrHost } from '../../lib/groupSubdomain';
+import { getApplicationDomain } from '../../lib/appConfig';
 import * as Constants from '../../lib/constants';
 
 const TABS = [
@@ -9,8 +12,21 @@ const TABS = [
   { key: 'invites', label: 'Invites' },
 ];
 
+const formatGroupUrlLabel = (shortName) => {
+  if (!shortName) return '';
+  const domain = getApplicationDomain();
+  return domain ? `${shortName}.${domain}` : `/g/${shortName}`;
+};
+
+const switchToGroup = (shortName) => {
+  if (!shortName) return;
+  window.location.href = groupPublicPathOrHost(shortName);
+};
+
 const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
   const { checkAuthStatus } = useAuth();
+  const { rules, siteGroup } = useSiteGroup();
+  const restrictJoin = Boolean(rules?.restrict_join_other_groups);
   const [activeTab, setActiveTab] = useState('current');
   const [loading, setLoading] = useState(false);
   const [currentGroups, setCurrentGroups] = useState([]);
@@ -235,6 +251,16 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
       </div>
 
       {/* Public group search */}
+      {restrictJoin ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold text-amber-900 mb-2">Joining other groups is restricted</h3>
+          <p className="text-sm text-amber-800">
+            {siteGroup
+              ? `You're on the ${siteGroup.name} site. You can only be a member of this group from here.`
+              : 'Your account is linked to an organization group, so you cannot join other groups.'}
+          </p>
+        </div>
+      ) : (
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-3">Find a public group to join</h3>
         <div className="relative">
@@ -262,7 +288,7 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
                 >
                   <div className="font-medium text-gray-900">{s.name}</div>
                   <div className="text-xs text-gray-500">
-                    /g/{s.short_name} • {s.member_count} members • Created {new Date(s.created_at).toLocaleDateString()}
+                    {formatGroupUrlLabel(s.short_name)} • {s.member_count} members • Created {new Date(s.created_at).toLocaleDateString()}
                   </div>
                 </button>
               ))}
@@ -278,11 +304,11 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
                 <div className="text-sm text-gray-600">
                   <button
                     type="button"
-                    onClick={() => setCurrentPage('groupLanding', { groupShortName: selectedGroup.short_name })}
+                    onClick={() => switchToGroup(selectedGroup.short_name)}
                     title="Switch to this group"
                     className="text-emerald-700 hover:text-emerald-800 underline"
                   >
-                    /g/{selectedGroup.short_name}
+                    {formatGroupUrlLabel(selectedGroup.short_name)}
                   </button>
                   {' • '}{selectedGroup.member_count} members • Created {new Date(selectedGroup.created_at).toLocaleDateString()}
                 </div>
@@ -331,6 +357,7 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
           </div>
         )}
       </div>
+      )}
 
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -368,11 +395,11 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
                         <div className="text-sm text-gray-600">
                           <button
                             type="button"
-                            onClick={() => setCurrentPage('groupLanding', { groupShortName: g.short_name })}
+                            onClick={() => switchToGroup(g.short_name)}
                             title="Switch to this group"
                             className="text-emerald-700 hover:text-emerald-800 underline"
                           >
-                            /g/{g.short_name}
+                            {formatGroupUrlLabel(g.short_name)}
                           </button>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
@@ -438,11 +465,11 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
                         <div className="text-sm text-gray-600">
                           <button
                             type="button"
-                            onClick={() => setCurrentPage('groupLanding', { groupShortName: r.community_group?.short_name })}
+                            onClick={() => switchToGroup(r.community_group?.short_name)}
                             title="Switch to this group"
                             className="text-emerald-700 hover:text-emerald-800 underline"
                           >
-                            /g/{r.community_group?.short_name}
+                            {formatGroupUrlLabel(r.community_group?.short_name)}
                           </button>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
@@ -481,11 +508,11 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
                         <div className="text-sm text-gray-600">
                           <button
                             type="button"
-                            onClick={() => setCurrentPage('groupLanding', { groupShortName: inv.community_group?.short_name })}
+                            onClick={() => switchToGroup(inv.community_group?.short_name)}
                             title="Switch to this group"
                             className="text-emerald-700 hover:text-emerald-800 underline"
                           >
-                            /g/{inv.community_group?.short_name}
+                            {formatGroupUrlLabel(inv.community_group?.short_name)}
                           </button>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
@@ -500,12 +527,23 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
                       </div>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <button
-                        onClick={() => acceptInvite(inv.id)}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm"
-                      >
-                        Accept
-                      </button>
+                      {(() => {
+                        const inviteBlocked = restrictJoin && siteGroup && inv.community_group?.id !== siteGroup.id;
+                        return (
+                          <button
+                            onClick={() => acceptInvite(inv.id)}
+                            disabled={inviteBlocked}
+                            title={inviteBlocked ? 'You can only accept invites for this site\'s group' : ''}
+                            className={`px-4 py-2 rounded-md text-sm ${
+                              inviteBlocked
+                                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            }`}
+                          >
+                            Accept
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}

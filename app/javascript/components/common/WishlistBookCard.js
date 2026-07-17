@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from '../../lib/axios';
 import { searchGoogleBooks } from '../../lib/googleBooksApi';
 import { normalizedBookFieldsFromGoogleAutocomplete } from '../../lib/googleBookFieldsFromVolume';
+import { getHostGroupShortName } from '../../lib/groupSubdomain';
 import * as Constants from '../../lib/constants';
 
 const cardShell = 'bg-white rounded-lg shadow-md overflow-hidden h-full flex flex-col';
@@ -93,7 +94,7 @@ const WishlistBookCard = ({
         }
       } : null;
       onOpenLoginModal?.({
-        page: window.location.pathname.includes("/g/") ? "groupBrowse" : "books",
+        page: (window.location.pathname.includes("/g/") || Boolean(getHostGroupShortName())) ? "groupBrowse" : "books",
         ...(body ? { afterLoginAction: { type: 'createWishlist', body } } : {})
       });
       return;

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { resolveSiteGroupShortName } from './groupSubdomain';
 
 // Get CSRF token from meta tag
 const getCSRFToken = () => {
@@ -12,14 +13,19 @@ axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
 
-// Add request interceptor to include CSRF token on each request
-// This ensures we always get the latest token, even if the DOM changes
+// Add request interceptor to include CSRF token and site group context on each request
 axios.interceptors.request.use(
   (config) => {
     const token = getCSRFToken();
     if (token) {
       config.headers['X-CSRF-Token'] = token;
     }
+
+    const siteGroupShortName = resolveSiteGroupShortName();
+    if (siteGroupShortName) {
+      config.headers['X-Site-Group-Short-Name'] = siteGroupShortName;
+    }
+
     // Ensure withCredentials is always true
     config.withCredentials = true;
     // Ensure proper content type for JSON requests
@@ -34,4 +40,3 @@ axios.interceptors.request.use(
 );
 
 export default axios;
-

@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "GivingShelf <noreply@givingshelf.net>"
+  default from: -> { "GivingShelf <#{ApplicationSite.email('noreply')}>" }
   layout "mailer"
 end

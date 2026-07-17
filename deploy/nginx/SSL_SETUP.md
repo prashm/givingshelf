@@ -25,6 +25,7 @@ Or check the AWS Console → EC2 → Your Instance → Public IPv4 address
 1. Domain List → **Manage** for `givingshelf.net` → **Advanced DNS**  
 2. A record `@` → [EC2 IP]  
 3. A record `www` → [EC2 IP]  
+4. A record `*` → [EC2 IP] (wildcard for group subdomains like `acme.givingshelf.net`)
 
 **booksharecommunity.org** (redirects to givingshelf.net; same cert):  
 1. Domain List → **Manage** for `booksharecommunity.org` → **Advanced DNS**  
@@ -35,14 +36,17 @@ Save changes and wait for propagation (5–30 min).
 
 ## Step 3: Verify DNS Propagation
 
-Wait 5–30 minutes, then verify all four resolve to your EC2 IP:
+Wait 5–30 minutes, then verify apex, www, and a sample wildcard subdomain resolve to your EC2 IP:
 
 ```bash
-dig givingshelf.net
-dig www.givingshelf.net
-dig booksharecommunity.org
-dig www.booksharecommunity.org
+dig givingshelf.net +short
+dig www.givingshelf.net +short
+dig acme.givingshelf.net +short
+dig booksharecommunity.org +short
+dig www.booksharecommunity.org +short
 ```
+
+`acme.givingshelf.net` should return the same IP as `givingshelf.net` (via the `*` A record).
 
 ## Fresh EC2 / Re-create from scratch
 
@@ -66,6 +70,8 @@ In AWS Console:
    - Port 443 (HTTPS) from 0.0.0.0/0
 
 ## Step 5: Obtain SSL Certificate
+
+### Apex + booksharecommunity.org (HTTP-01 / webroot)
 
 **Important for fresh EC2 / re-create:** Request **all four domains in one command** and use `--cert-name givingshelf.net` so the certificate is saved at `givingshelf.net/`. Nginx is configured to use that path only.
 
@@ -96,11 +102,44 @@ Replace `your-email@example.com` with your actual email address.
 
 Certificates will be saved to: `deploy/nginx/certbot/live/givingshelf.net/` (inside containers: `/etc/letsencrypt/live/givingshelf.net/`).
 
+### Wildcard certificate for group subdomains (`*.givingshelf.net`) — DNS-01
+
+Group URLs like `https://acme.givingshelf.net` require a **wildcard** certificate. Let's Encrypt only issues wildcards via the **DNS-01** challenge (not HTTP webroot).
+
+**Prerequisites:** Wildcard `A` record `*` → EC2 IP must already exist (Step 2).
+
+**Manual DNS challenge** (works with any DNS provider):
+
+```bash
+docker compose -f docker-compose.production.yml --profile certbot run --rm certbot certonly \
+  --manual --preferred-challenges dns \
+  --cert-name givingshelf.net \
+  -d givingshelf.net \
+  -d '*.givingshelf.net' \
+  -d booksharecommunity.org \
+  -d www.booksharecommunity.org \
+  --email your-email@example.com \
+  --agree-tos
+```
+
+Do **not** also pass `-d www.givingshelf.net`: Let's Encrypt rejects it as redundant because `*.givingshelf.net` already covers `www`.
+
+When prompted:
+
+1. Add a **TXT** record at `_acme-challenge.givingshelf.net` with the value certbot prints.
+2. Wait for DNS propagation (`dig TXT _acme-challenge.givingshelf.net +short`).
+3. Press Enter so certbot can validate.
+4. You may be asked for a second TXT value (apex + wildcard); update the record and continue.
+5. Reload nginx after success:
+   `docker compose -f docker-compose.production.yml exec nginx nginx -s reload`
+
+**Automated renewal:** Manual DNS-01 cannot renew unattended. Prefer a DNS plugin for your provider (e.g. `certbot-dns-cloudflare`, `certbot-dns-route53`) and update `deploy/nginx/renew-certificates.sh` accordingly. Until then, re-run the manual command before the cert expires (~90 days).
+
 ### If you already have a certificate in `givingshelf.net-0001/` (e.g. after expanding an existing cert)
 
 Nginx expects the cert at `givingshelf.net/`. Create a symlink **from the project directory** so the path is correct for Docker:
 
-```bash
+```sudo bash -c '
 cd ~/givingshelf/deploy/nginx/certbot/live
 # Remove existing givingshelf.net (directory or broken symlink)
 rm -rf givingshelf.net
@@ -109,6 +148,7 @@ ln -s givingshelf.net-0001 givingshelf.net
 # Verify: should show givingshelf.net -> givingshelf.net-0001 and fullchain.pem under the target
 ls -la
 ls -la givingshelf.net-0001/
+'
 ```
 
 Then reload nginx: `docker compose -f docker-compose.production.yml exec nginx nginx -s reload`

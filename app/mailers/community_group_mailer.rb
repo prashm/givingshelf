@@ -9,7 +9,7 @@ class CommunityGroupMailer < ApplicationMailer
     return if recipients.blank?
 
     @manage_url = group_admin_group_memberships_url(@group)
-    @group_page_url = group_page_url(short_name: @group.short_name)
+    @group_page_url = CommunityGroupService.group_public_url(@group)
 
     mail(
       to: recipients,
@@ -26,7 +26,7 @@ class CommunityGroupMailer < ApplicationMailer
     @member_count = @group.community_group_memberships.count
 
     @my_groups_url = "#{root_url}my-groups?tab=invites"
-    @group_page_url = group_page_url(short_name: @group.short_name)
+    @group_page_url = CommunityGroupService.group_public_url(@group)
 
     mail(
       to: @invitee_email,
@@ -37,7 +37,7 @@ class CommunityGroupMailer < ApplicationMailer
   def membership_accepted(group, user)
     @group = group
     @user = user
-    @group_page_url = group_page_url(short_name: @group.short_name)
+    @group_page_url = CommunityGroupService.group_public_url(@group)
 
     mail(
       to: @user.email_address,
@@ -49,7 +49,7 @@ class CommunityGroupMailer < ApplicationMailer
     @group = group
     @user = user
     @manage_url = group_admin_group_memberships_url(@group)
-    @group_page_url = group_page_url(short_name: @group.short_name)
+    @group_page_url = CommunityGroupService.group_public_url(@group)
 
     recipients = @group.admins.pluck(:email_address)
     return if recipients.blank?

@@ -5,8 +5,11 @@ import axios from '../../lib/axios';
 import OtpVerification from './OtpVerification';
 import TurnstileWidget from './TurnstileWidget';
 import generateDeviceFingerprint from '../../lib/deviceFingerprint';
+import { isLocalDevHost } from '../../lib/groupSubdomain';
+import { useSiteGroup } from '../../contexts/SiteGroupContext';
 
 const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
+  const { rules } = useSiteGroup();
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +58,13 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
     if (!emailRegex.test(emailValue)) {
       return 'Please enter a valid email address';
     }
+    const requiredDomain = rules?.email_domain_required;
+    if (requiredDomain) {
+      const emailDomain = emailValue.trim().toLowerCase().split('@')[1];
+      if (emailDomain !== requiredDomain.toLowerCase()) {
+        return `Please use your @${requiredDomain} email address`;
+      }
+    }
     return '';
   };
 
@@ -92,10 +102,9 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
       return;
     }
 
-    // Only require CAPTCHA if site key is present and not in development (localhost)
+    // Only require CAPTCHA if site key is present and not on the development host.
     const siteKey = getTurnstileSiteKey();
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const requiresCaptcha = siteKey && !isLocalhost;
+    const requiresCaptcha = siteKey && !isLocalDevHost();
 
     if (requiresCaptcha && !captchaToken) {
       setError('Please complete the security verification.');
@@ -280,7 +289,9 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
         {/* Title */}
         <h2 className="text-3xl font-bold text-gray-900 text-center mb-2">Sign In</h2>
         <p className="text-gray-600 text-center mb-8">
-          Enter your email, and we'll send a code to your inbox. No need for passwords!
+          {rules?.email_domain_required
+            ? `Sign in with your @${rules.email_domain_required} email, and we'll send a code to your inbox. No need for passwords!`
+            : "Enter your email, and we'll send a code to your inbox. No need for passwords!"}
         </p>
 
         {/* Form */}
@@ -314,8 +325,8 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* CAPTCHA Widget - Only show if site key is present and not localhost */}
-          {getTurnstileSiteKey() && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+          {/* CAPTCHA Widget - Only show if site key is present and not on the development host */}
+          {getTurnstileSiteKey() && !isLocalDevHost() && (
             <div className="flex justify-center py-2">
               <TurnstileWidget
                 ref={turnstileRef}
@@ -330,7 +341,7 @@ const LoginSignupModal = ({ isOpen, onClose, onSuccess }) => {
           {/* Continue Button */}
           <button
             type="submit"
-            disabled={isLoading || ((getTurnstileSiteKey() && (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) && !captchaToken)}
+            disabled={isLoading || ((getTurnstileSiteKey() && !isLocalDevHost()) && !captchaToken)}
             className="w-full text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-5 hover:bg-emerald-700"
             style={{ marginTop: '1.25rem', backgroundColor: '#059669' }}
           >

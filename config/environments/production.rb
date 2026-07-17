@@ -59,13 +59,17 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "givingshelf.net", protocol: "https" }
+  app_config = Rails.application.config.x.application
+  app_domain = app_config.fetch(:domain)
+  app_protocol = app_config.fetch(:protocol)
+
+  config.action_mailer.default_url_options = { host: app_domain, protocol: app_protocol }
 
   # Configure AWS SES SMTP settings
   config.action_mailer.smtp_settings = {
     address: ENV.fetch("SMTP_ADDRESS", "email-smtp.us-west-2.amazonaws.com"),
     port: 587,
-    domain: "givingshelf.net",
+    domain: app_domain,
     user_name: ENV.fetch("SMTP_USER_NAME", "test"),
     password: ENV.fetch("SMTP_PASSWORD", "test"),
     authentication: :plain,
@@ -83,11 +87,10 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
+  # Allow apex and group subdomains.
+  config.hosts << app_domain
+  config.hosts << /.*\.#{Regexp.escape(app_domain)}\z/
+
   # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

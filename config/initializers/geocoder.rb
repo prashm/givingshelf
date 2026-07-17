@@ -7,7 +7,7 @@ Geocoder.configure(
 
   # Nominatim requires a user agent (required by their usage policy)
   http_headers: {
-    "User-Agent" => "GivingShelf App (noreply@givingshelf.net)"
+    "User-Agent" => "GivingShelf App (noreply@#{Rails.configuration.x.application.fetch(:domain)})"
   },
 
   # Timeout for geocoding service

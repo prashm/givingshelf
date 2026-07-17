@@ -4,6 +4,7 @@ class CommunityGroup < ApplicationRecord
   ZIPCODE_GROUP_DESCRIPTION = "Discover and Share Books and Toys Within Your ZIP Code".freeze
   DEFAULT_SHORT_DESCRIPTION = "Discover and Share Books and Toys Within This Group".freeze
   GROUP_ADMINS_SHORT_NAME = "group-admins".freeze
+  RESERVED_SHORT_NAMES = %w[www api admin mail smtp staging dev test].freeze
 
   has_many :growth_stats, dependent: :destroy
   has_many :sub_groups, dependent: :destroy
@@ -27,6 +28,7 @@ class CommunityGroup < ApplicationRecord
                      format: { with: /\A[\w\.-]+\.[a-z]{2,}\z/i, message: "must be a valid domain" }
   validates :short_name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9-]+\z/, message: "must be lowercase alphanumeric and hyphens only" }
   validates :group_description, length: { maximum: 100 }, allow_blank: true
+  validate :short_name_not_reserved
 
   scope :by_domain, ->(domain) { where(domain: domain) }
   scope :by_short_name, ->(short_name) { where(short_name: short_name) }
@@ -82,5 +84,12 @@ class CommunityGroup < ApplicationRecord
 
   def normalize_blank_domain
     self.domain = nil if domain.blank?
+  end
+
+  def short_name_not_reserved
+    return if short_name.blank?
+    return unless RESERVED_SHORT_NAMES.include?(short_name)
+
+    errors.add(:short_name, "is reserved and cannot be used")
   end
 end

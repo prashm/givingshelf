@@ -59,7 +59,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     assert n
 
     admin_email = ActionMailer::Base.deliveries.last
-    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_equal [ ApplicationSite.email("admin") ], admin_email.to
     assert_includes admin_email.subject, "Wishlist Digest Report"
     assert_includes admin_email.body.encoded, "Recipients attempted:"
     assert_includes admin_email.body.encoded, "Successful deliveries:"
@@ -80,7 +80,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     end
 
     admin_email = ActionMailer::Base.deliveries.last
-    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_equal [ ApplicationSite.email("admin") ], admin_email.to
     assert_includes admin_email.body.encoded, "Recipients attempted:</strong> 0"
     assert_includes admin_email.body.encoded, "Successful deliveries:</strong> 0"
     assert_includes admin_email.body.encoded, "Failed deliveries:</strong> 0"
@@ -95,7 +95,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     end
 
     admin_email = ActionMailer::Base.deliveries.last
-    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_equal [ ApplicationSite.email("admin") ], admin_email.to
     assert_includes admin_email.body.encoded, "Recipients attempted:</strong> 0"
   end
 
@@ -121,7 +121,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     assert_nil notification
 
     admin_email = ActionMailer::Base.deliveries.last
-    assert_equal [ "admin@givingshelf.net" ], admin_email.to
+    assert_equal [ ApplicationSite.email("admin") ], admin_email.to
     assert_includes admin_email.subject, "Wishlist Digest Report"
     assert_includes admin_email.body.encoded, @recipient.email_address
     assert_includes admin_email.body.encoded, "Recipients attempted:</strong> 1"

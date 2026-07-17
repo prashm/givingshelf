@@ -53,6 +53,7 @@ Rails.application.routes.draw do
   get "/g/:short_name/toys", to: "group_pages#show"
 
   get "growth_stats", to: "home#growth_stats"
+  get "robots.txt", to: "home#robots", defaults: { format: :text }
   get "fulfill_wishlist/:id", to: "home#index", as: :fulfill_wishlist
 
   # API routes
@@ -65,6 +66,8 @@ Rails.application.routes.draw do
         post :request_to_join
       end
     end
+
+    get "site_context", to: "community_groups#site_context"
 
     get "my_groups", to: "community_groups#my_groups"
     get "my_groups/requests", to: "community_groups#my_group_requests"

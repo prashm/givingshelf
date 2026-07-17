@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchCommunityStats, fetchWishlistItems } from '../lib/booksApi';
 import { fetchGroupByShortName } from '../lib/communityGroupsApi';
+import { navigateToApexHome } from '../lib/appConfig';
 import { useItems } from '../contexts/ItemContext';
 import * as Constants from '../lib/constants';
 import AvailableItemsSection from './common/AvailableItemsSection';
@@ -344,7 +345,8 @@ const ItemList = ({
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Group Not Found</h1>
           <p className="text-gray-600 mb-4">The group you're looking for doesn't exist.</p>
           <button
-            onClick={() => setCurrentPage('home')}
+            type="button"
+            onClick={navigateToApexHome}
             className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700"
           >
             Go Home

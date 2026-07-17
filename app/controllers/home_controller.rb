@@ -1,5 +1,5 @@
 class HomeController < ApplicationController
-  allow_unauthenticated_access only: [ :index, :growth_stats ]
+  allow_unauthenticated_access only: [ :index, :growth_stats, :robots ]
 
   def index
     # Detect if this is an item detail page (/books/:id or /toys/:id)
@@ -20,6 +20,18 @@ class HomeController < ApplicationController
 
   def growth_stats
     render json: GrowthStatsService.landing_payload
+  end
+
+  def robots
+    render plain: <<~ROBOTS
+      User-agent: *
+      Allow: /
+
+      Disallow: /admin/
+      Disallow: /api/
+
+      Sitemap: #{ApplicationSite.base_url}/sitemap.xml.gz
+    ROBOTS
   end
 
   private

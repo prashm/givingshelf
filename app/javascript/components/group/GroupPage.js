@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchGroupByShortName } from '../../lib/communityGroupsApi';
 import { fetchCommunityStats } from '../../lib/booksApi';
+import { navigateToApexHome } from '../../lib/appConfig';
 import { useBooks } from '../../contexts/BookContext';
 import AvailableItemsSection from '../common/AvailableItemsSection';
 import PopularGenresSection from '../common/PopularGenresSection';
@@ -116,7 +117,8 @@ const GroupPage = ({ groupShortName, searchQuery, setSearchQuery, zipCode, setZi
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Group Not Found</h1>
           <p className="text-gray-600 mb-4">The group you're looking for doesn't exist.</p>
           <button
-            onClick={() => setCurrentPage('home')}
+            type="button"
+            onClick={navigateToApexHome}
             className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700"
           >
             Go Home

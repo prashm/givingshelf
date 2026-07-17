@@ -1,4 +1,6 @@
 class Api::CommunityGroupsController < ApplicationController
+  allow_unauthenticated_access only: [ :by_short_name, :index, :show, :site_context ]
+
   before_action :require_authentication, only: [
     :request_to_join,
     :my_groups,
@@ -21,6 +23,22 @@ class Api::CommunityGroupsController < ApplicationController
     end
   end
 
+  # GET /api/site_context
+  # Resolves group from subdomain (prod), /g/ path, or X-Site-Group-Short-Name header (dev).
+  def site_context
+    group = request_group
+    rules = {
+      email_domain_required: group&.domain.presence,
+      restrict_join_other_groups: !!(group.present? || (Current.user && user_in_domain_locked_group?(Current.user)))
+    }
+
+    render json: {
+      host_group: group ? CommunityGroupService.group_map(group, include_sub_groups: true) : nil,
+      rules: rules,
+      url_mode: group_url_mode
+    }
+  end
+
   # GET /api/community_groups?q=...
   # Public-only search for group discovery (used by My Groups autocomplete).
   def index
@@ -39,6 +57,10 @@ class Api::CommunityGroupsController < ApplicationController
 
   def request_to_join
     return render json: { error: "Not found" }, status: :not_found unless @group.public?
+
+    if join_restricted_for_user?(Current.user, @group)
+      return render json: { error: join_restriction_error_message }, status: :forbidden
+    end
 
     request = group_service.request_to_join(Current.user, message: params[:message])
     if request.nil?
@@ -64,6 +86,10 @@ class Api::CommunityGroupsController < ApplicationController
     request = GroupMembershipRequest.find(params[:id])
     if !request.invited? || request.email_address != Current.user.email_address
       return render json: { error: "Not authorized" }, status: :forbidden
+    end
+
+    if join_restricted_for_user?(Current.user, request.community_group)
+      return render json: { error: join_restriction_error_message }, status: :forbidden
     end
 
     membership = group_service.add_user_to_group_from_request(Current.user, request)

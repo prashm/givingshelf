@@ -1,5 +1,6 @@
 import React from 'react';
 import * as Constants from './constants';
+import { getHostGroupShortName, resolveSiteGroupShortName, useSubdomainUrls } from './groupSubdomain';
 
 /**
  * Truncates text to a maximum length with ellipsis
@@ -73,6 +74,55 @@ export const linkifyText = (text) => {
  * @returns {Object} Object with page, itemType, and groupShortName
  */
 export const parsePageFromPath = (path) => {
+  const hostGroupShortName = getHostGroupShortName();
+
+  // Production subdomain mode: /, /books, /toys are group pages
+  if (hostGroupShortName) {
+    if (path === '/' || path === '') {
+      return { page: 'groupLanding', groupShortName: hostGroupShortName, itemType: null };
+    }
+    if (path === '/books') {
+      return { page: 'groupBrowse', groupShortName: hostGroupShortName, itemType: Constants.ITEM_TYPE_BOOK };
+    }
+    if (path === '/toys') {
+      return { page: 'groupBrowse', groupShortName: hostGroupShortName, itemType: Constants.ITEM_TYPE_TOY };
+    }
+    const bookDetailMatch = path.match(/^\/books\/(\d+)$/);
+    if (bookDetailMatch) {
+      return {
+        page: 'itemDetails',
+        itemId: parseInt(bookDetailMatch[1], 10),
+        itemType: Constants.ITEM_TYPE_BOOK,
+        groupShortName: hostGroupShortName
+      };
+    }
+    const toyDetailMatch = path.match(/^\/toys\/(\d+)$/);
+    if (toyDetailMatch) {
+      return {
+        page: 'itemDetails',
+        itemId: parseInt(toyDetailMatch[1], 10),
+        itemType: Constants.ITEM_TYPE_TOY,
+        groupShortName: hostGroupShortName
+      };
+    }
+    if (path.startsWith('/my-groups')) {
+      return { page: 'myGroups', groupShortName: hostGroupShortName, itemType: null };
+    }
+    if (path === '/item_request_details') {
+      return { page: 'itemRequestDetails', groupShortName: hostGroupShortName, itemType: null };
+    }
+    const fulfillMatch = path.match(/^\/fulfill_wishlist\/(\d+)$/);
+    if (fulfillMatch) {
+      return {
+        page: 'fulfillWishlistItem',
+        fulfillItemId: parseInt(fulfillMatch[1], 10),
+        itemType: Constants.ITEM_TYPE_BOOK,
+        groupShortName: hostGroupShortName
+      };
+    }
+    return { page: 'home', groupShortName: hostGroupShortName, itemType: null };
+  }
+
   if (path === '/books') {
     return { page: 'books', itemType: Constants.ITEM_TYPE_BOOK, groupShortName: null };
   }
@@ -90,7 +140,7 @@ export const parsePageFromPath = (path) => {
   if (path.startsWith('/my-groups')) {
     return { page: 'myGroups', groupShortName: null, itemType: null };
   }
-  // /g/:short_name/books or /g/:short_name/toys
+  // /g/:short_name/books or /g/:short_name/toys (development / legacy path mode)
   const groupBooksMatch = path.match(/^\/g\/([^/]+)\/books$/);
   if (groupBooksMatch) {
     return { page: 'groupBrowse', groupShortName: groupBooksMatch[1], itemType: Constants.ITEM_TYPE_BOOK };
@@ -127,16 +177,15 @@ export const parsePageFromPath = (path) => {
  */
 export const getGroupPageInfo = () => {
   if (typeof window !== 'undefined') {
-    const state = window.history.state;
-    if (state && state.groupShortName) {
-      return { isGroupPage: true, groupShortName: state.groupShortName };
-    }
-    const path = window.location.pathname;
-    const parsed = parsePageFromPath(path);
-    if (parsed.page === 'groupLanding' || parsed.page === 'groupBrowse') {
-      return { isGroupPage: true, groupShortName: parsed.groupShortName };
+    const shortName = resolveSiteGroupShortName();
+    if (shortName) {
+      const parsed = parsePageFromPath(window.location.pathname);
+      const isGroupPage = parsed.page === 'groupLanding' || parsed.page === 'groupBrowse' || Boolean(getHostGroupShortName());
+      return { isGroupPage, groupShortName: shortName };
     }
   }
   return { isGroupPage: false, groupShortName: null };
 };
+
+export { useSubdomainUrls };
 

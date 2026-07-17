@@ -21,20 +21,30 @@ import TermsOfServiceModal from './TermsOfServiceModal';
 import axios from '../lib/axios';
 import { getBrowseZipCookie, normalizeBrowseZip, setBrowseZipCookie } from '../lib/browseZipStorage';
 import { parsePageFromPath } from '../lib/textUtils';
+import { resolveSiteGroupShortName, useSubdomainUrls } from '../lib/groupSubdomain';
 import { toyMatchesAgeBucket } from '../lib/toyAgeValidation';
 import * as Constants from '../lib/constants';
 
 const getUrlForPage = (page, extraState = {}) => {
+  const hostMode = useSubdomainUrls();
+  const groupName = extraState.groupShortName || resolveSiteGroupShortName();
+
   if (page === 'books') return '/books';
   if (page === 'toys') return '/toys';
   if (page === 'editBook') return '/books';
   if (page === 'editToy') return '/toys';
-  if (page === 'home') return '/';
+  if (page === 'home') {
+    if (hostMode && groupName) return '/';
+    return '/';
+  }
   if (page === 'myGroups') return '/my-groups';
   if (page === 'itemRequestDetails' && extraState.itemRequestId) return `/item_request_details?id=${extraState.itemRequestId}`;
-  if (page === 'groupLanding' && extraState.groupShortName) return `/g/${extraState.groupShortName}`;
-  if (page === 'groupBrowse' && extraState.groupShortName) {
-    return extraState.itemType === Constants.ITEM_TYPE_TOY ? `/g/${extraState.groupShortName}/toys` : `/g/${extraState.groupShortName}/books`;
+  if (page === 'groupLanding' && groupName) {
+    return hostMode ? '/' : `/g/${groupName}`;
+  }
+  if (page === 'groupBrowse' && groupName) {
+    const itemPath = extraState.itemType === Constants.ITEM_TYPE_TOY ? 'toys' : 'books';
+    return hostMode ? `/${itemPath}` : `/g/${groupName}/${itemPath}`;
   }
   if (page === 'itemDetails' && extraState.selectedBook?.id != null) {
     const type = extraState.selectedItemType || extraState.itemType;

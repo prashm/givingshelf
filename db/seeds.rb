@@ -178,7 +178,7 @@ puts "Created #{created_requests.length} item requests"
 
 # Create super admin user
 puts "Creating super admin user..."
-admin_user = User.find_or_initialize_by(email_address: "admin@givingshelf.net")
+admin_user = User.find_or_initialize_by(email_address: ApplicationSite.email("admin"))
 admin_user.assign_attributes(
   password: "Adm!n4bs",
   password_confirmation: "Adm!n4bs",

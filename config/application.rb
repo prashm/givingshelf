@@ -23,6 +23,11 @@ module GivingShelf
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+    config.x.application = config_for(:application).with_indifferent_access
+    config.action_dispatch.tld_length = [
+      config.x.application.fetch(:domain).split(".").length - 1,
+      0
+    ].max
     config.active_storage.variant_processor = :disabled
   end
 end
