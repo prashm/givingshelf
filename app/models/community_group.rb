@@ -22,12 +22,15 @@ class CommunityGroup < ApplicationRecord
 
   before_validation :set_default_short_description
   before_validation :normalize_blank_domain
+  before_validation :normalize_blank_support_item_types
 
   validates :name, presence: true
   validates :domain, uniqueness: true, allow_blank: true,
                      format: { with: /\A[\w\.-]+\.[a-z]{2,}\z/i, message: "must be a valid domain" }
   validates :short_name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9-]+\z/, message: "must be lowercase alphanumeric and hyphens only" }
   validates :group_description, length: { maximum: 100 }, allow_blank: true
+  validates :support_item_types, length: { maximum: 10 }, allow_nil: true,
+                                 inclusion: { in: SupportItemType.values, allow_nil: true }
   validate :short_name_not_reserved
 
   scope :by_domain, ->(domain) { where(domain: domain) }
@@ -36,7 +39,7 @@ class CommunityGroup < ApplicationRecord
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
     %w[
-      id id_value name short_name domain group_description public
+      id id_value name short_name domain group_description public support_item_types
       created_at updated_at
     ]
   end
@@ -76,6 +79,15 @@ class CommunityGroup < ApplicationRecord
     logo.attachment.url if logo.attached?
   end
 
+  def supports_all_item_types?
+    support_item_types.blank?
+  end
+
+  # Returns "Book", "Toy", or nil when both types are supported.
+  def restricted_item_type
+    SupportItemType.item_class_for(support_item_types)
+  end
+
   private
 
   def set_default_short_description
@@ -84,6 +96,10 @@ class CommunityGroup < ApplicationRecord
 
   def normalize_blank_domain
     self.domain = nil if domain.blank?
+  end
+
+  def normalize_blank_support_item_types
+    self.support_item_types = nil if support_item_types.blank?
   end
 
   def short_name_not_reserved

@@ -27,6 +27,7 @@ class SiteContextAndGroupRulesTest < ActionDispatch::IntegrationTest
     assert_equal "none", body["url_mode"]
     assert_nil body["rules"]["email_domain_required"]
     assert_equal false, body["rules"]["restrict_join_other_groups"]
+    assert_nil body["rules"]["restricted_item_type"]
   end
 
   test "site_context resolves group from X-Site-Group-Short-Name header on localhost" do
@@ -40,7 +41,32 @@ class SiteContextAndGroupRulesTest < ActionDispatch::IntegrationTest
     assert_equal group.short_name, body["host_group"]["short_name"]
     assert_equal group.domain, body["rules"]["email_domain_required"]
     assert_equal true, body["rules"]["restrict_join_other_groups"]
+    assert_nil body["rules"]["restricted_item_type"]
     assert_equal "path", body["url_mode"]
+  end
+
+  test "site_context includes restricted_item_type for books-only group" do
+    group = community_groups(:one)
+    group.update!(support_item_types: "B")
+
+    get "/api/site_context", headers: { "X-Site-Group-Short-Name" => group.short_name }
+    assert_response :success
+
+    body = json
+    assert_equal "B", body["host_group"]["support_item_types"]
+    assert_equal "Book", body["rules"]["restricted_item_type"]
+  end
+
+  test "site_context includes restricted_item_type for toys-only group" do
+    group = community_groups(:one)
+    group.update!(support_item_types: "T")
+
+    get "/api/site_context", headers: { "X-Site-Group-Short-Name" => group.short_name }
+    assert_response :success
+
+    body = json
+    assert_equal "T", body["host_group"]["support_item_types"]
+    assert_equal "Toy", body["rules"]["restricted_item_type"]
   end
 
   test "login rejects email that does not match group domain from header" do

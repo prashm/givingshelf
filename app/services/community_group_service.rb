@@ -311,6 +311,7 @@ class CommunityGroupService
       domain: group.domain,
       short_name: group.short_name,
       public: group.public,
+      support_item_types: group.support_item_types,
       member_count: member_count,
       logo_url: group.logo_url,
       created_at: group.created_at,

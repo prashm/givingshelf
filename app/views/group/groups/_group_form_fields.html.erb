@@ -18,9 +18,22 @@
   </div>
 
   <div class="flex flex-col h-full">
-    <%= form.label :short_name, "Short Name *", class: "block text-sm font-medium text-gray-700 mb-1" %>
-    <p class="text-xs text-gray-500 mb-2">Part of your public group URL (<span class="font-mono">&lt;short_name&gt;.<%= ApplicationSite.domain %></span>). Locally: <span class="font-mono">/g/&lt;short_name&gt;</span>.</p>
-    <%= form.text_field :short_name, required: true, placeholder: "my-group", class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+    <%= form.label :short_name, "Name For Your Site URL *", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-2">A short name consisting of lowercase letters, numbers, and hyphens. Example: "my-group"</p>
+    <div class="flex items-center gap-1">
+      <%= form.text_field :short_name, required: true, placeholder: "my-group", class: "w-30 px-3 py-2 border border-gray-300 rounded-md" %>
+      <span class="text-sm text-gray-500 font-mono whitespace-nowrap">.<%= ApplicationSite.domain %></span>
+    </div>
+  </div>
+
+  <div class="flex flex-col h-full">
+    <%= form.label :support_item_types, "Supported Item Types", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <p class="text-xs text-gray-500 mb-2">What visitors can browse and donate on this group site.</p>
+    <%= form.select :support_item_types,
+        SupportItemType.collection_for_select,
+        {},
+        class: "w-full px-3 py-2 border border-gray-300 rounded-md",
+        style: "appearance: auto; WebkitAppearance: auto;" %>
   </div>
 
   <div class="md:col-span-2">

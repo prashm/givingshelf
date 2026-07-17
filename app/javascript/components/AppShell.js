@@ -23,6 +23,7 @@ import { getBrowseZipCookie, normalizeBrowseZip, setBrowseZipCookie } from '../l
 import { parsePageFromPath } from '../lib/textUtils';
 import { resolveSiteGroupShortName, useSubdomainUrls } from '../lib/groupSubdomain';
 import { toyMatchesAgeBucket } from '../lib/toyAgeValidation';
+import { useSiteGroup } from '../contexts/SiteGroupContext';
 import * as Constants from '../lib/constants';
 
 const getUrlForPage = (page, extraState = {}) => {
@@ -71,6 +72,8 @@ const AppShellContent = ({ onNavigate }) => {
 
   const { currentUser, loading: authLoading } = useAuth();
   const { items, searchItems, fetchItems } = useItems();
+  const { rules, loading: siteGroupLoading } = useSiteGroup();
+  const restrictedItemType = rules?.restricted_item_type || null;
 
   const getInitialState = () => {
     if (typeof window !== 'undefined') {
@@ -345,6 +348,14 @@ const AppShellContent = ({ onNavigate }) => {
     if (typeof onNavigate === 'function') onNavigate();
   };
 
+  // Single-type groups: force donate type without navigating away
+  useEffect(() => {
+    if (siteGroupLoading || !restrictedItemType) return;
+    if (currentPage === 'donate' && donateItemType !== restrictedItemType) {
+      setDonateItemType(restrictedItemType);
+    }
+  }, [siteGroupLoading, restrictedItemType, currentPage, donateItemType]);
+
   useEffect(() => {
     if (Array.isArray(items)) setSearchResults(items);
   }, [items]);
@@ -512,9 +523,21 @@ const AppShellContent = ({ onNavigate }) => {
           fromProfile={previousPage === 'profile'}
         />;
       case 'groupLanding':
+        // Wait for site context so single-type groups don't flash the dual landing
+        if (siteGroupLoading) {
+          return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" />
+            </div>
+          );
+        }
+        // Single-type groups: landing URL stays "/", render browse in place
+        if (restrictedItemType) {
+          return <ItemList itemType={restrictedItemType} groupShortName={groupShortName} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} setRedirectReason={setRedirectReason} />;
+        }
         return <GroupLanding groupShortName={groupShortName} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} />;
       case 'groupBrowse':
-        return <ItemList itemType={currentItemType || Constants.ITEM_TYPE_BOOK} groupShortName={groupShortName} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} setRedirectReason={setRedirectReason} />;
+        return <ItemList itemType={restrictedItemType || currentItemType || Constants.ITEM_TYPE_BOOK} groupShortName={groupShortName} items={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} zipCode={zipCode} setZipCode={setZipCode} handleSearch={handleSearch} handleItemSelect={handleItemSelect} currentUser={currentUser} setCurrentPage={setCurrentPage} onOpenLoginModal={handleOpenLoginModal} setRedirectReason={setRedirectReason} />;
       default:
         return <LandingPage
           setCurrentPage={setCurrentPage}
@@ -632,18 +655,21 @@ const AppShellContent = ({ onNavigate }) => {
 
 const AppShell = () => {
   const [pathKey, setPathKey] = useState(0);
+  const { rules } = useSiteGroup();
+  const restrictedItemType = rules?.restricted_item_type || null;
   const parsed = parsePageFromPath(typeof window !== 'undefined' ? window.location.pathname : '/');
   const hist = typeof window !== 'undefined' ? window.history.state : null;
   const donateItemTypeFromState = hist?.donateItemType || Constants.ITEM_TYPE_BOOK;
   const effectivePage = hist?.page || parsed.page;
-  const providerItemType = effectivePage === 'books' ? Constants.ITEM_TYPE_BOOK
+  const providerItemType = restrictedItemType
+    || (effectivePage === 'books' ? Constants.ITEM_TYPE_BOOK
     : effectivePage === 'toys' ? Constants.ITEM_TYPE_TOY
     : effectivePage === 'editToy' ? Constants.ITEM_TYPE_TOY
     : effectivePage === 'fulfillWishlistItem' ? Constants.ITEM_TYPE_BOOK
     : effectivePage === 'groupBrowse' ? (hist?.itemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
     : effectivePage === 'itemDetails' ? (hist?.selectedItemType || parsed.itemType || Constants.ITEM_TYPE_BOOK)
     : effectivePage === 'donate' ? donateItemTypeFromState
-    : Constants.ITEM_TYPE_BOOK;
+    : Constants.ITEM_TYPE_BOOK);
 
   useEffect(() => {
     const handlePopState = () => setPathKey(k => k + 1);

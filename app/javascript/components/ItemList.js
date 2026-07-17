@@ -14,6 +14,7 @@ import SearchSection from './common/SearchSection';
 import ToySearchSection from './common/ToySearchSection';
 import BrowseSearchWithAutocomplete from './common/BrowseSearchWithAutocomplete';
 import { getToyAgeRanges } from '../lib/toysApi';
+import { useSiteGroup } from '../contexts/SiteGroupContext';
 
 const getLabels = (itemType) => {
   const isBook = itemType === Constants.ITEM_TYPE_BOOK;
@@ -53,6 +54,8 @@ const ItemList = ({
   setRedirectReason
 }) => {
   const { paginationMeta, loadMoreItems, searchItems, loading: itemsLoading } = useItems();
+  const { rules } = useSiteGroup();
+  const restrictedItemType = rules?.restricted_item_type || null;
   const [searchRadius, setSearchRadius] = useState('exact');
   const [showRadiusOptions, setShowRadiusOptions] = useState(false);
   const [communityStats, setCommunityStats] = useState({
@@ -569,19 +572,21 @@ const ItemList = ({
             </div>
           )}
 
-          <p className="text-center text-sm text-gray-500 -mt-2 mb-6">
-            Looking for {otherItemName} instead?{' '}
-            <button
-              type="button"
-              className="text-emerald-600 hover:text-emerald-700 underline cursor-pointer font-medium"
-              onClick={() => isGroupBrowse
-                ? setCurrentPage('groupBrowse', { groupShortName, itemType: otherItemType })
-                : setCurrentPage(otherItemName)
-              }
-            >
-              Click here
-            </button>
-          </p>
+          {!restrictedItemType && (
+            <p className="text-center text-sm text-gray-500 -mt-2 mb-6">
+              Looking for {otherItemName} instead?{' '}
+              <button
+                type="button"
+                className="text-emerald-600 hover:text-emerald-700 underline cursor-pointer font-medium"
+                onClick={() => isGroupBrowse
+                  ? setCurrentPage('groupBrowse', { groupShortName, itemType: otherItemType })
+                  : setCurrentPage(otherItemName)
+                }
+              >
+                Click here
+              </button>
+            </p>
+          )}
         </div>
 
         <AvailableItemsSection

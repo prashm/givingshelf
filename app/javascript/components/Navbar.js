@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import LoginSignupModal from './auth/LoginSignupModal';
 import { parsePageFromPath, getGroupPageInfo } from '../lib/textUtils';
+import { useSiteGroup } from '../contexts/SiteGroupContext';
 import * as Constants from '../lib/constants';
 
 const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLogout, isLoginModalOpen, onOpenLoginModal, onCloseLoginModal }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const { rules } = useSiteGroup();
+  const restrictedItemType = rules?.restricted_item_type || null;
 
   const handleLoginClick = (e) => {
     e.preventDefault();
@@ -26,18 +29,35 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
 
   const path = typeof window !== 'undefined' ? window.location.pathname : '/';
   const parsed = parsePageFromPath(path);
-  const isToysContext = parsed.page === 'toys' || (parsed.page === 'groupBrowse' && parsed.itemType === Constants.ITEM_TYPE_TOY);
+  const effectiveItemType = restrictedItemType
+    || ((parsed.page === 'toys' || (parsed.page === 'groupBrowse' && parsed.itemType === Constants.ITEM_TYPE_TOY))
+      ? Constants.ITEM_TYPE_TOY
+      : Constants.ITEM_TYPE_BOOK);
+  const isToysContext = effectiveItemType === Constants.ITEM_TYPE_TOY;
   const donateLabel = isToysContext ? 'Donate a Toy' : 'Donate a Book';
-  const donateExtra = isToysContext ? { donateItemType: Constants.ITEM_TYPE_TOY } : { donateItemType: Constants.ITEM_TYPE_BOOK };
+  const donateExtra = { donateItemType: effectiveItemType };
 
   const { isGroupPage, groupShortName } = typeof window !== 'undefined' ? getGroupPageInfo() : { isGroupPage: false, groupShortName: null };
 
-  const logoClickTarget = isGroupPage && groupShortName ? () => handleNavClick('groupLanding', { groupShortName }) : () => handleNavClick('home');
+  const logoClickTarget = () => {
+    if (isGroupPage && groupShortName) {
+      // Keep group root URL ("/"); AppShell renders browse in place when restricted
+      handleNavClick('groupLanding', { groupShortName });
+    } else {
+      handleNavClick('home');
+    }
+  };
 
   const goToBrowsePage = (itemType) => {
-    if (parsed.page === 'groupBrowse' && groupShortName) {
-      setCurrentPage('groupBrowse', { groupShortName, itemType });
-    } else if (itemType === Constants.ITEM_TYPE_TOY) {
+    const type = restrictedItemType || itemType;
+    if ((parsed.page === 'groupBrowse' || parsed.page === 'groupLanding' || isGroupPage) && groupShortName) {
+      // Stay on group root when restricted so URL does not change to /books|/toys
+      if (restrictedItemType) {
+        setCurrentPage('groupLanding', { groupShortName });
+      } else {
+        setCurrentPage('groupBrowse', { groupShortName, itemType: type });
+      }
+    } else if (type === Constants.ITEM_TYPE_TOY) {
       setCurrentPage('toys');
     } else {
       setCurrentPage('books');
@@ -72,6 +92,7 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
     const itemClass = isMobile ? 'cursor-pointer hover:bg-emerald-700 px-4 py-2 rounded' : 'cursor-pointer hover:underline';
     const nav = isMobile ? handleNavClick : (page, extra = {}) => setCurrentPage(page, extra);
     const onLogoutClick = isMobile ? handleLogout : onLogout;
+    const showBrowseDonate = parsed.page !== 'groupLanding' || Boolean(restrictedItemType);
 
     if (!currentUser) {
       return (
@@ -81,7 +102,7 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
 
     return (
       <>
-        {parsed.page !== 'groupLanding' && (
+        {showBrowseDonate && (
           <>
             {isToysContext ? (
               <li className={itemClass} onClick={() => goToBrowsePage(Constants.ITEM_TYPE_TOY)}>Browse Toys</li>
@@ -154,4 +175,4 @@ const Navbar = ({ currentUser, setCurrentPage, currentPage, onLoginSuccess, onLo
   );
 };
 
-export default Navbar; 
+export default Navbar;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon, EyeIcon, GiftIcon } from '@heroicons/react/24/outline';
 import { useItems } from '../../contexts/ItemContext';
+import { useSiteGroup } from '../../contexts/SiteGroupContext';
 import * as Constants from '../../lib/constants';
 import { truncateText } from '../../lib/textUtils';
 
@@ -10,6 +11,8 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
   const [filter, setFilter] = useState('all'); // all, Books, Toys
   const { deleteItem: deleteItemFromAPI } = useItems();
   const [deletingItemId, setDeletingItemId] = useState(null);
+  const { rules } = useSiteGroup();
+  const restrictedItemType = rules?.restricted_item_type || null;
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -83,9 +86,11 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
     }
   };
 
+  const effectiveFilter = restrictedItemType || filter;
+
   const filteredItems = myItems.filter(item => {
-    if (filter === 'all') return true;
-    return item.type === filter;
+    if (effectiveFilter === 'all') return true;
+    return item.type === effectiveFilter;
   });
 
   const bookCount = myItems.filter(i => i.type === Constants.ITEM_TYPE_BOOK).length;
@@ -125,20 +130,22 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
           </div>
         </div>
 
-        {/* Filter Select */}
-        <div className="mb-6">
-          <select
-            id="filter-select"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            style={{ appearance: 'auto' }}
-          >
-            <option value="all">All Items ({myItems.length})</option>
-            <option value={Constants.ITEM_TYPE_BOOK}>Books ({bookCount})</option>
-            <option value={Constants.ITEM_TYPE_TOY}>Toys ({toyCount})</option>
-          </select>
-        </div>
+        {/* Filter Select — hidden on single-type group sites */}
+        {!restrictedItemType && (
+          <div className="mb-6">
+            <select
+              id="filter-select"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              style={{ appearance: 'auto' }}
+            >
+              <option value="all">All Items ({myItems.length})</option>
+              <option value={Constants.ITEM_TYPE_BOOK}>Books ({bookCount})</option>
+              <option value={Constants.ITEM_TYPE_TOY}>Toys ({toyCount})</option>
+            </select>
+          </div>
+        )}
 
         {/* Items Grid */}
         {filteredItems.length === 0 ? (
@@ -146,25 +153,29 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
             <div className="text-6xl mb-4">📦</div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
             <p className="text-gray-500 mb-6">
-              {filter === 'all'
+              {effectiveFilter === 'all'
                 ? "You haven't added any items yet."
-                : `You don't have any ${filter === Constants.ITEM_TYPE_BOOK ? 'books' : 'toys'}.`
+                : `You don't have any ${effectiveFilter === Constants.ITEM_TYPE_BOOK ? 'books' : 'toys'}.`
               }
             </p>
-            {filter === 'all' && (
+            {(effectiveFilter === 'all' || restrictedItemType) && (
               <div className="flex flex-wrap justify-center gap-4">
-                <button
-                  onClick={() => setCurrentPage('donate', { donateItemType: Constants.ITEM_TYPE_BOOK })}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
-                >
-                  Add Book
-                </button>
-                <button
-                  onClick={() => setCurrentPage('donate', { donateItemType: Constants.ITEM_TYPE_TOY })}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
-                >
-                  Add Toy
-                </button>
+                {(!restrictedItemType || restrictedItemType === Constants.ITEM_TYPE_BOOK) && (
+                  <button
+                    onClick={() => setCurrentPage('donate', { donateItemType: Constants.ITEM_TYPE_BOOK })}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+                  >
+                    Add Book
+                  </button>
+                )}
+                {(!restrictedItemType || restrictedItemType === Constants.ITEM_TYPE_TOY) && (
+                  <button
+                    onClick={() => setCurrentPage('donate', { donateItemType: Constants.ITEM_TYPE_TOY })}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+                  >
+                    Add Toy
+                  </button>
+                )}
               </div>
             )}
           </div>

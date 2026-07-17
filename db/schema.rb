@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_15_044327) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -73,10 +73,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_044327) do
     t.string "name", null: false
     t.boolean "public", default: false, null: false
     t.string "short_name", null: false
+    t.string "support_item_types", limit: 10
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_community_groups_on_domain", unique: true
     t.index ["public"], name: "index_community_groups_on_public"
     t.index ["short_name"], name: "index_community_groups_on_short_name", unique: true
+    t.index ["support_item_types"], name: "index_community_groups_on_support_item_types"
   end
 
   create_table "group_item_availabilities", force: :cascade do |t|

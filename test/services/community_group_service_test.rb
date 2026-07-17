@@ -577,9 +577,18 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       assert_equal CommunityGroup::DEFAULT_SHORT_DESCRIPTION, result[:group_description]
       assert_equal "test.com", result[:domain]
       assert_equal "test-group", result[:short_name]
+      assert_nil result[:support_item_types]
       assert_equal 2, result[:sub_groups].length  # Fixture has 2 sub groups
       assert_not_nil result[:created_at]
       assert_not_nil result[:updated_at]
+    end
+
+    it "includes support_item_types when set" do
+      group = community_groups(:one)
+      group.update!(support_item_types: "B")
+
+      result = CommunityGroupService.group_map(group)
+      assert_equal "B", result[:support_item_types]
     end
   end
 

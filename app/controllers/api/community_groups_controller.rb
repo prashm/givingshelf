@@ -29,7 +29,8 @@ class Api::CommunityGroupsController < ApplicationController
     group = request_group
     rules = {
       email_domain_required: group&.domain.presence,
-      restrict_join_other_groups: !!(group.present? || (Current.user && user_in_domain_locked_group?(Current.user)))
+      restrict_join_other_groups: !!(group.present? || (Current.user && user_in_domain_locked_group?(Current.user))),
+      restricted_item_type: group&.restricted_item_type
     }
 
     render json: {

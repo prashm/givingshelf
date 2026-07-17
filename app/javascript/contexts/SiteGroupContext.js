@@ -8,6 +8,7 @@ const SiteGroupContext = createContext({
   rules: {
     email_domain_required: null,
     restrict_join_other_groups: false,
+    restricted_item_type: null,
   },
   urlMode: 'none',
   loading: true,
@@ -22,6 +23,7 @@ export const SiteGroupProvider = ({ children }) => {
   const [rules, setRules] = useState({
     email_domain_required: null,
     restrict_join_other_groups: false,
+    restricted_item_type: null,
   });
   const [urlMode, setUrlMode] = useState('none');
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,7 @@ export const SiteGroupProvider = ({ children }) => {
       setRules({
         email_domain_required: res.data?.rules?.email_domain_required || null,
         restrict_join_other_groups: Boolean(res.data?.rules?.restrict_join_other_groups),
+        restricted_item_type: res.data?.rules?.restricted_item_type || null,
       });
       setUrlMode(res.data?.url_mode || 'none');
     } catch (e) {
@@ -44,6 +47,7 @@ export const SiteGroupProvider = ({ children }) => {
       setRules({
         email_domain_required: null,
         restrict_join_other_groups: false,
+        restricted_item_type: null,
       });
       setUrlMode('none');
     } finally {
