@@ -4,6 +4,10 @@ import Modal from './Modal';
 import { applicationEmail } from '../lib/appConfig';
 
 const TermsOfServiceModal = ({ isOpen, onClose }) => {
+  const meta = (typeof window !== 'undefined' && window.GivingShelfAppMeta) ? window.GivingShelfAppMeta : {};
+  const companyName = meta.companyName || 'SimplifAI LLC';
+  const companyUrl = meta.companyUrl || 'https://simplifai.llc';
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Terms of Service">
       <div className="space-y-6">
@@ -97,7 +101,7 @@ const TermsOfServiceModal = ({ isOpen, onClose }) => {
             <strong>Email:</strong> {applicationEmail('support')}
           </p>
           <p className="text-sm text-gray-600 mt-3">
-            GivingShelf is operated by SimplifAI LLC
+            GivingShelf is operated by <a href={companyUrl} target="_blank">{companyName}</a>
           </p>
         </section>
       </div>

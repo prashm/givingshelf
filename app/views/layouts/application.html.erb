@@ -186,7 +186,8 @@
       window.GivingShelfAppMeta = {
         companyName: "<%= j(GivingShelf::Version::COMPANY_NAME) %>",
         appVersion: "<%= j(GivingShelf::Version::APP_VERSION) %>",
-        copyrightYear: "<%= j(GivingShelf::Version.copyright_year) %>"
+        copyrightYear: "<%= j(GivingShelf::Version.copyright_year) %>",
+        companyUrl: "<%= j(GivingShelf::Version::COMPANY_URL) %>"
       };
     </script>
     <%= javascript_include_tag "application-webpack", "data-turbo-track": "reload" %>

@@ -690,6 +690,7 @@ const AppShell = () => {
 const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
   const meta = (typeof window !== 'undefined' && window.GivingShelfAppMeta) ? window.GivingShelfAppMeta : {};
   const companyName = meta.companyName || 'SimplifAI LLC';
+  const companyUrl = meta.companyUrl || 'https://simplifai.llc';
   const appVersion = meta.appVersion || '';
   const copyrightYear = meta.copyrightYear || `${new Date().getFullYear()}`;
 
@@ -717,7 +718,7 @@ const Footer = ({ setCurrentPage, onOpenPrivacyModal, onOpenTermsModal }) => {
           </button>
         </div>
         <div className="text-sm text-gray-400">
-          © {copyrightYear} {companyName}. All rights reserved.
+          © {copyrightYear} <a href={companyUrl} target="_blank">{companyName}</a>. All rights reserved.
         </div>
         <div className="text-xs text-gray-500 mt-2">
           {appVersion ? `Version ${appVersion}` : null}
