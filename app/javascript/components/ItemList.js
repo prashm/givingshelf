@@ -21,7 +21,7 @@ const getLabels = (itemType) => {
   return {
     heroTitle: isBook ? 'Find Books in Your Community' : 'Find Toys in Your Community',
     availableTitle: isBook ? 'Available Books' : 'Available Toys',
-    wishlistTitle: isBook ? 'Community Wishlist Books' : 'Community Wishlist Toys',
+    wishlistTitle: isBook ? 'Requested Books' : 'Requested Toys',
     itemsLabel: isBook ? 'Books' : 'Toys',
     itemLabel: isBook ? 'Book' : 'Toy',
     emptyGlobal: isBook ? 'No books Found' : 'No toys Found',
@@ -74,18 +74,18 @@ const ItemList = ({
   const [impactStats, setImpactStats] = useState({ members: 0, items_shared: 0, items_donated: 0, items_requested: 0, items_wishlisted: 0 });
   const [impactLoading, setImpactLoading] = useState(false);
   const impactRequestSeq = useRef(0);
-  const [showCommunityWishlist, setShowCommunityWishlist] = useState(false);
-  const [hasLoadedCommunityWishlist, setHasLoadedCommunityWishlist] = useState(false);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistPaginationMeta, setWishlistPaginationMeta] = useState({ total: 0, hasMore: false, nextPageUrl: null });
   const [selectedWishlistSuggestion, setSelectedWishlistSuggestion] = useState(null);
   const [submittedWishlistQuery, setSubmittedWishlistQuery] = useState('');
+  const [submittedAgeRange, setSubmittedAgeRange] = useState('');
   const [zipForProfileComparison, setZipForProfileComparison] = useState((zipCode || '').trim());
   const [hasUserEditedZip, setHasUserEditedZip] = useState(false);
   const [searchAgeRange, setSearchAgeRange] = useState('');
   const [ageRangeOptions, setAgeRangeOptions] = useState([]);
   const [ageRangeOptionsLoading, setAgeRangeOptionsLoading] = useState(false);
+  const hasLoadedInitialWishlist = useRef(false);
 
   const isGroupBrowse = Boolean(groupShortName);
   const labels = getLabels(itemType);
@@ -140,14 +140,6 @@ const ItemList = ({
     }
   }, [group, selectedSubGroupId, itemType]);
 
-  const resetCommunityWishlistState = useCallback(() => {
-    setShowCommunityWishlist(false);
-    setHasLoadedCommunityWishlist(false);
-    setWishlistItems([]);
-    setWishlistPaginationMeta({ total: 0, hasMore: false, nextPageUrl: null });
-    setWishlistLoading(false);
-  }, []);
-
   const getWishlistScopeParams = useCallback((subGroupIdOverride = undefined) => {
     if (isGroupBrowse) {
       if (!group) return null;
@@ -166,9 +158,20 @@ const ItemList = ({
     };
   }, [isGroupBrowse, group, selectedSubGroupId, zipCode, searchRadius, itemType]);
 
-  const loadCommunityWishlist = useCallback(async (append = false, nextPageUrl = null, subGroupIdOverride = undefined) => {
+  const loadCommunityWishlist = useCallback(async (
+    append = false,
+    nextPageUrl = null,
+    subGroupIdOverride = undefined,
+    queryOverride = undefined,
+    ageRangeOverride = undefined
+  ) => {
     const scopeParams = getWishlistScopeParams(subGroupIdOverride);
     if (!scopeParams) return;
+
+    const query = queryOverride !== undefined ? queryOverride : submittedWishlistQuery;
+    const ageRange = ageRangeOverride !== undefined
+      ? ageRangeOverride
+      : (itemType === Constants.ITEM_TYPE_TOY ? submittedAgeRange : null);
 
     setWishlistLoading(true);
     try {
@@ -186,18 +189,19 @@ const ItemList = ({
 
       const { items: fetchedItems, paginationMeta } = await fetchWishlistItems({
         ...scopeParams,
+        query: (query || '').trim() || null,
+        ageRange: ageRange || null,
         pageParams
       });
 
       setWishlistItems(prev => append ? [...prev, ...fetchedItems] : fetchedItems);
       setWishlistPaginationMeta(paginationMeta);
-      setHasLoadedCommunityWishlist(true);
     } catch (error) {
       console.error('Failed to load community wishlist:', error);
     } finally {
       setWishlistLoading(false);
     }
-  }, [getWishlistScopeParams]);
+  }, [getWishlistScopeParams, submittedWishlistQuery, submittedAgeRange, itemType]);
 
   useEffect(() => {
     if (itemType !== Constants.ITEM_TYPE_TOY) return;
@@ -231,23 +235,35 @@ const ItemList = ({
 
   useEffect(() => {
     if (!group || !isGroupBrowse) return;
-    resetCommunityWishlistState();
+    setSubmittedWishlistQuery('');
+    setSubmittedAgeRange('');
     searchItems('', zipCode || '', false, null, group.id, null);
     loadImpactStats(null);
-  }, [group, isGroupBrowse, resetCommunityWishlistState]);
+    loadCommunityWishlist(false, null, null, '', null);
+  }, [group, isGroupBrowse]);
+
+  useEffect(() => {
+    if (isGroupBrowse || !zipCode || zipCode.length !== 5) return;
+    if (hasLoadedInitialWishlist.current) return;
+    hasLoadedInitialWishlist.current = true;
+    loadCommunityWishlist(false, null, undefined, '', null);
+  }, [isGroupBrowse, zipCode, loadCommunityWishlist]);
 
   useEffect(() => {
     if (hasUserEditedZip) return;
     setZipForProfileComparison((zipCode || '').trim());
   }, [zipCode, hasUserEditedZip]);
 
-  const performGroupSearch = (queryOverride = null) => {
+  const performGroupSearch = (queryOverride = null, subGroupIdOverride = undefined) => {
     if (!group) return;
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
-    resetCommunityWishlistState();
+    const subGroupId = subGroupIdOverride === undefined ? selectedSubGroupId : subGroupIdOverride;
+    const ageRange = searchAgeRange || null;
     setSubmittedWishlistQuery(query);
-    searchItems(query, zipCode || '', false, null, group.id, selectedSubGroupId, searchAgeRange || null);
-    loadImpactStats(selectedSubGroupId);
+    setSubmittedAgeRange(ageRange || '');
+    searchItems(query, zipCode || '', false, null, group.id, subGroupId, ageRange);
+    loadImpactStats(subGroupId);
+    loadCommunityWishlist(false, null, subGroupId, query, ageRange);
   };
 
   const handleGenreClick = (genre) => {
@@ -255,14 +271,14 @@ const ItemList = ({
     if (isGroupBrowse) {
       performGroupSearch(genre);
     } else {
-      handleSearch(searchRadius === 'exact' ? null : searchRadius);
+      handleSearchWithRadius(genre);
     }
   };
 
   const handleSubGroupChange = (e) => {
     const subGroupId = e.target.value ? parseInt(e.target.value) : null;
     setSelectedSubGroupId(subGroupId);
-    resetCommunityWishlistState();
+    performGroupSearch(null, subGroupId);
   };
 
   const hasValidZipCode = zipCode && zipCode.length === 5;
@@ -279,12 +295,14 @@ const ItemList = ({
 
   const handleSearchWithRadius = (queryOverride = null) => {
     const query = (queryOverride !== null ? queryOverride : (searchQuery || '')).trim();
-    resetCommunityWishlistState();
+    const ageRange = searchAgeRange || null;
     setSubmittedWishlistQuery(query);
+    setSubmittedAgeRange(ageRange || '');
     setZipForProfileComparison((zipCode || '').trim());
     setHasUserEditedZip(false);
-    handleSearch(searchRadius === 'exact' ? null : searchRadius, query, searchAgeRange || null);
+    handleSearch(searchRadius === 'exact' ? null : searchRadius, query, ageRange);
     if (zipCode && zipCode.length === 5) loadCommunityStats();
+    loadCommunityWishlist(false, null, undefined, query, ageRange);
   };
 
   const zipGroupMembership = Array.isArray(currentUser?.community_groups)
@@ -321,6 +339,8 @@ const ItemList = ({
   const canShowWishlistCard = itemType === Constants.ITEM_TYPE_BOOK
     && (items || []).length === 0
     && !itemsLoading
+    && !wishlistLoading
+    && (wishlistItems || []).length === 0
     && (submittedWishlistQuery || '').trim().length >= 2
     && (canUseWishlistAuthFlow || canCreateWishlistNow);
 
@@ -467,16 +487,6 @@ const ItemList = ({
   const resultsLabel = isGroupBrowse
     ? (paginationMeta?.total > 0 ? `${paginationMeta.total} ${labels.itemsLabel} Found` : (itemsLoading ? 'Searching...' : labels.emptyGlobal))
     : getResultsLabel();
-  const wishlistCount = isGroupBrowse ? (impactStats.items_wishlisted || 0) : (communityStats.items_wishlisted || 0);
-  const wishlistItemWord = wishlistCount === 1 ? labels.itemLabel : labels.itemsLabel;
-
-  const handleCommunityWishlistToggle = async () => {
-    const nextExpandedState = !showCommunityWishlist;
-    setShowCommunityWishlist(nextExpandedState);
-    if (nextExpandedState && !hasLoadedCommunityWishlist) {
-      await loadCommunityWishlist(false, null, selectedSubGroupId);
-    }
-  };
 
   const handleLoadMoreWishlistItems = () => {
     if (!wishlistPaginationMeta?.nextPageUrl || wishlistLoading) return;
@@ -485,28 +495,6 @@ const ItemList = ({
 
   const wishlistItemSource = isGroupBrowse ? 'groupPage' : (itemType === Constants.ITEM_TYPE_TOY ? 'toys' : 'books');
   const handleWishlistItemSelect = (item) => handleItemSelect(item, wishlistItemSource, itemType);
-
-  const handleFulfillWish = (item) => {
-    if (!currentUser) {
-      onOpenLoginModal({
-        page: 'fulfillWishlistItem',
-        fulfillItemId: item.id,
-        afterLoginAction: { type: 'fulfillWishlist', itemId: item.id }
-      });
-      return;
-    }
-    if (!currentUser.profile_complete) {
-      const reason = 'Please complete your profile first before offering to fulfill wishlist items.';
-      setRedirectReason(reason);
-      setCurrentPage('profile', { redirectReason: reason });
-      return;
-    }
-    setCurrentPage('fulfillWishlistItem', { fulfillItemId: item.id, preservePath: true });
-  };
-
-  const handleWishlistPlaceRequest = (item) => {
-    handleWishlistItemSelect(item);
-  };
 
   const otherItemName = itemType === Constants.ITEM_TYPE_BOOK ? 'toys' : 'books';
   const otherItemType = itemType === Constants.ITEM_TYPE_BOOK ? Constants.ITEM_TYPE_TOY : Constants.ITEM_TYPE_BOOK;
@@ -616,36 +604,18 @@ const ItemList = ({
           </div>
         )}
 
+        <WishlistItemsSection
+          title={labels.wishlistTitle}
+          items={wishlistItems}
+          itemType={itemType}
+          loading={wishlistLoading}
+          paginationMeta={wishlistPaginationMeta}
+          onLoadMore={handleLoadMoreWishlistItems}
+          onSelectItem={handleWishlistItemSelect}
+        />
+
         {itemType === Constants.ITEM_TYPE_BOOK && (
           <PopularGenresSection books={items || []} onGenreClick={handleGenreClick} />
-        )}
-
-        {wishlistCount > 0 && (
-          <div className="mb-4">
-            <button
-              type="button"
-              className="text-emerald-700 hover:text-emerald-800 underline font-medium"
-              onClick={handleCommunityWishlistToggle}
-            >
-              Community Wishlist - {wishlistCount} {wishlistItemWord} people requested for
-              {' '}
-              <span className="text-sm">{showCommunityWishlist ? '(Hide)' : '(Show)'}</span>
-            </button>
-          </div>
-        )}
-
-        {showCommunityWishlist && (
-          <WishlistItemsSection
-            title={labels.wishlistTitle}
-            items={wishlistItems}
-            itemType={itemType}
-            loading={wishlistLoading}
-            paginationMeta={wishlistPaginationMeta}
-            onLoadMore={handleLoadMoreWishlistItems}
-            onSelectItem={handleWishlistItemSelect}
-            onFulfillWish={handleFulfillWish}
-            onPlaceRequest={handleWishlistPlaceRequest}
-          />
         )}
 
         <StatsSection

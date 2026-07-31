@@ -22,6 +22,20 @@ class Item < ApplicationRecord
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
+  # Items whose age bounds overlap the given canonical browse bucket. Items
+  # without a parsed minimum age are excluded when an age filter is supplied.
+  scope :overlapping_age_bucket, ->(bucket_value) {
+    bounds = ToyAgeRange.bucket_bounds(bucket_value)
+    next none unless bounds
+
+    filter_min = bounds[:min]
+    filter_max = bounds[:max] || ToyAgeRange::OPEN_MAX
+
+    where.not(min_age: nil).where(
+      "min_age <= :filter_max AND COALESCE(max_age, :open_max) >= :filter_min",
+      filter_min: filter_min, filter_max: filter_max, open_max: ToyAgeRange::OPEN_MAX
+    )
+  }
 
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)

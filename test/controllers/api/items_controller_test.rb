@@ -185,6 +185,19 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes ids, out_of_scope.id
   end
 
+  test "wishlist endpoint filters by query" do
+    group = community_groups(:one)
+    matching = create_wishlist_book_for_scope(group: group, title: "Query Match Wish Book")
+    non_matching = create_wishlist_book_for_scope(group: group, title: "Other Wish Book")
+
+    get "/api/items/wishlist", params: { type: Book.name, community_group_id: group.id, query: "Query Match" }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, matching.id
+    assert_not_includes ids, non_matching.id
+  end
+
   test "stats includes items_wishlisted count" do
     group = CommunityGroup.create!(
       name: "Stats Scope Group",

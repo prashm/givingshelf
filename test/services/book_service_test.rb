@@ -254,6 +254,19 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_not_includes ids, items(:two).id
     end
 
+    it "filters books by overlapping age range" do
+      ensure_zip_availability_for(items(:one), items(:two))
+      items(:one).update_columns(age_range: "5-7 years", min_age: 5, max_age: 7)
+      items(:two).update_columns(age_range: "3-4 years", min_age: 3, max_age: 4)
+
+      service = BookService.new
+      result = service.search_items(query_string: "", zip_code: nil, community_group_id: nil, age_range: "5-7 years")
+      ids = result.pluck(:id)
+
+      assert_includes ids, items(:one).id
+      assert_not_includes ids, items(:two).id
+    end
+
     it "filters by zip_code (exact match) when radius is not provided" do
       ensure_zip_availability_for(items(:one), items(:two))
 
@@ -723,6 +736,80 @@ class BookServiceTest < ActiveSupport::TestCase
 
       assert_includes ids, in_scope.id
       assert_not_includes ids, out_scope.id
+    end
+
+    it "filters wishlist books by query_string on title or author" do
+      group = community_groups(:one)
+      matching = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Unique Wishlist Title Alpha",
+        author: "Matching Author",
+        summary: "A long enough summary for wishlist query filtering assertions here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      non_matching = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Different Wishlist Title",
+        author: "Other Writer",
+        summary: "A long enough summary for wishlist query filtering assertions two.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: matching, community_group: group)
+      GroupItemAvailability.create!(item: non_matching, community_group: group)
+
+      service = BookService.new
+      by_title = service.wishlist_items(community_group_id: group.id, query_string: "Unique Wishlist Title")
+      assert_includes by_title.pluck(:id), matching.id
+      assert_not_includes by_title.pluck(:id), non_matching.id
+
+      by_author = service.wishlist_items(community_group_id: group.id, query_string: "Matching Author")
+      assert_includes by_author.pluck(:id), matching.id
+      assert_not_includes by_author.pluck(:id), non_matching.id
+    end
+
+    it "filters wishlist books by overlapping age range" do
+      group = community_groups(:one)
+      matching = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Wishlist Book Ages 5-7",
+        author: "Author",
+        summary: "A long enough summary for wishlist book age filtering assertions.",
+        published_year: 2020,
+        genre: "Fiction",
+        age_range: "5-7 years",
+        min_age: 5,
+        max_age: 7,
+        status: ShareableItemStatus::WISHLIST
+      )
+      non_matching = Book.create!(
+        user_id: nil,
+        type: Book.name,
+        title: "Wishlist Book Ages 3-4",
+        author: "Author",
+        summary: "A long enough summary for wishlist book age filtering assertions.",
+        published_year: 2020,
+        genre: "Fiction",
+        age_range: "3-4 years",
+        min_age: 3,
+        max_age: 4,
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: matching, community_group: group)
+      GroupItemAvailability.create!(item: non_matching, community_group: group)
+
+      service = BookService.new
+      result = service.wishlist_items(community_group_id: group.id, age_range: "5-7 years")
+      ids = result.pluck(:id)
+
+      assert_includes ids, matching.id
+      assert_not_includes ids, non_matching.id
     end
   end
 

@@ -1,15 +1,14 @@
 class ToyService < ItemService
   def search_items(base_scope: Toy.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil)
-    items = super(
+    super(
       base_scope: base_scope,
       query_string: query_string,
       zip_code: zip_code,
       radius: radius,
       community_group_id: community_group_id,
-      sub_group_id: sub_group_id
+      sub_group_id: sub_group_id,
+      age_range: age_range
     )
-    items = items.merge(Toy.overlapping_age_bucket(age_range)) if age_range.present?
-    items
   end
 
   def item_map(toy)

@@ -9,9 +9,7 @@ const WishlistItemsSection = ({
   loading = false,
   paginationMeta = null,
   onLoadMore,
-  onSelectItem,
-  onFulfillWish,
-  onPlaceRequest
+  onSelectItem
 }) => {
   const hasMore = Boolean(paginationMeta?.hasMore) && items.length < (paginationMeta?.total ?? 0);
 
@@ -29,7 +27,7 @@ const WishlistItemsSection = ({
       </div>
 
       {loading && items.length === 0 ? (
-        <div className="text-center py-8 text-gray-600">Loading community wishlist...</div>
+        <div className="text-center py-8 text-gray-600">Loading requested items...</div>
       ) : (
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -39,31 +37,6 @@ const WishlistItemsSection = ({
                 item={item}
                 itemType={itemType}
                 onSelect={onSelectItem}
-                actions={(
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      className="w-full text-white py-2 px-3 rounded-md transition-colors text-sm font-medium"
-                      style={{ backgroundColor: 'rgb(247, 123, 36)' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onFulfillWish?.(item);
-                      }}
-                    >
-                      Fulfill the wish
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full bg-emerald-600 text-white py-2 px-3 rounded-md hover:bg-emerald-700 transition-colors text-sm font-medium"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPlaceRequest?.(item);
-                      }}
-                    >
-                      Place request
-                    </button>
-                  </div>
-                )}
               />
             ))}
           </div>

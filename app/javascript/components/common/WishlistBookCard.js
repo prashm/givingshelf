@@ -214,7 +214,7 @@ const WishlistBookCard = ({
           </span>
         </div>
         <p className={calloutClass}>
-          Place a community request — we&apos;ll email nearby members who might have this book.
+          Place a request — we&apos;ll email members who might have this book.
         </p>
         <button
           type="button"

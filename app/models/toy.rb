@@ -7,22 +7,6 @@ class Toy < Item
   # Toy-specific scopes
   scope :by_brand, ->(brand) { where("brand ILIKE ?", "%#{brand}%") }
 
-  # Toys whose age bounds overlap the given canonical browse bucket, e.g. a "8+"
-  # toy (min_age 8, max_age nil) matches the "8-10 years", "11-12 years", and
-  # "13+ years" buckets. Toys without a parsed min_age are excluded.
-  scope :overlapping_age_bucket, ->(bucket_value) {
-    bounds = ToyAgeRange.bucket_bounds(bucket_value)
-    next none unless bounds
-
-    filter_min = bounds[:min]
-    filter_max = bounds[:max] || ToyAgeRange::OPEN_MAX
-
-    where.not(min_age: nil).where(
-      "min_age <= :filter_max AND COALESCE(max_age, :open_max) >= :filter_min",
-      filter_min: filter_min, filter_max: filter_max, open_max: ToyAgeRange::OPEN_MAX
-    )
-  }
-
   # Associations (same as Book)
   has_many :item_requests, foreign_key: "item_id", dependent: :destroy
   has_many :group_item_availabilities, foreign_key: "item_id", dependent: :destroy

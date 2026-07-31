@@ -48,7 +48,7 @@ export function parseBucketBounds(bucketValue) {
   return null;
 }
 
-// Client-side mirror of Toy.overlapping_age_bucket, used for the no-ZIP browse
+// Client-side mirror of Item.overlapping_age_bucket, used for the no-ZIP browse
 // fallback. Toys without parsed bounds are excluded when a bucket filter is active.
 export function toyMatchesAgeBucket(item, bucketValue) {
   const bounds = parseBucketBounds(bucketValue);

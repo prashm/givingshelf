@@ -172,7 +172,7 @@ class ItemService
     type_class.available.includes(:user).recent
   end
 
-  def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+  def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil)
     items = base_scope.left_outer_joins(:user).joins(:group_item_availabilities)
     normalized_query = query_string.to_s.strip
 
@@ -204,17 +204,21 @@ class ItemService
       items = items.merge(zip_code_scope(zip_code, radius)) if zip_code.present?
     end
 
+    items = items.merge(Item.overlapping_age_bucket(age_range)) if age_range.present?
+
     items.distinct
   end
 
-  def wishlist_items(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
+  def wishlist_items(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, query_string: nil, age_range: nil)
     scoped_group_id = community_group_id.presence || CommunityGroup.find_or_create_zipcode_group!.id
     search_items(
       base_scope: type_class.wishlist,
+      query_string: query_string,
       zip_code: zip_code,
       radius: radius,
       community_group_id: scoped_group_id,
-      sub_group_id: sub_group_id
+      sub_group_id: sub_group_id,
+      age_range: age_range
     )
   end
 

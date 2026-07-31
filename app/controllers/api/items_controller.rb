@@ -71,7 +71,9 @@ class Api::ItemsController < ApplicationController
       zip_code: params[:zip_code],
       radius: params[:radius],
       community_group_id: params[:community_group_id],
-      sub_group_id: params[:sub_group_id]
+      sub_group_id: params[:sub_group_id],
+      query_string: params[:query],
+      age_range: params[:age_range]
     )
   end
 

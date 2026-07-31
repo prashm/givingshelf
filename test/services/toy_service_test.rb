@@ -364,6 +364,48 @@ class ToyServiceTest < ActiveSupport::TestCase
     end
   end
 
+  describe "#wishlist_items" do
+    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil)
+      group ||= @other_group
+      toy = Toy.create!(
+        user_id: nil,
+        type: Toy.name,
+        title: title,
+        brand: brand,
+        summary: "A long enough summary for wishlist toy filtering assertions here.",
+        age_range: age_range,
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: toy, community_group: group)
+      toy
+    end
+
+    it "filters wishlist toys by query_string on title or brand" do
+      matching = create_wishlist_toy(title: "Unique Wishlist Blocks", brand: "LegoBrand")
+      non_matching = create_wishlist_toy(title: "Other Wish Toy", brand: "Mattel")
+
+      service = ToyService.new
+      by_title = service.wishlist_items(community_group_id: @other_group.id, query_string: "Unique Wishlist Blocks")
+      assert_includes by_title.pluck(:id), matching.id
+      assert_not_includes by_title.pluck(:id), non_matching.id
+
+      by_brand = service.wishlist_items(community_group_id: @other_group.id, query_string: "LegoBrand")
+      assert_includes by_brand.pluck(:id), matching.id
+      assert_not_includes by_brand.pluck(:id), non_matching.id
+    end
+
+    it "filters wishlist toys by age_range" do
+      matching = create_wishlist_toy(title: "Wish Toy Ages 5-7", age_range: "5-7 years")
+      non_matching = create_wishlist_toy(title: "Wish Toy Ages 3-4", age_range: "3-4 years")
+
+      service = ToyService.new
+      result = service.wishlist_items(community_group_id: @other_group.id, age_range: "5-7 years")
+      ids = result.pluck(:id)
+      assert_includes ids, matching.id
+      assert_not_includes ids, non_matching.id
+    end
+  end
+
   describe "#item_can_be_requested_by?" do
     it "returns false when user is nil" do
       toy = items(:toy_one)

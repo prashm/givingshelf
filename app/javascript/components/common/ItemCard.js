@@ -3,7 +3,7 @@ import { GiftIcon } from '@heroicons/react/24/outline';
 import * as Constants from '../../lib/constants';
 import { truncateText } from '../../lib/textUtils';
 
-const ItemCard = ({ item, itemType = Constants.ITEM_TYPE_BOOK, onSelect, actions = null }) => {
+const ItemCard = ({ item, itemType = Constants.ITEM_TYPE_BOOK, onSelect }) => {
   const isBook = itemType === Constants.ITEM_TYPE_BOOK;
 
   const renderItemSubtitle = () => {
@@ -65,11 +65,6 @@ const ItemCard = ({ item, itemType = Constants.ITEM_TYPE_BOOK, onSelect, actions
           </div>
         </div>
       </div>
-      {actions && (
-        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
-          {actions}
-        </div>
-      )}
     </div>
   );
 };

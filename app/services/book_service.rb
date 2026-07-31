@@ -8,7 +8,8 @@ class BookService < ItemService
       zip_code: zip_code,
       radius: radius,
       community_group_id: community_group_id,
-      sub_group_id: sub_group_id
+      sub_group_id: sub_group_id,
+      age_range: age_range
     )
   end
 
