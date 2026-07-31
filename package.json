@@ -49,7 +49,7 @@
     "@pmmmwh/react-refresh-webpack-plugin": "^0.6.0",
     "@tailwindcss/postcss": "^4.1.17",
     "autoprefixer": "^10.4.22",
-    "postcss": "^8.5.13",
+    "postcss": "^8.5.25",
     "postcss-color-functional-notation": "^7.0.12",
     "postcss-loader": "^8.2.0",
     "postcss-media-minmax": "^5.0.0",
