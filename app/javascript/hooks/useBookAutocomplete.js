@@ -1,6 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchGoogleBooks } from '../lib/googleBooksApi';
 
+const MIN_QUERY_LENGTH = 4;
+const DEFAULT_DEBOUNCE_MS = 600;
+
+/**
+ * Detects an ISBN-10 or ISBN-13 in free-text search input.
+ * Strips spaces and dashes; accepts a trailing X check digit on ISBN-10.
+ * Returns the compact form, or null if the query is not an ISBN.
+ */
+function isbnFromQuery(query) {
+  const compact = String(query || '').replace(/[\s-]/g, '').toUpperCase();
+  return /^(\d{13}|\d{9}[\dX])$/.test(compact) ? compact : null;
+}
+
 export const useBookAutocomplete = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -9,9 +22,13 @@ export const useBookAutocomplete = () => {
   const abortControllerRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
-  // Debounced search function
-  const searchBooks = useCallback(async (query, delay = 300) => {
-    if (!query || query.length < 2) {
+  // Debounced search. Detects ISBN from the query (or an explicit isbn arg)
+  // and passes it through so searchGoogleBooks uses q=isbn:VALUE.
+  // ISBN queries fire immediately (delay 0).
+  const searchBooks = useCallback(async (query, delay = DEFAULT_DEBOUNCE_MS, isbn = null) => {
+    const trimmed = (query || '').trim();
+    const resolvedIsbn = isbnFromQuery(isbn) || isbnFromQuery(trimmed);
+    if (!resolvedIsbn && trimmed.length < MIN_QUERY_LENGTH) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -28,11 +45,16 @@ export const useBookAutocomplete = () => {
 
     abortControllerRef.current = new AbortController();
 
+    const effectiveDelay = resolvedIsbn ? 0 : delay;
+
     debounceTimeoutRef.current = setTimeout(async () => {
       debounceTimeoutRef.current = null;
       try {
         setLoading(true);
-        const items = await searchGoogleBooks(query, { signal: abortControllerRef.current.signal });
+        const items = await searchGoogleBooks(trimmed, {
+          signal: abortControllerRef.current.signal,
+          ...(resolvedIsbn ? { isbn: resolvedIsbn } : {})
+        });
         if (items.length > 0) {
           setSuggestions(items);
           setShowSuggestions(true);
@@ -49,7 +71,7 @@ export const useBookAutocomplete = () => {
       } finally {
         setLoading(false);
       }
-    }, delay);
+    }, effectiveDelay);
   }, []);
 
   const selectBook = useCallback((book) => {

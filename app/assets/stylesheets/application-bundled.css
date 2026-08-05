@@ -1184,9 +1184,6 @@
   .border-b-blue-600 {
     border-bottom-color: var(--color-blue-600);
   }
-  .border-b-emerald-600 {
-    border-bottom-color: var(--color-emerald-600);
-  }
   .bg-amber-50 {
     background-color: var(--color-amber-50);
   }

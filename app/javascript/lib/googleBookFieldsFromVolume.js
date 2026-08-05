@@ -31,12 +31,18 @@ export function publishedYearFromGoogleDate(publishedDate) {
   return Math.min(Math.max(y, 1801), maxY);
 }
 
-/** Returns '' or a 10- or 13-digit string suitable for the Book model. */
+/**
+ * Returns '' or a compact ISBN-10 / ISBN-13 string for the Book model.
+ * Preserves a trailing X check digit on ISBN-10; the model converts to ISBN-13.
+ */
 export function sanitizeIsbnForBookModel(raw) {
   if (raw == null || raw === '') return '';
-  const digits = String(raw).replace(/\D/g, '');
-  if (digits.length === 10) return digits;
-  if (digits.length >= 13) return digits.slice(0, 13);
+  const compact = String(raw).toUpperCase().replace(/[^0-9X]/g, '');
+  if (/^\d{13}$/.test(compact)) return compact;
+  if (/^\d{9}[\dX]$/.test(compact)) return compact;
+  // Prefer a leading 13-digit run when more digits are present (e.g. with extra noise).
+  const thirteen = compact.match(/\d{13}/);
+  if (thirteen) return thirteen[0];
   return '';
 }
 

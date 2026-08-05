@@ -75,6 +75,20 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_includes ids, items(:one).id
   end
 
+  test "should search books by dashed ISBN" do
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+    GroupItemAvailability.find_or_create_by!(item: items(:one), community_group: zip_group)
+    items(:one).update!(isbn: "9780134093413")
+
+    get search_api_items_url, params: { type: Book.name, query: "978-0-13-409341-3", zip_code: "12345" }
+    assert_response :success
+
+    data = JSON.parse(response.body)["data"] || []
+    ids = data.map { |b| b["id"] }
+    assert_includes ids, items(:one).id
+    assert_not_includes ids, items(:two).id
+  end
+
   test "search with community_group_id only returns books available in that group" do
     group = community_groups(:one)
 

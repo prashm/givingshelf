@@ -13,6 +13,14 @@ class BookService < ItemService
     )
   end
 
+  # Exact ISBN-13 match when the query is an ISBN; otherwise title/author ILIKE.
+  def apply_query_filter(items, query)
+    isbn13 = Book.to_isbn13(query)
+    return items.where(isbn: isbn13) if isbn13.present?
+
+    super
+  end
+
   def item_map(book)
     {
       id: book.id,

@@ -337,11 +337,11 @@ const ItemList = ({
   const canUseWishlistAuthFlow = !currentUser || !currentUser.profile_complete;
   const canCreateWishlistNow = Boolean(currentUser?.profile_complete) && Boolean(wishlistScope);
   const canShowWishlistCard = itemType === Constants.ITEM_TYPE_BOOK
+    && Boolean(selectedWishlistSuggestion)
     && (items || []).length === 0
     && !itemsLoading
     && !wishlistLoading
     && (wishlistItems || []).length === 0
-    && (submittedWishlistQuery || '').trim().length >= 2
     && (canUseWishlistAuthFlow || canCreateWishlistNow);
 
   const getResultsLabel = () => {
@@ -592,7 +592,6 @@ const ItemList = ({
           <div className="mb-12 flex w-full justify-center">
             <div className="w-full max-w-sm md:max-w-md lg:max-w-[25.5rem]">
               <WishlistBookCard
-                searchQuery={submittedWishlistQuery}
                 selectedSuggestion={selectedWishlistSuggestion}
                 wishlistScope={wishlistScope}
                 currentUser={currentUser}

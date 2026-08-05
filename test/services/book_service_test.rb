@@ -244,6 +244,29 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_not_includes ids2, items(:one).id
     end
 
+    it "finds a book by ISBN-10 when stored as ISBN-13" do
+      ensure_zip_availability_for(items(:one), items(:two))
+      items(:one).update!(isbn: "9780134093413")
+      items(:two).update!(isbn: "9780321974587")
+
+      service = BookService.new
+      result = service.search_items(query_string: "0134093413", zip_code: nil, community_group_id: nil)
+      ids = result.pluck(:id)
+      assert_includes ids, items(:one).id
+      assert_not_includes ids, items(:two).id
+    end
+
+    it "finds a book by dashed ISBN-13" do
+      ensure_zip_availability_for(items(:one), items(:two))
+      items(:one).update!(isbn: "9780134093413")
+
+      service = BookService.new
+      result = service.search_items(query_string: "978-0-13-409341-3", zip_code: nil, community_group_id: nil)
+      ids = result.pluck(:id)
+      assert_includes ids, items(:one).id
+      assert_not_includes ids, items(:two).id
+    end
+
     it "trims surrounding spaces in query_string before searching" do
       ensure_zip_availability_for(items(:one), items(:two))
 

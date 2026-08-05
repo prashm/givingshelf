@@ -172,17 +172,19 @@ class ItemService
     type_class.available.includes(:user).recent
   end
 
+  # Override in subclasses (e.g. BookService) for type-specific query matching.
+  def apply_query_filter(items, query)
+    items.where(
+      "items.title ILIKE :query OR items.author ILIKE :query OR items.brand ILIKE :query",
+      query: "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+    )
+  end
+
   def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil)
     items = base_scope.left_outer_joins(:user).joins(:group_item_availabilities)
     normalized_query = query_string.to_s.strip
 
-    if normalized_query.present?
-      # Search title, author (Book), and brand (Toy)
-      items = items.where(
-        "items.title ILIKE :query OR items.author ILIKE :query OR items.brand ILIKE :query",
-        query: "%#{ActiveRecord::Base.sanitize_sql_like(normalized_query)}%"
-      )
-    end
+    items = apply_query_filter(items, normalized_query) if normalized_query.present?
 
     # Filter by community group availability
     if community_group_id.present?

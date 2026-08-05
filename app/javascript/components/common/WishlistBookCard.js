@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import axios from '../../lib/axios';
-import { searchGoogleBooks } from '../../lib/googleBooksApi';
 import { normalizedBookFieldsFromGoogleAutocomplete } from '../../lib/googleBookFieldsFromVolume';
 import { getHostGroupShortName } from '../../lib/groupSubdomain';
 import * as Constants from '../../lib/constants';
@@ -19,8 +18,11 @@ const BookPlaceholderIcon = () => (
 const calloutClass =
   'mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 text-center sm:text-left';
 
+/**
+ * Wishlist CTA for a book the user explicitly picked from Google Books autocomplete.
+ * Does not guess a match from free-text search.
+ */
 const WishlistBookCard = ({
-  searchQuery,
   selectedSuggestion = null,
   wishlistScope = null,
   currentUser,
@@ -28,63 +30,17 @@ const WishlistBookCard = ({
   onOpenLoginModal,
   setRedirectReason
 }) => {
-  const [suggestion, setSuggestion] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const abortRef = useRef(null);
 
-  useEffect(() => {
-    if (selectedSuggestion) {
-      if (abortRef.current) {
-        abortRef.current.abort();
-        abortRef.current = null;
-      }
-      setSuggestion(selectedSuggestion);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const q = (searchQuery || '').trim();
-    if (q.length < 2) {
-      if (abortRef.current) {
-        abortRef.current.abort();
-        abortRef.current = null;
-      }
-      setLoading(false);
-      return;
-    }
-
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setLoading(true);
-    setError(null);
-    (async () => {
-      try {
-        const list = await searchGoogleBooks(q, { signal: ac.signal });
-        if (ac.signal.aborted) return;
-        setSuggestion(list[0] || null);
-        setError(null);
-      } catch (e) {
-        if (e.name === 'AbortError') return;
-        setSuggestion(null);
-        setError('Could not load a book match from Google. Try a different search.');
-      } finally {
-        if (!ac.signal.aborted) setLoading(false);
-      }
-    })();
-    return () => { ac.abort(); };
-  }, [searchQuery, selectedSuggestion]);
+  if (!selectedSuggestion) {
+    return null;
+  }
 
   const placeRequest = async () => {
-    if (!suggestion) return;
     setError(null);
     if (!currentUser) {
-      const normalizedFields = normalizedBookFieldsFromGoogleAutocomplete(suggestion);
+      const normalizedFields = normalizedBookFieldsFromGoogleAutocomplete(selectedSuggestion);
       const body = wishlistScope?.community_group_id ? {
         type: Constants.ITEM_TYPE_BOOK,
         item: {
@@ -109,7 +65,7 @@ const WishlistBookCard = ({
       setError('You can request this book when your profile ZIP or group membership matches this search.');
       return;
     }
-    const normalizedFields = normalizedBookFieldsFromGoogleAutocomplete(suggestion);
+    const normalizedFields = normalizedBookFieldsFromGoogleAutocomplete(selectedSuggestion);
     const body = {
       type: Constants.ITEM_TYPE_BOOK,
       item: {
@@ -136,50 +92,11 @@ const WishlistBookCard = ({
     }
   };
 
-  if (loading) {
-    return (
-      <div className={cardShell}>
-        <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-gray-200 border-b-emerald-600" />
-        </div>
-        <div className="p-4 flex-1">
-          <p className="text-gray-600 text-sm text-center">Looking for a book match in Google Books…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !suggestion) {
-    return (
-      <div className={cardShell}>
-        <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
-          <BookPlaceholderIcon />
-        </div>
-        <div className="p-4 flex-1">
-          <p className="text-red-600 text-sm text-center">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!suggestion) {
-    return (
-      <div className={cardShell}>
-        <div className="flex justify-center items-center bg-gray-50" style={{ height: '200px' }}>
-          <BookPlaceholderIcon />
-        </div>
-        <div className="p-4 flex-1">
-          <p className="text-gray-600 text-sm text-center">
-            No close Google Books match for this search. Try another title or author.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const thumb = suggestion.thumbnail ? suggestion.thumbnail.replace(/^http:/, 'https:') : null;
-  const primaryCategory = Array.isArray(suggestion.categories) && suggestion.categories[0]
-    ? suggestion.categories[0]
+  const thumb = selectedSuggestion.thumbnail
+    ? selectedSuggestion.thumbnail.replace(/^http:/, 'https:')
+    : null;
+  const primaryCategory = Array.isArray(selectedSuggestion.categories) && selectedSuggestion.categories[0]
+    ? selectedSuggestion.categories[0]
     : '—';
 
   return (
@@ -188,7 +105,7 @@ const WishlistBookCard = ({
         {thumb ? (
           <img
             src={thumb}
-            alt={suggestion.title}
+            alt={selectedSuggestion.title}
             className="img-box"
             onError={(e) => {
               e.target.style.display = 'none';
@@ -200,10 +117,10 @@ const WishlistBookCard = ({
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <h3 className="font-semibold text-lg mb-2 line-clamp-2">
-          {suggestion.title}
+          {selectedSuggestion.title}
         </h3>
-        {suggestion.authors?.length > 0 && (
-          <p className="text-gray-600 mb-2">by {suggestion.authors.join(', ')}</p>
+        {selectedSuggestion.authors?.length > 0 && (
+          <p className="text-gray-600 mb-2">by {selectedSuggestion.authors.join(', ')}</p>
         )}
         <div className="flex items-center justify-between gap-2 min-h-[1.25rem]">
           <span className="text-sm text-gray-500 truncate" title={primaryCategory}>
