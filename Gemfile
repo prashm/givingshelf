@@ -47,7 +47,7 @@ gem "rotp"
 gem "aws-sdk-s3", require: false
 gem "geocoder"
 gem "openssl"
-gem "redis", "~> 5.0"
+gem "redis", "~> 6.0"
 gem "sentry-ruby"
 gem "sentry-rails"
 gem "jwt"
