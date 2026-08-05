@@ -2,7 +2,7 @@ module GivingShelf
   module Version
     COMPANY_NAME = "SimplifAI LLC"
     COMPANY_URL = "https://simplifai.llc"
-    APP_VERSION = "2.3.2"
+    APP_VERSION = "2.3.3"
     COPYRIGHT_START_YEAR = 2025
 
     def self.copyright_end_year
