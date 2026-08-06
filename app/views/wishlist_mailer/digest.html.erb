@@ -1,8 +1,5 @@
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Arial,sans-serif">
   <tr>
-    <td style="padding:16px 0;font-size:18px;font-weight:bold">Community Wishlist</td>
-  </tr>
-  <tr>
     <td style="padding:0 0 12px 0;color:#111827;font-size:14px;line-height:1.5;">
       Hi <%= @user.display_name %>,
     </td>
@@ -16,6 +13,8 @@
     <% e = entry.with_indifferent_access %>
     <% it = e[:item] %>
     <% req = e[:requester] %>
+    <% group = e[:group] %>
+    <% fulfill_url = CommunityGroupService.public_url_for(path: "/fulfill_wishlist/#{it.id}", group: group) %>
     <tr>
       <td style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:12px">
         <table width="100%">
@@ -27,12 +26,12 @@
             </td>
             <td valign="top" style="padding-left:8px">
               <div style="font-weight:bold"><%= it.title %></div>
-              <div style="color:#6b7280;font-size:14px"><%= it.type.capitalize %> requested by <%= req&.display_name || "a neighbor" %></div>
+              <div style="color:#6b7280;font-size:14px"><%= it.type.capitalize %> requested by <%= req&.display_name || "a member" %></div>
             </td>
           </tr>
         </table>
         <p style="margin:12px 0 0 0">
-          <a href="<%= root_url %>fulfill_wishlist/<%= it.id %>" style="background:#059669;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block">Fulfill this wish</a>
+          <a href="<%= fulfill_url %>" style="background:#059669;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block">Fulfill This Request</a>
         </p>
       </td>
     </tr>

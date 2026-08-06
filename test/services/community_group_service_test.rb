@@ -608,4 +608,67 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       assert_not_nil result[:created_at]
     end
   end
+
+  describe ".preferred_group_for_url" do
+    it "prefers a named group over zipcode" do
+      named = community_groups(:one)
+      zip = CommunityGroup.find_or_create_zipcode_group!
+
+      assert_equal named, CommunityGroupService.preferred_group_for_url([ zip, named ])
+    end
+
+    it "returns zipcode when that is the only group" do
+      zip = CommunityGroup.find_or_create_zipcode_group!
+
+      assert_equal zip, CommunityGroupService.preferred_group_for_url([ zip ])
+    end
+  end
+
+  describe ".public_url_for" do
+    it "uses subdomain for named groups" do
+      group = community_groups(:one)
+      url = CommunityGroupService.public_url_for(path: "/fulfill_wishlist/12", group: group)
+
+      assert_equal ApplicationSite.subdomain_url(group.short_name, "/fulfill_wishlist/12"), url
+    end
+
+    it "uses apex host for zipcode group" do
+      zip = CommunityGroup.find_or_create_zipcode_group!
+      url = CommunityGroupService.public_url_for(path: "/fulfill_wishlist/12", group: zip)
+
+      assert_equal "#{ApplicationSite.base_url}/fulfill_wishlist/12", url
+    end
+  end
+
+  describe ".preferred_group_for_item_and_user" do
+    it "prefers overlapping named membership over zipcode availability" do
+      user = users(:one)
+      named = community_groups(:one)
+      other = community_groups(:two)
+      zip = CommunityGroup.find_or_create_zipcode_group!
+      book = Book.create!(
+        type: Book.name,
+        user_id: nil,
+        title: "Wish Book",
+        author: "Author",
+        summary: "Long enough summary for preferred group selection testing here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: book, community_group: named)
+      GroupItemAvailability.create!(item: book, community_group: other)
+      GroupItemAvailability.create!(item: book, community_group: zip)
+      CommunityGroupMembership.find_or_create_by!(user: user, community_group: named) do |m|
+        m.admin = false
+        m.auto_joined = false
+      end
+      CommunityGroupMembership.find_or_create_by!(user: user, community_group: zip) do |m|
+        m.admin = false
+        m.auto_joined = true
+      end
+
+      assert_equal named, CommunityGroupService.preferred_group_for_item_and_user(book, user)
+    end
+  end
 end

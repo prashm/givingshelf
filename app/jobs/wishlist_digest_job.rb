@@ -5,7 +5,11 @@ class WishlistDigestJob < ApplicationJob
 
   def perform
     run_at = Time.current
-    wishlist_items = Item.wishlist.includes(:item_requests, :group_item_availabilities, item_requests: :requester)
+    wishlist_items = Item.wishlist.includes(
+      :group_item_availabilities,
+      available_community_groups: [],
+      item_requests: :requester
+    )
     by_recipient = Hash.new { |h, k| h[k] = [] }
     delivery_failures = []
     recipient_count = 0
@@ -17,17 +21,20 @@ class WishlistDigestJob < ApplicationJob
         next unless ir.requester
         scoped_availabilities = item.group_item_availabilities
         next if scoped_availabilities.blank?
-        member_ids = []
+
+        matched_group_ids_by_user = Hash.new { |h, k| h[k] = [] }
 
         scoped_availabilities.each do |availability|
           scope = CommunityGroupMembership
             .where(community_group_id: availability.community_group_id)
             .where.not(user_id: ir.requester_id)
           scope = scope.where(sub_group_id: availability.sub_group_id) if availability.sub_group_id.present?
-          member_ids.concat(scope.pluck(:user_id))
+          scope.pluck(:user_id).each do |uid|
+            matched_group_ids_by_user[uid] << availability.community_group_id
+          end
         end
 
-        member_ids.uniq.each do |uid|
+        matched_group_ids_by_user.each do |uid, group_ids|
           u = User.find_by(id: uid)
           next if u.nil?
           next if UserNotification.exists?(
@@ -35,7 +42,10 @@ class WishlistDigestJob < ApplicationJob
             notifiable: item,
             kind: UserNotification::KIND_WISHLIST_DIGEST
           )
-          by_recipient[u] << { item: item, requester: ir.requester }
+
+          groups = item.available_community_groups.select { |g| group_ids.include?(g.id) }
+          group = CommunityGroupService.preferred_group_for_url(groups)
+          by_recipient[u] << { item: item, requester: ir.requester, group: group }
         end
       end
     end

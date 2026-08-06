@@ -29,6 +29,37 @@ class CommunityGroupService
     ApplicationSite.subdomain_url(group.short_name, path)
   end
 
+  # Prefer a named community group over the global ZIP Code Community for public URLs.
+  def self.preferred_group_for_url(groups)
+    list = Array(groups).compact
+    return nil if list.empty?
+
+    named = list.reject { |g| g.short_name == CommunityGroup::ZIPCODE_SHORT_NAME }
+    named.first || list.first
+  end
+
+  # Pick a group for item links: prefer groups the user belongs to, then named over zipcode.
+  def self.preferred_group_for_item_and_user(item, user = nil)
+    item_groups = item.available_community_groups.to_a
+    return preferred_group_for_url(item_groups) if user.nil? || item_groups.empty?
+
+    user_group_ids = user.community_group_ids
+    overlapping = item_groups.select { |g| user_group_ids.include?(g.id) }
+    preferred_group_for_url(overlapping.presence || item_groups)
+  end
+
+  # Named groups use subdomain hosts; zipcode / missing group use the apex site.
+  def self.public_url_for(path:, group: nil)
+    path = "/" if path.blank?
+    path = "/#{path}" unless path.to_s.start_with?("/")
+
+    if group&.short_name.present? && group.short_name != CommunityGroup::ZIPCODE_SHORT_NAME
+      group_public_url(group, path: path)
+    else
+      "#{ApplicationSite.base_url}#{path}"
+    end
+  end
+
   def create_group(admin_user, params)
     @group = CommunityGroup.new(params)
 

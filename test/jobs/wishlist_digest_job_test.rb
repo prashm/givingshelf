@@ -58,12 +58,40 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     )
     assert n
 
+    digest_email = ActionMailer::Base.deliveries.find { |m| m.to == [ @recipient.email_address ] }
+    assert digest_email
+    expected_fulfill_url = CommunityGroupService.public_url_for(
+      path: "/fulfill_wishlist/#{book.id}",
+      group: @group
+    )
+    assert_includes digest_email.body.encoded, expected_fulfill_url
+
     admin_email = ActionMailer::Base.deliveries.last
     assert_equal [ ApplicationSite.email("admin") ], admin_email.to
     assert_includes admin_email.subject, "Wishlist Digest Report"
     assert_includes admin_email.body.encoded, "Recipients attempted:"
     assert_includes admin_email.body.encoded, "Successful deliveries:"
     assert_includes admin_email.body.encoded, "Failed deliveries:"
+  end
+
+  test "prefers named group subdomain over zipcode for fulfill links" do
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+    book = build_wishlist_book
+    GroupItemAvailability.create!(item: book, community_group: zip_group)
+    CommunityGroupMembership.find_or_create_by!(user: @recipient, community_group: zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
+
+    WishlistDigestJob.perform_now
+
+    digest_email = ActionMailer::Base.deliveries.find { |m| m.to == [ @recipient.email_address ] }
+    assert digest_email
+    named_url = CommunityGroupService.public_url_for(path: "/fulfill_wishlist/#{book.id}", group: @group)
+    zip_url = CommunityGroupService.public_url_for(path: "/fulfill_wishlist/#{book.id}", group: zip_group)
+    assert_includes digest_email.body.encoded, named_url
+    assert_not_includes digest_email.body.encoded, ApplicationSite.subdomain_host(zip_group.short_name)
+    assert_equal ApplicationSite.base_url + "/fulfill_wishlist/#{book.id}", zip_url
   end
 
   test "is idempotent: second run does not enqueue mail when notification exists" do
