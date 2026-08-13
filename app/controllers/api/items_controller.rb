@@ -123,7 +123,7 @@ class Api::ItemsController < ApplicationController
 
   def create_wishlist_item_params
     params.require(:item).permit(:title, :author, :brand, :age_range, :condition, :summary, :isbn, :genre, :published_year,
-      :cover_image_url, :community_group_id, :sub_group_id
+      :cover_image_url, :community_group_id, :sub_group_id, :message
     )
   end
 

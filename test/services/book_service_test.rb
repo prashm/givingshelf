@@ -860,6 +860,51 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_nil gia.sub_group_id
     end
 
+    it "uses a custom message when provided" do
+      service = BookService.new
+      custom = "Looking for a gently used copy for my book club next month."
+      book = service.create_wishlist_item(@user, {
+        title: "Custom Msg Wish",
+        author: "Author",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id,
+        message: custom
+      })
+      assert book, service.errors.to_sentence
+      ir = book.item_requests.find_by(requester: @user)
+      assert_equal custom, ir.message
+    end
+
+    it "falls back to default message when blank" do
+      service = BookService.new
+      book = service.create_wishlist_item(@user, {
+        title: "Blank Msg Wish",
+        author: "Author",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id,
+        message: "   "
+      })
+      assert book, service.errors.to_sentence
+      ir = book.item_requests.find_by(requester: @user)
+      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.message
+    end
+
+    it "returns nil when message is too short" do
+      service = BookService.new
+      book = service.create_wishlist_item(@user, {
+        title: "Short Msg Wish",
+        author: "Author",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id,
+        message: "too short"
+      })
+      assert_nil book
+      assert service.errors.any?
+    end
+
     it "stores subgroup scope on group item availability" do
       user_membership = CommunityGroupMembership.find_by!(user: @user, community_group: @other_group)
       user_membership.update!(sub_group_id: sub_groups(:one).id)

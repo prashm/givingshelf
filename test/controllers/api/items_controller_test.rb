@@ -278,6 +278,35 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_nil gia.sub_group_id
   end
 
+  test "create_wishlist accepts a custom message" do
+    user = users(:one)
+    sign_in_as(user)
+    scoped_group = community_groups(:one)
+    CommunityGroupMembership.find_or_create_by!(user: user, community_group: scoped_group) do |m|
+      m.admin = false
+      m.auto_joined = false
+    end
+    custom = "Hoping someone in our group has a spare copy for my classroom."
+
+    post wishlist_api_items_url,
+      params: {
+        type: Book.name,
+        item: {
+          title: "Custom Message Wish",
+          author: "Test Author",
+          summary: "This summary is definitely long enough for validation and describes the wish.",
+          published_year: 2020,
+          community_group_id: scoped_group.id,
+          message: custom
+        }
+      },
+      as: :json
+
+    assert_response :created
+    req = ItemRequest.find(JSON.parse(response.body)["item_request_id"])
+    assert_equal custom, req.message
+  end
+
   test "fulfill_wishlist assigns donor and sets available" do
     requester = users(:one)
     donor = users(:two)

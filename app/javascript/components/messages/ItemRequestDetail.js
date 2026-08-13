@@ -340,7 +340,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
       {!item?.owner && (
         <div className="px-2 py-2 md:px-0">
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            We&apos;re looking for a donor. You&apos;ll be emailed when someone offers this book. Chat will open here once a donor is matched.
+            You&apos;ll be emailed when someone offers this book. Chat will open here once there is a match.
           </div>
         </div>
       )}

@@ -122,6 +122,8 @@ class ItemService
     cover_image_url = item_params.delete(:cover_image_url)
     cg_id = item_params.delete(:community_group_id)
     sg_id = item_params.delete(:sub_group_id)
+    message = item_params.delete(:message).to_s.strip
+    message = self.class::DEFAULT_WISHLIST_MESSAGE if message.blank?
     raise "Invalid community group selection" if cg_id.blank?
 
     community_group_ids = { cg_id.to_s => sg_id }
@@ -135,7 +137,7 @@ class ItemService
           item: @item,
           requester: requester,
           owner: nil,
-          message: self.class::DEFAULT_WISHLIST_MESSAGE,
+          message: message,
           status: ItemRequest::PENDING_STATUS
         )
       end

@@ -3,6 +3,9 @@
  * expects for book forms and POST /api/items/wishlist (Google-agnostic fields).
  */
 
+/** Prefill for wishlist request modal; backend falls back to BookService::DEFAULT_WISHLIST_MESSAGE if blank. */
+export const DEFAULT_WISHLIST_MESSAGE = "I'd love this book if anyone has a copy. Thanks!";
+
 export function upgradeThumbnailToHttps(url) {
   if (!url || typeof url !== 'string') return '';
   return url.replace(/^http:/, 'https:');
