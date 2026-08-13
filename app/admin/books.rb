@@ -40,7 +40,7 @@ ActiveAdmin.register Book do
       row :genre
       row :published_year
       row :status do |book|
-        BookStatus.display_status(book.status)
+        ShareableItemStatus.display_status(book.status)
       end
       row :user do |book|
         link_to book.user.email_address, admin_user_path(book.user)

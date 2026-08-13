@@ -14,7 +14,7 @@ class BookTest < ActiveSupport::TestCase
     # Clean up any existing requests for the test book to avoid conflicts
     ItemRequest.where(item: @book, requester: @requester).destroy_all
     # Ensure book is available
-    @book.update!(status: BookStatus::AVAILABLE)
+    @book.update!(status: ShareableItemStatus::AVAILABLE)
   end
 
   describe ".to_isbn13" do

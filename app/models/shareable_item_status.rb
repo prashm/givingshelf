@@ -26,6 +26,3 @@ class ShareableItemStatus < ActiveHash::Base
     self.all.map { |s| s.value }
   end
 end
-
-# Backward compatibility alias
-BookStatus = ShareableItemStatus

@@ -28,7 +28,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_book_for_request(book, groups: [ @other_group ], status: BookStatus::AVAILABLE)
+  def setup_book_for_request(book, groups: [ @other_group ], status: ShareableItemStatus::AVAILABLE)
     ItemRequest.where(item: book).destroy_all
     GroupItemAvailability.where(item: book).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: book, community_group: group) }
@@ -92,7 +92,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns nil and sets error when book cannot be requested - book not available" do
-      book = setup_book_for_request(items(:one), status: BookStatus::DONATED)
+      book = setup_book_for_request(items(:one), status: ShareableItemStatus::DONATED)
       message = "I would love to read this book!"
 
 
@@ -191,7 +191,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result
       item_request.reload
       assert_equal ItemRequest::ACCEPTED_STATUS, item_request.status
-      assert_equal BookStatus::REQUESTED, item_request.item.status
+      assert_equal ShareableItemStatus::REQUESTED, item_request.item.status
       assert service.errors.empty?
     end
 
@@ -209,7 +209,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "completes an accepted request successfully" do
       item_request = setup_item_request(status: ItemRequest::ACCEPTED_STATUS)
-      item_request.item.update!(status: BookStatus::REQUESTED)
+      item_request.item.update!(status: ShareableItemStatus::REQUESTED)
       service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
@@ -217,7 +217,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result
       item_request.reload
       assert_equal ItemRequest::COMPLETED_STATUS, item_request.status
-      assert_equal BookStatus::DONATED, item_request.item.status
+      assert_equal ShareableItemStatus::DONATED, item_request.item.status
       assert service.errors.empty?
     end
 
@@ -279,7 +279,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       request1.reload
       assert_equal ItemRequest::ACCEPTED_STATUS, request1.status
-      assert_equal BookStatus::REQUESTED, book.reload.status
+      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
     end
   end
 
@@ -321,7 +321,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result
       item_request.reload
       assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
-      assert_equal BookStatus::AVAILABLE, book.reload.status
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
       assert service.errors.empty?
     end
 
@@ -402,7 +402,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         condition: "good",
         summary: "This is a test book summary that is long enough.",
         published_year: 2020,
-        status: BookStatus::AVAILABLE
+        status: ShareableItemStatus::AVAILABLE
       )
       setup_book_for_request(book2)
 
@@ -444,7 +444,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         condition: "good",
         summary: "This is a test book summary that is long enough.",
         published_year: 2020,
-        status: BookStatus::AVAILABLE
+        status: ShareableItemStatus::AVAILABLE
       )
       setup_book_for_request(book2)
 

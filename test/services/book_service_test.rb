@@ -26,7 +26,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_book_for_request_test(book, groups: [], status: BookStatus::AVAILABLE)
+  def setup_book_for_request_test(book, groups: [], status: ShareableItemStatus::AVAILABLE)
     ItemRequest.where(item: book).destroy_all
     GroupItemAvailability.where(item: book).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: book, community_group: group) }
@@ -360,7 +360,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when book is not available" do
-      book = setup_book_for_request_test(items(:one), status: BookStatus::DONATED)
+      book = setup_book_for_request_test(items(:one), status: ShareableItemStatus::DONATED)
       requester = users(:two)
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
@@ -607,7 +607,7 @@ class BookServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.find_or_create_by!(item: items(:two), community_group: group)
 
       # Mark one book as donated
-      items(:two).update!(status: BookStatus::DONATED)
+      items(:two).update!(status: ShareableItemStatus::DONATED)
 
       service = BookService.new
       stats = service.community_group_stats(community_group_id: group.id)
@@ -632,7 +632,7 @@ class BookServiceTest < ActiveSupport::TestCase
       CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
 
       # Mark user2's book as donated
-      items(:two).update!(status: BookStatus::DONATED)
+      items(:two).update!(status: ShareableItemStatus::DONATED)
 
       service = BookService.new
       stats_sg1 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg1.id)
