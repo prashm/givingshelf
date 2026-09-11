@@ -27,7 +27,7 @@ usermod -a -G ubuntu cwagent 2>/dev/null || echo "Note: cwagent may already be i
 echo "✓ Added cwagent to ubuntu group"
 
 # Create log files with proper permissions (if they don't exist)
-for log_file in rails-web.log rails-worker.log nginx.log; do
+for log_file in rails-web.log rails-worker.log nginx.log postgres.log; do
   log_path="${LOG_DIR}/${log_file}"
   if [ ! -f "$log_path" ]; then
     touch "$log_path"
@@ -62,6 +62,7 @@ tail_container() {
 tail_container givingshelf-web "${LOG_DIR}/rails-web.log" &
 tail_container givingshelf-worker "${LOG_DIR}/rails-worker.log" &
 tail_container givingshelf-nginx "${LOG_DIR}/nginx.log" &
+tail_container givingshelf-db "${LOG_DIR}/postgres.log" &
 
 # Wait for all background processes
 wait

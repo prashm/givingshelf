@@ -43,4 +43,8 @@
 yarn-debug.log*
 .yarn-integrity
 
+# Maintenance-mode flag file. Must never be committed: the deploy script runs
+# `git reset --hard`, so a committed flag would take production down on deploy.
+/deploy/nginx/maintenance/on
+
 /.cursor/*

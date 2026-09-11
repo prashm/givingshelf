@@ -30,7 +30,11 @@ production:
   primary:
     <<: *default
     url: <%= ENV["DATABASE_URL"] %>
-    sslmode: require
+    # Defaults to require so a managed endpoint is never downgraded by accident.
+    # Set DATABASE_SSLMODE=disable when pointing at the local db container, which
+    # serves no TLS. The cache/queue/cable entries below set no sslmode, so libpq
+    # uses prefer and falls back to plaintext on its own.
+    sslmode: <%= ENV.fetch("DATABASE_SSLMODE", "require") %>
   cache:
     <<: *default
     <% if ENV["DATABASE_URL"] %>

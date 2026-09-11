@@ -37,7 +37,10 @@ jobs:
             
             if [ "$DISK_USAGE" -gt 85 ]; then
               echo "WARNING: Disk usage is at ${DISK_USAGE}%. Cleaning up Docker..."
-              docker system prune -a --volumes -f
+              # Never pass --volumes here: it deletes any volume not attached to a
+              # running container, which would destroy redis_data on a deploy that
+              # fires while the stack is down.
+              docker system prune -a -f
               DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
               echo "Disk usage after cleanup: ${DISK_USAGE}%"
               if [ "$DISK_USAGE" -gt 85 ]; then

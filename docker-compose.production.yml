@@ -1,5 +1,51 @@
 services:
   # ------------------------
+  # POSTGRESQL
+  # ------------------------
+  # Data lives on a dedicated EBS volume bind-mounted at /mnt/pgdata, NOT in a
+  # Docker named volume. Two reasons: the volume survives instance termination
+  # (DeleteOnTermination=false), and no `docker volume` command can ever touch it.
+  # See deploy/POSTGRES_ON_EC2.md for the host-side setup and recovery runbook.
+  db:
+    # Pinned deliberately. A floating tag that resolves to a new major version
+    # will refuse to start against an existing data directory.
+    image: postgres:17.6
+    container_name: givingshelf-db
+    env_file:
+      - .env
+    environment:
+      # Subdirectory is required, not cosmetic: a freshly formatted ext4 volume
+      # contains lost+found, and initdb refuses a non-empty data directory.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - /mnt/pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    # Tuned for a 2GB host shared with Puma, Solid Queue, Redis and nginx.
+    command:
+      - postgres
+      - -c
+      - max_connections=50
+      - -c
+      - shared_buffers=192MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Compose defaults to 10s, which can SIGKILL Postgres mid-checkpoint on every
+    # deploy and reboot, forcing crash recovery on the next start.
+    stop_grace_period: 60s
+    networks:
+      - givingshelf
+
+  # ------------------------
   # RAILS APP
   # ------------------------
   web:
@@ -14,12 +60,18 @@ services:
       RAILS_ENV: production
       REDIS_URL: redis://redis:6379/0
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_started
     restart: unless-stopped
     command: bundle exec puma -C config/puma.rb
     expose:
       - "3000"
+    # Bounded so a Rails memory leak makes Rails the OOM victim rather than
+    # Postgres. A killed Postgres backend restarts every backend and drops all
+    # connections.
+    mem_limit: 768m
     volumes:
       - rails_storage:/rails/storage
       - rails_logs:/rails/log
@@ -38,12 +90,15 @@ services:
       RAILS_ENV: production
       REDIS_URL: redis://redis:6379/0
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_started
       web:
         condition: service_started
     restart: unless-stopped
     command: bin/jobs
+    mem_limit: 512m
     networks:
       - givingshelf
   # ------------------------
@@ -76,6 +131,9 @@ services:
       - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./deploy/nginx/certbot:/etc/letsencrypt
       - ./deploy/nginx/www:/var/www/certbot
+      # Flag-file maintenance mode. Evaluated per request, so touch/rm of
+      # deploy/nginx/maintenance/on toggles instantly with no nginx reload.
+      - ./deploy/nginx/maintenance:/var/www/maintenance:ro
     networks:
       - givingshelf
 

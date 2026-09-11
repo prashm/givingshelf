@@ -7,6 +7,19 @@ isProject: false
 
 # AWS Production Deployment Plan
 
+> **Superseded in part (GS-1).** Production Postgres no longer runs on RDS. It
+> runs as the `db` service in `docker-compose.production.yml`, with data on a
+> dedicated EBS volume at `/mnt/pgdata`, daily EBS snapshots, and nightly
+> `pg_dump` to S3. RDS cost $16.50/month of a $23.76 bill at a point where the
+> app had neither the traffic nor the data to justify it.
+>
+> **Phase 1 below (RDS setup) is kept for historical context only.** For the
+> current database topology, host setup, cutover procedure, backup and restore
+> commands, and the instance-rebuild runbook, see
+> [POSTGRES_ON_EC2.md](POSTGRES_ON_EC2.md).
+>
+> Phases 2 through 4 (EC2, HTTPS, deploy pipeline) remain accurate.
+
 ## Current State
 
 Your app is a **Rails 8** application with:
@@ -644,16 +657,28 @@ flowchart TB
 
 ---
 
-## Cost Estimate (Free Tier)
+## Cost Estimate
+
+The 12-month free tier has expired. Actual July 2026 invoice was **$23.76**,
+which is what motivated GS-1.
 
 
-| Service         | Free Tier        | Expected Cost          |
-| --------------- | ---------------- | ---------------------- |
-| EC2 t3.micro    | 750 hrs/mo       | $0                     |
-| RDS db.t3.micro | 750 hrs/mo, 20GB | $0                     |
-| S3              | 5GB              | $0                     |
-| Data transfer   | 15GB out/mo      | $0                     |
-| **Total**       |                  | **$0** (within limits) |
+| Service                   | Before (RDS) | After (containerized) |
+| ------------------------- | ------------ | --------------------- |
+| EC2 t4g.small             | $0           | $0                    |
+| RDS db.t4g.micro instance | $11.90       | —                     |
+| RDS 40 GiB gp2 storage    | $4.60        | —                     |
+| Public IPv4 address       | $3.72        | $3.72                 |
+| Root EBS (30 GiB gp3)     | $2.40        | $2.40                 |
+| pgdata EBS (10 GiB gp3)   | —            | $0.80                 |
+| EBS snapshots (DLM)       | —            | ~$1.50                |
+| Secrets Manager           | $0.80        | $0.80                 |
+| S3 backups                | —            | pennies               |
+| **Total**                 | **$23.76**   | **~$9.30**            |
 
 
-**Note:** Free tier is typically 12 months from account creation. Monitor usage in the AWS Billing console.
+**EC2 is $0 only because of the Graviton `t4g.small` free trial, which ends
+Dec 31, 2026.** After that the instance is roughly $12.50/month on demand,
+putting the bill near $22/month — versus roughly $35/month had RDS been kept.
+Mitigate with a 1-year EC2 Instance Savings Plan (~40% off) or by relocating the
+host. Monitor usage in the AWS Billing console.
