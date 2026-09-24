@@ -6,16 +6,13 @@ import {
 
 const RESERVED = ['www', 'api', 'admin', 'mail', 'smtp', 'staging', 'dev', 'test'];
 
-/** Apex/loopback hosts (before /g/ redirect). Group subdomains like bvsd.lvh.me are not local apex. */
+/** Loopback and local-tunnel apex only. Production apex (givingshelf.net) must
+ *  NOT match — otherwise Turnstile is hidden while the API still requires it. */
+const LOCAL_DEV_APEX_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', 'lvh.me']);
+
 export const isLocalDevHost = (hostname = typeof window !== 'undefined' ? window.location.hostname : '') => {
   const host = (hostname || '').toLowerCase();
-  const configuredDomain = getApplicationDomain().toLowerCase();
-  return (
-    host === 'localhost' ||
-    host === '127.0.0.1' ||
-    host === '[::1]' ||
-    (configuredDomain && host === configuredDomain)
-  );
+  return LOCAL_DEV_APEX_HOSTS.has(host);
 };
 
 /**

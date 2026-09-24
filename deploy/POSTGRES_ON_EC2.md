@@ -189,18 +189,31 @@ aws s3 cp /home/ubuntu/db-migration/ s3://givingshelf-db-backups/rds-cutover/ --
 Also record the row counts you will check against later, and the collation:
 
 ```bash
-PGPASSWORD="$RDS_PW" psql -h "$RDS_HOST" -U gs_admin -d givingshelf_prod -c \
+docker run --rm -e PGPASSWORD="$RDS_PW" postgres:17.6 \
+  psql -h "$RDS_HOST" -U gs_admin -d givingshelf_prod -c \
   "SELECT 'users' t, count(*) FROM users
    UNION ALL SELECT 'items', count(*) FROM items
    UNION ALL SELECT 'item_requests', count(*) FROM item_requests
    UNION ALL SELECT 'community_groups', count(*) FROM community_groups
    UNION ALL SELECT 'messages', count(*) FROM messages;"
 
-PGPASSWORD="$RDS_PW" psql -h "$RDS_HOST" -U gs_admin -d givingshelf_prod \
-  -c "SHOW lc_collate;" -c "SHOW lc_ctype;"
+docker run --rm -e PGPASSWORD="$RDS_PW" postgres:17.6 \
+  psql -h "$RDS_HOST" -U gs_admin -d givingshelf_prod -c \
+  "SELECT datcollate, datctype FROM pg_database WHERE datname = current_database();"
 ```
 
-**2. Maintenance on.**
+**2. Check out the branch on EC2.** Do this before maintenance mode — the flag
+file path, `maintenance.html`, and nginx `if (-f)` logic only exist on this
+branch. Matches how the deploy script already manipulates the working tree.
+
+```bash
+git fetch origin && git checkout feat/gs-1-postgres-in-docker
+
+# Recreate nginx so it picks up the updated conf and maintenance volume mount.
+docker compose -f docker-compose.production.yml up -d nginx
+```
+
+**3. Maintenance on.**
 
 ```bash
 touch deploy/nginx/maintenance/on
@@ -208,18 +221,15 @@ curl -sI https://givingshelf.net | head -n1          # expect 503
 curl -s  https://givingshelf.net/healthz             # expect ok
 ```
 
-**3. Stop writers**, then re-dump the primary to catch anything written since
+**4. Stop writers**, then re-dump the primary to catch anything written since
 step 1.
 
 ```bash
 docker compose -f docker-compose.production.yml stop web worker
-```
 
-**4. Check out the branch on EC2.** Matches how the deploy script already
-manipulates the working tree.
-
-```bash
-git fetch origin && git checkout feat/gs-1-postgres-in-docker
+docker run --rm -e PGPASSWORD="$RDS_PW" -v /home/ubuntu/db-migration:/dumps \
+  postgres:17.6 pg_dump -Fc -h "$RDS_HOST" -U gs_admin -d givingshelf_prod \
+  -f /dumps/givingshelf_prod.dump
 ```
 
 **5. Save the secrets** from 1.6, then materialize them.
@@ -227,6 +237,9 @@ git fetch origin && git checkout feat/gs-1-postgres-in-docker
 ```bash
 sudo /usr/local/bin/fetch-givingshelf-secrets.sh
 rm -f .env && ln -s /etc/givingshelf/.env.production .env
+# fetch script leaves the file mode 600 (root only). Compose runs as ubuntu
+# and must read it — same chmod the deploy workflow applies.
+sudo chmod 644 /etc/givingshelf/.env.production
 ```
 
 **6. Confirm the volume is mounted and ready.**
@@ -248,17 +261,19 @@ docker exec -i givingshelf-db psql -v ON_ERROR_STOP=1 -U gs_user \
   -d givingshelf_prod < deploy/rds-setup.sql
 ```
 
-**8. Compare collation before trusting the restore.**
+**8. Compare collation before trusting the restore.** Postgres 15+ removed
+`SHOW lc_collate` / `SHOW lc_ctype`; read them from `pg_database` instead.
 
 ```bash
-docker exec givingshelf-db psql -U gs_user -d givingshelf_prod \
-  -c "SHOW lc_collate;" -c "SHOW lc_ctype;"
+docker exec givingshelf-db psql -U gs_user -d givingshelf_prod -c \
+  "SELECT datcollate, datctype FROM pg_database WHERE datname = current_database();"
 ```
 
 If these differ from what RDS reported in step 1, text indexes will sort
 differently and you get subtle wrong-result bugs rather than a clean error.
-Resolve it now: recreate the data directory with matching
-`POSTGRES_INITDB_ARGS="--lc-collate=<value> --lc-ctype=<value>"`.
+Resolve it now: wipe `/mnt/pgdata/pgdata` and recreate with matching
+`POSTGRES_INITDB_ARGS="--lc-collate=<value> --lc-ctype=<value>"` before the
+first init (only works on an empty data directory).
 
 **9. Restore all four.**
 
@@ -268,18 +283,35 @@ Resolve it now: recreate the data directory with matching
 
 **10. Spot-check** the same five row counts from step 1.
 
-**11. Bring the app up and exercise it for real.**
+**11. Rebuild the app image and bring the stack up.** Checking out the branch
+only updates files on the host; `config/database.yml` (and the rest of the app)
+are baked into `givingshelf-web` at build time. Without a rebuild, Rails still
+runs the pre-migration image (`sslmode: require`, no local-db changes).
 
 ```bash
+docker compose -f docker-compose.production.yml build web
 docker compose -f docker-compose.production.yml up -d
+# Nginx resolves `web` to an IP at start and caches it. Recreate nginx after
+# web gets a new container IP, or you get 502 Connection refused to the old one.
+docker compose -f docker-compose.production.yml up -d --force-recreate nginx
 docker compose -f docker-compose.production.yml exec web \
   bundle exec rails db:migrate:status
 ```
 
+`db:migrate:status` is the pre-flight check while the public site can stay on
+the maintenance page. Browser smoke testing needs the next step.
+
+**12. Maintenance off**, then smoke-test in the browser. Nginx checks the flag
+file on every request — no reload needed. The site is public again here; if
+something is wrong, `touch deploy/nginx/maintenance/on` to put the page back.
+
+```bash
+rm deploy/nginx/maintenance/on
+curl -sI https://givingshelf.net | head -n1   # expect 200, not 503
+```
+
 Create a test item, confirm a background job runs, confirm Action Cable chat
 connects.
-
-**12. Maintenance off.** `rm deploy/nginx/maintenance/on`
 
 **13. Merge to `main`.** The auto-deploy reapplies the same code, re-fetches
 secrets, rebuilds, runs a no-op `db:prepare`, and restarts. Data persists on the

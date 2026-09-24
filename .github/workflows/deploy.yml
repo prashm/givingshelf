@@ -81,12 +81,15 @@ jobs:
             # build image and start containers
             docker compose -f docker-compose.production.yml build web worker
             docker compose -f docker-compose.production.yml up -d --remove-orphans
-            
-            # wait for web container to be ready, then verify RDS connectivity via db:prepare
+            # Nginx caches the resolved IP of `web` at start. Recreate it after
+            # web is rebuilt so we don't 502 to a stale container address.
+            docker compose -f docker-compose.production.yml up -d --force-recreate nginx
+
+            # wait for web container to be ready, then verify DB connectivity via db:prepare
             echo "Waiting for web container to start..."
             sleep 10
-            echo "Verifying RDS connectivity and preparing database..."
-            
+            echo "Verifying database connectivity and preparing database..."
+
             # prepare database (creates if needed, then runs migrations - fails if RDS unreachable)
             docker compose -f docker-compose.production.yml exec web bundle exec rails db:prepare
             
