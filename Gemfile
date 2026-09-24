@@ -47,7 +47,8 @@ gem "rotp"
 gem "aws-sdk-s3", require: false
 gem "geocoder"
 gem "openssl"
-gem "redis", "~> 6.0"
+# Action Cable's redis adapter still requires redis < 6 (gemspec: >= 4, < 6).
+gem "redis", "~> 5.0"
 gem "sentry-ruby"
 gem "sentry-rails"
 gem "jwt"
