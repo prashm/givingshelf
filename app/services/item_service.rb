@@ -158,7 +158,7 @@ class ItemService
     data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
     if update_item(donor_user, data)
       @item.item_requests.pending.each do |pending_req|
-        pending_req.match_wishlist_donor!(donor_user)
+        ItemRequestService.new(pending_req).match_wishlist_donor!(donor_user)
         UserService.new.notify_wishlist_available_to_requester(item: @item, item_request: pending_req)
       end
       true

@@ -42,20 +42,20 @@ class ItemRequestService
     case action_type
     when "uncancel"
       raise "Not authorized" unless self.item_request.requester == current_user
-      self.item_request.uncancel!
+      uncancel!
     else
       raise "Not authorized" unless self.item_request.item.owner?(current_user)
       raise "Cannot update a cancelled request" if self.item_request.cancelled?
 
       case action_type
       when "accept"
-        self.item_request.accept!
+        accept!
       when "decline"
-        self.item_request.decline!
+        decline!
       when "complete"
-        self.item_request.complete!
+        complete!
       when "mark_as_viewed"
-        self.item_request.mark_as_in_review!
+        mark_as_in_review!
       else
         raise "Invalid action"
       end
@@ -72,11 +72,52 @@ class ItemRequestService
       raise "Not authorized"
     end
 
-    self.item_request.cancel!
+    cancel!
     true
   rescue => e
     @errors << e.message
     false
+  end
+
+  def accept!
+    raise "Cannot accept a cancelled request" if item_request.cancelled?
+    item_request.update!(status: ItemRequest::ACCEPTED_STATUS)
+    item_request.item.update!(status: ShareableItemStatus::REQUESTED)
+    # Mark all other requests for this item as In Review
+    item_request.item.item_requests.where.not(id: item_request.id).update_all(status: ItemRequest::IN_REVIEW_STATUS)
+  end
+
+  def decline!
+    raise "Cannot decline a cancelled request" if item_request.cancelled?
+    item_request.update!(status: ItemRequest::DECLINED_STATUS)
+  end
+
+  def complete!
+    raise "Cannot complete a cancelled request" if item_request.cancelled?
+    raise "Can only complete an accepted request" unless item_request.accepted?
+    item_request.update!(status: ItemRequest::COMPLETED_STATUS)
+    item_request.item.update!(status: ShareableItemStatus::DONATED)
+  end
+
+  def cancel!
+    raise "Cannot cancel a completed request" if item_request.completed?
+    item_request.item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
+    item_request.update!(status: ItemRequest::CANCELLED_STATUS)
+  end
+
+  def uncancel!
+    raise "Can only uncancel a cancelled request" unless item_request.cancelled?
+    item_request.update!(status: ItemRequest::PENDING_STATUS)
+  end
+
+  def mark_as_in_review!
+    item_request.update!(status: ItemRequest::IN_REVIEW_STATUS) if item_request.pending?
+  end
+
+  # When a donor claims a wishlist item: mark request in review and set owner without moving item to REQUESTED.
+  def match_wishlist_donor!(donor_user)
+    return unless item_request.pending?
+    item_request.update!(status: ItemRequest::IN_REVIEW_STATUS, owner: donor_user)
   end
 
   def requests_for_user(user, type)

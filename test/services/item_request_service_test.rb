@@ -313,7 +313,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
-      item_request.accept!
+      ItemRequestService.new(item_request).accept!
       service = ItemRequestService.new(item_request.reload)
 
       result = service.cancel_request(@requester)
@@ -355,7 +355,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
-      item_request.cancel!
+      ItemRequestService.new(item_request).cancel!
       service = ItemRequestService.new(item_request.reload)
 
       result = service.update_request(@requester, "uncancel")
@@ -375,7 +375,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
-      item_request.cancel!
+      ItemRequestService.new(item_request).cancel!
       service = ItemRequestService.new(item_request.reload)
 
       result = service.update_request(@owner, "uncancel")
@@ -384,6 +384,188 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_includes service.errors.join(" "), "Not authorized"
       item_request.reload
       assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
+    end
+  end
+
+  describe "#accept!" do
+    it "raises when accepting a cancelled request" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+      service.cancel!
+
+      error = assert_raises(RuntimeError) { service.accept! }
+      assert_equal "Cannot accept a cancelled request", error.message
+    end
+
+    it "marks other pending requests for the same item as in review" do
+      book = setup_book_for_request(items(:one))
+      other_requester = User.create!(
+        email_address: "other_requester_#{SecureRandom.hex(6)}@example.com",
+        password_digest: BCrypt::Password.create("password123!"),
+        verified: true
+      )
+
+      request1 = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "First request message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      request2 = ItemRequest.create!(
+        item: book,
+        requester: other_requester,
+        owner: @owner,
+        message: "Second request message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+
+      ItemRequestService.new(request1).accept!
+
+      assert_equal ItemRequest::IN_REVIEW_STATUS, request2.reload.status
+    end
+  end
+
+  describe "#decline!" do
+    it "raises when declining a cancelled request" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+      service.cancel!
+
+      error = assert_raises(RuntimeError) { service.decline! }
+      assert_equal "Cannot decline a cancelled request", error.message
+    end
+  end
+
+  describe "#complete!" do
+    it "raises when completing a cancelled request" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+      service.cancel!
+
+      error = assert_raises(RuntimeError) { service.complete! }
+      assert_equal "Cannot complete a cancelled request", error.message
+    end
+  end
+
+  describe "#cancel!" do
+    it "raises when cancelling a completed request" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+      service.accept!
+      service.complete!
+
+      error = assert_raises(RuntimeError) { service.cancel! }
+      assert_equal "Cannot cancel a completed request", error.message
+    end
+  end
+
+  describe "#uncancel!" do
+    it "raises when uncancelling a request that is not cancelled" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::PENDING_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+
+      error = assert_raises(RuntimeError) { service.uncancel! }
+      assert_equal "Can only uncancel a cancelled request", error.message
+    end
+  end
+
+  describe "#mark_as_in_review!" do
+    it "does nothing when request is not pending" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::ACCEPTED_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+
+      service.mark_as_in_review!
+
+      assert_equal ItemRequest::ACCEPTED_STATUS, item_request.reload.status
+    end
+  end
+
+  describe "#match_wishlist_donor!" do
+    it "moves a pending request to in review and assigns the donor as owner" do
+      wishlist_book = Book.create!(
+        user_id: nil,
+        title: "Wishlist Match Book",
+        author: "Author",
+        summary: "Summary text long enough for validations on the book model here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      item_request = ItemRequest.create!(
+        item: wishlist_book,
+        requester: @requester,
+        owner: nil,
+        message: "I would love this book if anyone in the community has a copy.",
+        status: ItemRequest::PENDING_STATUS
+      )
+      donor = @owner
+      service = ItemRequestService.new(item_request)
+
+      service.match_wishlist_donor!(donor)
+
+      item_request.reload
+      assert_equal ItemRequest::IN_REVIEW_STATUS, item_request.status
+      assert_equal donor.id, item_request.owner_id
+    end
+
+    it "does nothing when request is not pending" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequest.create!(
+        item: book,
+        requester: @requester,
+        owner: @owner,
+        message: "Test message that is long enough",
+        status: ItemRequest::DECLINED_STATUS
+      )
+      service = ItemRequestService.new(item_request)
+
+      service.match_wishlist_donor!(@owner)
+
+      item_request.reload
+      assert_equal ItemRequest::DECLINED_STATUS, item_request.status
     end
   end
 
