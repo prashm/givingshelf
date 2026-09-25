@@ -36,6 +36,24 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     book
   end
 
+  def create_item_request(book, requester: @requester, status: ItemRequest::PENDING_STATUS)
+    ItemRequest.create!(
+      item: book,
+      requester: requester,
+      owner: @owner,
+      message: "Test message that is long enough",
+      status: status
+    )
+  end
+
+  def create_other_requester
+    User.create!(
+      email_address: "other_requester_#{SecureRandom.hex(6)}@example.com",
+      password_digest: BCrypt::Password.create("password123!"),
+      verified: true
+    )
+  end
+
   def add_user_to_group(user, group, auto_joined: false)
     CommunityGroupMembership.find_or_create_by!(user: user, community_group: group) do |m|
       m.admin = false
@@ -566,6 +584,137 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       item_request.reload
       assert_equal ItemRequest::DECLINED_STATUS, item_request.status
+    end
+  end
+
+  describe "state transitions without an item_request" do
+    it "raises ArgumentError instead of NoMethodError" do
+      %i[accept! decline! complete! cancel! uncancel! mark_as_in_review!].each do |transition|
+        error = assert_raises(ArgumentError) { ItemRequestService.new.public_send(transition) }
+        assert_equal "item_request is required", error.message
+      end
+      assert_raises(ArgumentError) { ItemRequestService.new.match_wishlist_donor!(@owner) }
+    end
+  end
+
+  describe "#accept! sibling handling" do
+    it "does not change declined, cancelled or completed sibling requests" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+      declined = create_item_request(book, requester: create_other_requester, status: ItemRequest::DECLINED_STATUS)
+      cancelled = create_item_request(book, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
+      completed = create_item_request(book, requester: create_other_requester, status: ItemRequest::COMPLETED_STATUS)
+      pending = create_item_request(book, requester: create_other_requester)
+
+      ItemRequestService.new(request).accept!
+
+      assert_equal ItemRequest::DECLINED_STATUS, declined.reload.status
+      assert_equal ItemRequest::CANCELLED_STATUS, cancelled.reload.status
+      assert_equal ItemRequest::COMPLETED_STATUS, completed.reload.status
+      assert_equal ItemRequest::IN_REVIEW_STATUS, pending.reload.status
+    end
+  end
+
+  describe "transaction rollback" do
+    it "rolls back accept! when the item update fails" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+      sibling = create_item_request(book, requester: create_other_requester)
+
+      request.item.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "item save failed" }) do
+        assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).accept! }
+      end
+
+      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+      assert_equal ItemRequest::PENDING_STATUS, sibling.reload.status
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+    end
+
+    it "rolls back complete! when the item update fails" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+      ItemRequestService.new(request).accept!
+
+      request.item.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "item save failed" }) do
+        assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).complete! }
+      end
+
+      assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+    end
+
+    it "rolls back cancel! of an accepted request when the request update fails" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+      ItemRequestService.new(request).accept!
+
+      request.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "request save failed" }) do
+        assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).cancel! }
+      end
+
+      assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+    end
+
+    it "reports the error and leaves state untouched when update_request accept fails" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+      service = ItemRequestService.new(request)
+
+      request.item.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "item save failed" }) do
+        assert_equal false, service.update_request(@owner, "accept")
+      end
+
+      assert_includes service.errors, "item save failed"
+      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+    end
+  end
+
+  describe "transition happy paths" do
+    it "decline! declines a pending request" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+
+      ItemRequestService.new(request).decline!
+
+      assert_equal ItemRequest::DECLINED_STATUS, request.reload.status
+    end
+
+    it "mark_as_in_review! moves a pending request to in review" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+
+      ItemRequestService.new(request).mark_as_in_review!
+
+      assert_equal ItemRequest::IN_REVIEW_STATUS, request.reload.status
+    end
+
+    it "uncancel! moves a cancelled request back to pending" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book, status: ItemRequest::CANCELLED_STATUS)
+
+      ItemRequestService.new(request).uncancel!
+
+      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+    end
+
+    it "complete! raises on a pending request" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+
+      error = assert_raises(RuntimeError) { ItemRequestService.new(request).complete! }
+      assert_equal "Can only complete an accepted request", error.message
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+    end
+
+    it "cancel! on a pending request leaves the item status unchanged" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+
+      ItemRequestService.new(request).cancel!
+
+      assert_equal ItemRequest::CANCELLED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
     end
   end
 
