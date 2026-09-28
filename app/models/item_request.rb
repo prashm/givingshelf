@@ -48,26 +48,6 @@ class ItemRequest < ApplicationRecord
 
   after_update :notify_status_change
 
-  def accept!
-    raise "Cannot accept a cancelled request" if cancelled?
-    update!(status: ACCEPTED_STATUS)
-    item.update!(status: ShareableItemStatus::REQUESTED)
-    # Mark all other requests for this item as In Review
-    item.item_requests.where.not(id: id).update_all(status: IN_REVIEW_STATUS)
-  end
-
-  def decline!
-    raise "Cannot decline a cancelled request" if cancelled?
-    update!(status: DECLINED_STATUS)
-  end
-
-  def complete!
-    raise "Cannot complete a cancelled request" if cancelled?
-    raise "Can only complete an accepted request" unless accepted?
-    update!(status: COMPLETED_STATUS)
-    item.update!(status: ShareableItemStatus::DONATED)
-  end
-
   def pending?
     status == PENDING_STATUS
   end
@@ -92,32 +72,9 @@ class ItemRequest < ApplicationRecord
     status == CANCELLED_STATUS
   end
 
-  def cancel!
-    raise "Cannot cancel a completed request" if completed?
-    if accepted?
-      item.update!(status: ShareableItemStatus::AVAILABLE)
-    end
-    update!(status: CANCELLED_STATUS)
-  end
-
-  def uncancel!
-    raise "Can only uncancel a cancelled request" unless cancelled?
-    update!(status: PENDING_STATUS)
-  end
-
   def can_update_status?
     return false if cancelled?
     status == ACCEPTED_STATUS || !item.item_requests.exists?(status: ACCEPTED_STATUS)
-  end
-
-  def mark_as_in_review!
-    update!(status: IN_REVIEW_STATUS) if pending?
-  end
-
-  # When a donor claims a wishlist book: mark request in review and set owner without moving item to REQUESTED.
-  def match_wishlist_donor!(donor_user)
-    return unless pending?
-    update!(status: IN_REVIEW_STATUS, owner: donor_user)
   end
 
   private

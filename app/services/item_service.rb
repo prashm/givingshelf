@@ -156,15 +156,25 @@ class ItemService
     end
 
     data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
-    if update_item(donor_user, data)
+    # update_item rescues its own errors, so roll back explicitly when it fails; otherwise a
+    # failure while matching requests would leave the item AVAILABLE with requests still pending.
+    matched_requests = []
+    updated = false
+    ActiveRecord::Base.transaction do
+      raise ActiveRecord::Rollback unless update_item(donor_user, data)
       @item.item_requests.pending.each do |pending_req|
-        pending_req.match_wishlist_donor!(donor_user)
-        UserService.new.notify_wishlist_available_to_requester(item: @item, item_request: pending_req)
+        ItemRequestService.new(pending_req).match_wishlist_donor!(donor_user)
+        matched_requests << pending_req
       end
-      true
-    else
-      false
+      updated = true
     end
+    return false unless updated
+
+    # Notify only after the transaction has committed
+    matched_requests.each do |req|
+      UserService.new.notify_wishlist_available_to_requester(item: @item, item_request: req)
+    end
+    true
   rescue => e
     @errors << e.message
     false
