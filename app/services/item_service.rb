@@ -192,12 +192,16 @@ class ItemService
     )
   end
 
-  def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil)
-    items = base_scope.left_outer_joins(:user).joins(:group_item_availabilities)
+  def search_items(base_scope:, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil, user_join_type: :owner)
+    items = base_scope.joins(:group_item_availabilities)
+    
     normalized_query = query_string.to_s.strip
 
     items = apply_query_filter(items, normalized_query) if normalized_query.present?
 
+    # Determine if we should apply ZIP code filtering
+    apply_zip_filter = false
+    
     # Filter by community group availability
     if community_group_id.present?
       items = items.where(group_item_availabilities: { community_group_id: community_group_id })
@@ -215,7 +219,14 @@ class ItemService
     else
       # Default browse/search behavior: only show items available in the ZIP Code Community group.
       items = items.where(group_item_availabilities: { community_group_id: CommunityGroup.find_or_create_zipcode_group!.id })
-      items = items.merge(zip_code_scope(zip_code, radius)) if zip_code.present?
+      apply_zip_filter = true
+    end
+    
+    if zip_code.present? && apply_zip_filter
+      items = apply_user_join(items, user_join_type)
+      items = items.merge(zip_code_scope(zip_code, radius, user_join_type))
+    else
+      items = apply_user_join(items, user_join_type) if user_join_type == :owner
     end
 
     items = items.merge(Item.overlapping_age_bucket(age_range)) if age_range.present?
@@ -224,15 +235,15 @@ class ItemService
   end
 
   def wishlist_items(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, query_string: nil, age_range: nil)
-    scoped_group_id = community_group_id.presence || CommunityGroup.find_or_create_zipcode_group!.id
     search_items(
       base_scope: type_class.wishlist,
       query_string: query_string,
       zip_code: zip_code,
       radius: radius,
-      community_group_id: scoped_group_id,
+      community_group_id: community_group_id,
       sub_group_id: sub_group_id,
-      age_range: age_range
+      age_range: age_range,
+      user_join_type: :requester
     )
   end
 
@@ -242,7 +253,7 @@ class ItemService
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
-      items_shared: base_items.where.not(status: ShareableItemStatus::DONATED).distinct.count(:id),
+      items_shared: base_items.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
       items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
       happy_users: base_requests.completed.distinct.count(:requester_id),
@@ -381,32 +392,40 @@ class ItemService
   end
 
 
-  def zip_code_scope(zip_code, radius)
+  def apply_user_join(items, user_join_type)
+    case user_join_type
+    when :requester
+      items.joins("INNER JOIN item_requests ON item_requests.item_id = items.id")
+           .joins("INNER JOIN users requesters ON requesters.id = item_requests.requester_id")
+    when :owner
+      items.left_outer_joins(:user)
+    else
+      raise ArgumentError, "Invalid user_join_type: #{user_join_type}"
+    end
+  end
+
+  def zip_code_scope(zip_code, radius, user_join_type = :owner)
+    user_table = user_join_type == :requester ? "requesters" : "users"
+    
     if (radius_miles = radius.to_i) > 0
       address_verification_service = AddressVerificationService.new
       search_coords = address_verification_service.geocode_zip_code(zip_code)
       radius_scope = false
       if search_coords && search_coords[:latitude] && search_coords[:longitude]
-        # Use SQL Haversine formula to calculate distance
-        # Formula: (6371 * acos(cos(radians(lat1)) * cos(radians(lat2)) * cos(radians(lng2) - radians(lng1)) + sin(radians(lat1)) * sin(radians(lat2)))) * 0.621371
-        # 6371 = Earth's radius in km, 0.621371 converts km to miles
-        # Use GREATEST/LEAST to clamp acos input to [-1, 1] to avoid floating point precision errors
         lat = search_coords[:latitude]
         lng = search_coords[:longitude]
 
         scope = Item.where(
-          "(6371 * acos(GREATEST(-1.0, LEAST(1.0, cos(radians(?)) * cos(radians(users.latitude)) * cos(radians(users.longitude) - radians(?)) + sin(radians(?)) * sin(radians(users.latitude)))))) * 0.621371 <= ? AND users.latitude IS NOT NULL AND users.longitude IS NOT NULL",
+          "(6371 * acos(GREATEST(-1.0, LEAST(1.0, cos(radians(?)) * cos(radians(#{user_table}.latitude)) * cos(radians(#{user_table}.longitude) - radians(?)) + sin(radians(?)) * sin(radians(#{user_table}.latitude)))))) * 0.621371 <= ? AND #{user_table}.latitude IS NOT NULL AND #{user_table}.longitude IS NOT NULL",
           lat, lng, lat, radius_miles
         )
         radius_scope = true
       else
-        # If geocoding fails, fall back to exact ZIP match
         Rails.logger.warn "Geocoding failed for ZIP code #{zip_code}, falling back to exact match. Error: #{address_verification_service.errors.to_sentence}"
       end
     end
     unless radius_scope
-      # Exact ZIP code match (default behavior)
-      scope = Item.where(users: { zip_code: zip_code })
+      scope = Item.where("#{user_table}.zip_code" => zip_code)
     end
     scope
   end
