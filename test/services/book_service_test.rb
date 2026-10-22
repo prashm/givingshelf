@@ -17,6 +17,10 @@ class BookServiceTest < ActiveSupport::TestCase
       m.admin = false
       m.auto_joined = true
     end
+    CommunityGroupMembership.find_or_create_by!(user: users(:two), community_group: @zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
   end
 
   def teardown
@@ -53,6 +57,44 @@ class BookServiceTest < ActiveSupport::TestCase
       message: "Test message that is long enough",
       status: status
     )
+  end
+
+  def create_wishlist_book(title:, group:, requester:, sub_group: nil)
+    book = Book.create!(
+      user_id: nil,
+      type: Book.name,
+      title: title,
+      author: "Test Author",
+      summary: "A long enough summary for wishlist zipcode filtering test assertions.",
+      published_year: 2020,
+      genre: "Fiction",
+      status: ShareableItemStatus::WISHLIST
+    )
+    GroupItemAvailability.create!(item: book, community_group: group, sub_group: sub_group)
+    ItemRequest.create!(
+      item: book,
+      requester: requester,
+      owner: nil,
+      message: "I would love this book if anyone in the community has a copy.",
+      status: ItemRequest::PENDING_STATUS
+    )
+    book
+  end
+
+  def create_available_book(title:, user:, group:)
+    book = Book.create!(
+      user: user,
+      type: Book.name,
+      title: title,
+      author: "Test Author",
+      condition: "good",
+      summary: "A long enough summary for available book zipcode filtering test assertions.",
+      published_year: 2020,
+      genre: "Fiction",
+      status: ShareableItemStatus::AVAILABLE
+    )
+    GroupItemAvailability.create!(item: book, community_group: group)
+    book
   end
 
   describe "#create_item" do
@@ -347,6 +389,51 @@ class BookServiceTest < ActiveSupport::TestCase
       ids = result.pluck(:id)
       assert_includes ids, items(:one).id
       assert_not_includes ids, items(:two).id
+    end
+
+    it "filters available books by owner zipcode with exact match" do
+      local_book = create_available_book(title: "Local Book", user: @user, group: @zip_group)
+      remote_book = create_available_book(title: "Remote Book", user: users(:two), group: @zip_group)
+
+      service = BookService.new
+      result = service.search_items(query_string: "", zip_code: "12345", community_group_id: nil)
+      ids = result.pluck(:id)
+
+      assert_includes ids, local_book.id
+      assert_not_includes ids, remote_book.id
+    end
+
+    it "filters available books by owner zipcode with radius" do
+      @user.update!(latitude: 0.0, longitude: 0.0)
+      users(:two).update!(latitude: 40.0, longitude: 40.0)
+
+      local_book = create_available_book(title: "Nearby Book", user: @user, group: @zip_group)
+      far_book = create_available_book(title: "Far Book", user: users(:two), group: @zip_group)
+
+      fake_avs = Object.new
+      def fake_avs.geocode_zip_code(_zip) = { latitude: 0.0, longitude: 0.0 }
+      def fake_avs.errors = []
+
+      AddressVerificationService.stub(:new, fake_avs) do
+        service = BookService.new
+        result = service.search_items(query_string: "", zip_code: "12345", radius: "10", community_group_id: nil)
+        ids = result.pluck(:id)
+
+        assert_includes ids, local_book.id
+        assert_not_includes ids, far_book.id
+      end
+    end
+
+    it "does not apply zipcode filtering to available items when community_group_id is present" do
+      local_book = create_available_book(title: "Group Local Book", user: @user, group: @other_group)
+      remote_book = create_available_book(title: "Group Remote Book", user: users(:two), group: @other_group)
+
+      service = BookService.new
+      result = service.search_items(query_string: "", zip_code: "12345", community_group_id: @other_group.id)
+      ids = result.pluck(:id)
+
+      assert_includes ids, local_book.id
+      assert_includes ids, remote_book.id
     end
   end
 
@@ -833,6 +920,133 @@ class BookServiceTest < ActiveSupport::TestCase
 
       assert_includes ids, matching.id
       assert_not_includes ids, non_matching.id
+    end
+
+    it "filters wishlist books by requester zipcode when using zip_code param without community_group_id" do
+      local_wish = create_wishlist_book(title: "Local Wish Book", group: @zip_group, requester: @user)
+      remote_wish = create_wishlist_book(title: "Remote Wish Book", group: @zip_group, requester: users(:two))
+
+      service = BookService.new
+      result = service.wishlist_items(zip_code: "12345")
+      ids = result.pluck(:id)
+
+      assert_includes ids, local_wish.id
+      assert_not_includes ids, remote_wish.id
+    end
+
+    it "returns all wishlist books in zip group when no zip_code is provided" do
+      wish_a = create_wishlist_book(title: "Wish A", group: @zip_group, requester: @user)
+      wish_b = create_wishlist_book(title: "Wish B", group: @zip_group, requester: users(:two))
+
+      service = BookService.new
+      result = service.wishlist_items(zip_code: nil)
+      ids = result.pluck(:id)
+
+      assert_includes ids, wish_a.id
+      assert_includes ids, wish_b.id
+    end
+
+    it "filters wishlist books by requester zipcode with radius when geocoding succeeds" do
+      @user.update!(latitude: 0.0, longitude: 0.0)
+      users(:two).update!(latitude: 40.0, longitude: 40.0)
+
+      local_wish = create_wishlist_book(title: "Nearby Wish", group: @zip_group, requester: @user)
+      far_wish = create_wishlist_book(title: "Far Wish", group: @zip_group, requester: users(:two))
+
+      fake_avs = Object.new
+      def fake_avs.geocode_zip_code(_zip) = { latitude: 0.0, longitude: 0.0 }
+      def fake_avs.errors = []
+
+      AddressVerificationService.stub(:new, fake_avs) do
+        service = BookService.new
+        result = service.wishlist_items(zip_code: "12345", radius: "10")
+        ids = result.pluck(:id)
+
+        assert_includes ids, local_wish.id
+        assert_not_includes ids, far_wish.id
+      end
+    end
+
+    it "falls back to exact requester zipcode match for wishlist when geocoding fails" do
+      local_wish = create_wishlist_book(title: "Local Fallback Wish", group: @zip_group, requester: @user)
+      remote_wish = create_wishlist_book(title: "Remote Fallback Wish", group: @zip_group, requester: users(:two))
+
+      fake_avs = Object.new
+      def fake_avs.geocode_zip_code(_zip) = nil
+      def fake_avs.errors = [ "no results" ]
+
+      AddressVerificationService.stub(:new, fake_avs) do
+        service = BookService.new
+        result = service.wishlist_items(zip_code: "12345", radius: "10")
+        ids = result.pluck(:id)
+
+        assert_includes ids, local_wish.id
+        assert_not_includes ids, remote_wish.id
+      end
+    end
+
+    it "does not apply zipcode filtering to wishlist items when community_group_id is explicitly provided" do
+      wish_a = create_wishlist_book(title: "Group Wish A", group: @other_group, requester: @user)
+      wish_b = create_wishlist_book(title: "Group Wish B", group: @other_group, requester: users(:two))
+
+      service = BookService.new
+      result = service.wishlist_items(zip_code: "12345", community_group_id: @other_group.id)
+      ids = result.pluck(:id)
+
+      assert_includes ids, wish_a.id
+      assert_includes ids, wish_b.id
+    end
+
+    it "applies the same zipcode filtering logic to both available and wishlist base scopes" do
+      available_local = create_available_book(title: "Avail Local", user: @user, group: @zip_group)
+      available_remote = create_available_book(title: "Avail Remote", user: users(:two), group: @zip_group)
+      wishlist_local = create_wishlist_book(title: "Wish Local", group: @zip_group, requester: @user)
+      wishlist_remote = create_wishlist_book(title: "Wish Remote", group: @zip_group, requester: users(:two))
+
+      service = BookService.new
+
+      available_result = service.search_items(query_string: "", zip_code: "12345", community_group_id: nil)
+      available_ids = available_result.pluck(:id)
+      assert_includes available_ids, available_local.id
+      assert_not_includes available_ids, available_remote.id
+      assert_not_includes available_ids, wishlist_local.id
+      assert_not_includes available_ids, wishlist_remote.id
+
+      wishlist_result = service.wishlist_items(zip_code: "12345")
+      wishlist_ids = wishlist_result.pluck(:id)
+      assert_includes wishlist_ids, wishlist_local.id
+      assert_not_includes wishlist_ids, wishlist_remote.id
+      assert_not_includes wishlist_ids, available_local.id
+      assert_not_includes wishlist_ids, available_remote.id
+    end
+
+    it "combines zipcode and query filtering for wishlist items" do
+      matching_local = create_wishlist_book(title: "Special Wish Title", group: @zip_group, requester: @user)
+      non_matching_local = create_wishlist_book(title: "Other Wish", group: @zip_group, requester: @user)
+      matching_remote = create_wishlist_book(title: "Special Wish Title Remote", group: @zip_group, requester: users(:two))
+
+      service = BookService.new
+      result = service.wishlist_items(zip_code: "12345", query_string: "Special Wish")
+      ids = result.pluck(:id)
+
+      assert_includes ids, matching_local.id
+      assert_not_includes ids, non_matching_local.id
+      assert_not_includes ids, matching_remote.id
+    end
+
+    it "combines zipcode and subgroup filtering for wishlist items when community_group_id is explicit" do
+      sg1 = sub_groups(:one)
+      sg2 = sub_groups(:two)
+
+      in_scope = create_wishlist_book(title: "SG1 Wish", group: @other_group, requester: @user, sub_group: sg1)
+      out_scope = create_wishlist_book(title: "SG2 Wish", group: @other_group, requester: @user, sub_group: sg2)
+
+      service = BookService.new
+      result = service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sg1.id)
+      ids = result.pluck(:id)
+
+      assert_includes ids, in_scope.id
+      assert_not_includes ids, out_scope.id
     end
   end
 
