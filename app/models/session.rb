@@ -2,9 +2,10 @@ class Session < ApplicationRecord
   self.table_name = "user_sessions"
   belongs_to :user
 
-  # A login session is invalid once it has gone this long without a request.
+  # A login session is invalid once it has gone this long without a request
+  # (session_idle_timeout_minutes in config/application.yml).
   # updated_at is the last-activity timestamp (bumped by Authentication#resume_session).
-  IDLE_TIMEOUT = 24.hours
+  IDLE_TIMEOUT = Rails.configuration.x.application.fetch(:session_idle_timeout_minutes).minutes
   # Only bump updated_at when it is at least this stale, so we don't write on every request.
   ACTIVITY_TOUCH_INTERVAL = 5.minutes
 

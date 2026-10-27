@@ -1,18 +1,18 @@
 require "test_helper"
 
 class SessionIdleTimeoutTest < ActionDispatch::IntegrationTest
-  test "session idle for less than 24 hours stays valid" do
+  test "session idle for less than the idle timeout stays valid" do
     session_record = sign_in_as(users(:one))
-    session_record.update_columns(updated_at: 23.hours.ago)
+    session_record.update_columns(updated_at: Session::IDLE_TIMEOUT.ago + 1.minute)
 
     get profile_api_users_url
     assert_response :success
     assert Session.exists?(session_record.id)
   end
 
-  test "session idle for more than 24 hours is rejected and destroyed" do
+  test "session idle for more than the idle timeout is rejected and destroyed" do
     session_record = sign_in_as(users(:one))
-    session_record.update_columns(updated_at: 25.hours.ago)
+    session_record.update_columns(updated_at: Session::IDLE_TIMEOUT.ago - 1.minute)
 
     get profile_api_users_url
     assert_response :unauthorized
@@ -21,7 +21,7 @@ class SessionIdleTimeoutTest < ActionDispatch::IntegrationTest
 
   test "activity bumps last-activity time once the touch interval has passed" do
     session_record = sign_in_as(users(:one))
-    session_record.update_columns(updated_at: 1.hour.ago)
+    session_record.update_columns(updated_at: Session::ACTIVITY_TOUCH_INTERVAL.ago - 1.minute)
 
     get profile_api_users_url
     assert_response :success

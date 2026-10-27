@@ -16,8 +16,8 @@ class SessionCleanupJobTest < ActiveJob::TestCase
   end
 
   test "deletes idle login sessions and keeps active ones" do
-    idle = create_login_session(updated_at: 25.hours.ago)
-    active = create_login_session(updated_at: 1.hour.ago)
+    idle = create_login_session(updated_at: Session::IDLE_TIMEOUT.ago - 1.minute)
+    active = create_login_session(updated_at: Session::IDLE_TIMEOUT.ago + 1.minute)
 
     SessionCleanupJob.perform_now
 
@@ -26,8 +26,8 @@ class SessionCleanupJobTest < ActiveJob::TestCase
   end
 
   test "deletes expired session-store rows and keeps recent ones" do
-    expired = create_store_session(updated_at: 25.hours.ago)
-    recent = create_store_session(updated_at: 1.hour.ago)
+    expired = create_store_session(updated_at: Session::IDLE_TIMEOUT.ago - 1.minute)
+    recent = create_store_session(updated_at: Session::IDLE_TIMEOUT.ago + 1.minute)
 
     SessionCleanupJob.perform_now
 
