@@ -124,14 +124,28 @@ docker compose -f docker-compose.production.yml --profile certbot run --rm certb
 
 Do **not** also pass `-d www.givingshelf.net`: Let's Encrypt rejects it as redundant because `*.givingshelf.net` already covers `www`.
 
+With `--manual --preferred-challenges dns`, **every** domain in the command is validated via DNS-01, not just the wildcard. Certbot prompts once per domain (up to 4 times) and only validates after the last prompt, so all TXT records must exist at the same time:
+
+| Domain | DNS zone (Namecheap) | Host | Type |
+|---|---|---|---|
+| `givingshelf.net` | givingshelf.net | `_acme-challenge` | TXT |
+| `*.givingshelf.net` | givingshelf.net | `_acme-challenge` (same host — **second** record) | TXT |
+| `booksharecommunity.org` | booksharecommunity.org | `_acme-challenge` | TXT |
+| `www.booksharecommunity.org` | booksharecommunity.org | `_acme-challenge.www` | TXT |
+
 When prompted:
 
-1. Add a **TXT** record at `_acme-challenge.givingshelf.net` with the value certbot prints.
-2. Wait for DNS propagation (`dig TXT _acme-challenge.givingshelf.net +short`).
-3. Press Enter so certbot can validate.
-4. You may be asked for a second TXT value (apex + wildcard); update the record and continue.
-5. Reload nginx after success:
+1. For each prompt, **add** a new TXT record with the value certbot prints (TTL 1 min). The apex and wildcard values both go on `_acme-challenge.givingshelf.net` — add the second as a separate record; do **not** overwrite the first.
+2. Before pressing Enter, confirm the record is publicly visible (from a second SSH session):
+   ```bash
+   dig TXT _acme-challenge.givingshelf.net +short @8.8.8.8          # should list both values
+   dig TXT _acme-challenge.booksharecommunity.org +short @8.8.8.8
+   dig TXT _acme-challenge.www.booksharecommunity.org +short @8.8.8.8
+   ```
+3. Press Enter to continue. If a domain was validated recently, Let's Encrypt may reuse that authorization and certbot will prompt for fewer records — just add whatever it asks for.
+4. Reload nginx after success:
    `docker compose -f docker-compose.production.yml exec nginx nginx -s reload`
+5. Optionally delete the `_acme-challenge` TXT records afterwards.
 
 **Automated renewal:** Manual DNS-01 cannot renew unattended. Prefer a DNS plugin for your provider (e.g. `certbot-dns-cloudflare`, `certbot-dns-route53`) and update `deploy/nginx/renew-certificates.sh` accordingly. Until then, re-run the manual command before the cert expires (~90 days).
 
