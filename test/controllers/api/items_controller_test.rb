@@ -411,9 +411,143 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal ShareableItemStatus::WISHLIST, book.status
   end
 
+  test "wishlist endpoint filters by requester zipcode when no community_group_id" do
+    zip_group = zip_group_with_members
+    local_wish = create_wishlist_book_for_scope(group: zip_group, title: "Local Wishlist", requester: users(:one))
+    remote_wish = create_wishlist_book_for_scope(group: zip_group, title: "Remote Wishlist", requester: users(:two))
+
+    get "/api/items/wishlist", params: { type: Book.name, zip_code: "12345" }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, local_wish.id
+    assert_not_includes ids, remote_wish.id
+  end
+
+  test "wishlist endpoint returns all items in group when community_group_id is provided regardless of zipcode" do
+    zip_group_with_members
+    group = community_groups(:one)
+    wish_a = create_wishlist_book_for_scope(group: group, title: "Group Wish A", requester: users(:one))
+    wish_b = create_wishlist_book_for_scope(group: group, title: "Group Wish B", requester: users(:two))
+
+    get "/api/items/wishlist", params: { type: Book.name, community_group_id: group.id, zip_code: "12345" }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, wish_a.id
+    assert_includes ids, wish_b.id
+  end
+
+  test "wishlist endpoint returns all items when no zipcode is provided" do
+    zip_group = zip_group_with_members
+    wish_a = create_wishlist_book_for_scope(group: zip_group, title: "No Zip Wish A", requester: users(:one))
+    wish_b = create_wishlist_book_for_scope(group: zip_group, title: "No Zip Wish B", requester: users(:two))
+
+    get "/api/items/wishlist", params: { type: Book.name }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, wish_a.id
+    assert_includes ids, wish_b.id
+  end
+
+  test "search endpoint filters available books by owner zipcode" do
+    zip_group = zip_group_with_members
+    book_local = Book.create!(
+      user: users(:one), type: Book.name, title: "Search Local",
+      author: "Author", condition: "good",
+      summary: "A long enough summary for search zipcode filtering test.",
+      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+    )
+    book_remote = Book.create!(
+      user: users(:two), type: Book.name, title: "Search Remote",
+      author: "Author", condition: "good",
+      summary: "A long enough summary for search zipcode filtering test.",
+      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+    )
+    GroupItemAvailability.create!(item: book_local, community_group: zip_group)
+    GroupItemAvailability.create!(item: book_remote, community_group: zip_group)
+
+    get search_api_items_url, params: { type: Book.name, zip_code: "12345" }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, book_local.id
+    assert_not_includes ids, book_remote.id
+  end
+
+  test "stats endpoint returns correct items_wishlisted count scoped by zipcode" do
+    zip_group = zip_group_with_members
+    create_wishlist_book_for_scope(group: zip_group, title: "Stats Wish Local", requester: users(:one))
+    create_wishlist_book_for_scope(group: zip_group, title: "Stats Wish Remote", requester: users(:two))
+
+    get stats_api_items_url, params: { type: Book.name, zip_code: "12345" }
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_equal 1, body["items_wishlisted"]
+  end
+
+  test "stats endpoint returns correct counts when community_group_id is present" do
+    zip_group_with_members
+    group = CommunityGroup.create!(
+      name: "Stats Test Group",
+      domain: "stats-test.test",
+      short_name: "stats-test-group",
+      group_description: "Stats test group for wishlist zipcode tests"
+    )
+
+    available_book = Book.create!(
+      user: users(:one), type: Book.name, title: "Stats Available",
+      author: "Author", condition: "good",
+      summary: "A long enough summary for stats test.",
+      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+    )
+    GroupItemAvailability.create!(item: available_book, community_group: group)
+
+    create_wishlist_book_for_scope(group: group, title: "Stats Wish A", requester: users(:one))
+    create_wishlist_book_for_scope(group: group, title: "Stats Wish B", requester: users(:two))
+
+    CommunityGroupMembership.find_or_create_by!(user: users(:one), community_group: group) do |m|
+      m.admin = false
+      m.auto_joined = false
+    end
+
+    get stats_api_items_url, params: { type: Book.name, community_group_id: group.id }
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_equal 2, body["items_wishlisted"]
+    assert_equal 1, body["items_shared"]
+  end
+
+  test "stats endpoint with zipcode returns correct items_shared count" do
+    zip_group = zip_group_with_members
+    book_local = Book.create!(
+      user: users(:one), type: Book.name, title: "Stats Shared Local",
+      author: "Author", condition: "good",
+      summary: "A long enough summary for stats shared test.",
+      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+    )
+    book_remote = Book.create!(
+      user: users(:two), type: Book.name, title: "Stats Shared Remote",
+      author: "Author", condition: "good",
+      summary: "A long enough summary for stats shared test.",
+      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+    )
+    GroupItemAvailability.create!(item: book_local, community_group: zip_group)
+    GroupItemAvailability.create!(item: book_remote, community_group: zip_group)
+
+    get stats_api_items_url, params: { type: Book.name, zip_code: "12345" }
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_equal 1, body["items_shared"]
+  end
+
   private
 
-  def create_wishlist_book_for_scope(group:, title:, sub_group: nil)
+  def create_wishlist_book_for_scope(group:, title:, sub_group: nil, requester: nil)
     item = Book.create!(
       user_id: nil,
       type: Book.name,
@@ -429,6 +563,27 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       sub_group: sub_group
     )
+    if requester
+      ItemRequest.create!(
+        item: item,
+        requester: requester,
+        owner: nil,
+        message: "I would love this book if anyone in the community has a copy.",
+        status: ItemRequest::PENDING_STATUS
+      )
+    end
     item
+  end
+
+  # users(:one) is in zip 12345 and users(:two) in 54321; both auto-join the ZIP group.
+  def zip_group_with_members
+    zip_group = CommunityGroup.find_or_create_zipcode_group!
+    [ users(:one), users(:two) ].each do |user|
+      CommunityGroupMembership.find_or_create_by!(user: user, community_group: zip_group) do |m|
+        m.admin = false
+        m.auto_joined = true
+      end
+    end
+    zip_group
   end
 end

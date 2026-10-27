@@ -17,6 +17,10 @@ class ToyServiceTest < ActiveSupport::TestCase
       m.admin = false
       m.auto_joined = true
     end
+    CommunityGroupMembership.find_or_create_by!(user: users(:two), community_group: @zip_group) do |m|
+      m.admin = false
+      m.auto_joined = true
+    end
   end
 
   def teardown
@@ -365,7 +369,7 @@ class ToyServiceTest < ActiveSupport::TestCase
   end
 
   describe "#wishlist_items" do
-    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil)
+    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil, requester: nil)
       group ||= @other_group
       toy = Toy.create!(
         user_id: nil,
@@ -377,6 +381,15 @@ class ToyServiceTest < ActiveSupport::TestCase
         status: ShareableItemStatus::WISHLIST
       )
       GroupItemAvailability.create!(item: toy, community_group: group)
+      if requester
+        ItemRequest.create!(
+          item: toy,
+          requester: requester,
+          owner: nil,
+          message: "I would love this toy if anyone in the community has one.",
+          status: ItemRequest::PENDING_STATUS
+        )
+      end
       toy
     end
 
@@ -403,6 +416,18 @@ class ToyServiceTest < ActiveSupport::TestCase
       ids = result.pluck(:id)
       assert_includes ids, matching.id
       assert_not_includes ids, non_matching.id
+    end
+
+    it "filters wishlist toys by requester zipcode when using zip_code param without community_group_id" do
+      local_wish = create_wishlist_toy(title: "Local Wish Toy", brand: "TestBrand", group: @zip_group, requester: @user)
+      remote_wish = create_wishlist_toy(title: "Remote Wish Toy", brand: "TestBrand", group: @zip_group, requester: users(:two))
+
+      service = ToyService.new
+      result = service.wishlist_items(zip_code: "12345")
+      ids = result.pluck(:id)
+
+      assert_includes ids, local_wish.id
+      assert_not_includes ids, remote_wish.id
     end
   end
 
