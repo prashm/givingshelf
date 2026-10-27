@@ -14,3 +14,5 @@ test:
 production:
   domain: givingshelf.net
   protocol: https
+  # Override on the server (.env) without a code change.
+  session_idle_timeout_minutes: <%= ENV["SESSION_IDLE_TIMEOUT_MINUTES"].presence || 120 %>
