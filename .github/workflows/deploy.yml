@@ -104,10 +104,12 @@ jobs:
             echo "Generating sitemap..."
             docker compose -f docker-compose.production.yml exec -T web bundle exec rake sitemap:refresh || echo "Warning: Sitemap generation failed, continuing anyway..."
 
-            # Assets are precompiled in the image (Dockerfile), and `up -d` above has
-            # already restarted the stack, so no assets:precompile or
-            # `systemctl restart givingshelf.service` (which would `down` the whole
-            # stack, Postgres included) here.
+            # Assets are precompiled into the image by the Dockerfile build stage
+            # (`RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile`,
+            # carried into the runtime stage by `COPY --from=build /rails /rails`),
+            # and `up -d` above has already restarted the stack, so no
+            # assets:precompile or `systemctl restart givingshelf.service` (which
+            # would `down` the whole stack, Postgres included) here.
             echo "Deploy complete."
           EOF
   
