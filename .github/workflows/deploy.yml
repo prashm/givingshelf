@@ -28,6 +28,11 @@ jobs:
       - name: Deploy
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOSTNAME }} << 'EOF'
+            # Stop on the first failed step. Without this, a failed image build
+            # falls through to `up -d`, which restarts the old image and the job
+            # still reports success.
+            set -euo pipefail
+
             cd /home/ubuntu/givingshelf
             
             # Check disk space before starting deployment
@@ -91,16 +96,20 @@ jobs:
             echo "Verifying database connectivity and preparing database..."
 
             # prepare database (creates if needed, then runs migrations - fails if RDS unreachable)
-            docker compose -f docker-compose.production.yml exec web bundle exec rails db:prepare
-            
+            # -T: without it, exec reads stdin, which is this heredoc, and swallows
+            # every remaining line of the script.
+            docker compose -f docker-compose.production.yml exec -T web bundle exec rails db:prepare
+
             # generate sitemap
             echo "Generating sitemap..."
-            docker compose -f docker-compose.production.yml exec web bundle exec rake sitemap:refresh || echo "Warning: Sitemap generation failed, continuing anyway..."
-            
-            # precompile assets if necessary  
-            docker compose -f docker-compose.production.yml exec web bundle exec rails assets:precompile
+            docker compose -f docker-compose.production.yml exec -T web bundle exec rake sitemap:refresh || echo "Warning: Sitemap generation failed, continuing anyway..."
 
-            # restart givingshelf service
-            sudo systemctl restart givingshelf.service
+            # Assets are precompiled into the image by the Dockerfile build stage
+            # (`RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile`,
+            # carried into the runtime stage by `COPY --from=build /rails /rails`),
+            # and `up -d` above has already restarted the stack, so no
+            # assets:precompile or `systemctl restart givingshelf.service` (which
+            # would `down` the whole stack, Postgres included) here.
+            echo "Deploy complete."
           EOF
   
