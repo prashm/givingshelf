@@ -74,6 +74,16 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     assert_includes admin_email.body.encoded, "Failed deliveries:"
   end
 
+  test "skips wishes whose only request is cancelled" do
+    book = build_wishlist_book
+    book.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+
+    WishlistDigestJob.perform_now
+
+    assert_not UserNotification.exists?(notifiable: book, kind: UserNotification::KIND_WISHLIST_DIGEST)
+    assert_not ActionMailer::Base.deliveries.any? { |m| m.to == [ @recipient.email_address ] }
+  end
+
   test "prefers named group subdomain over zipcode for fulfill links" do
     zip_group = CommunityGroup.find_or_create_zipcode_group!
     book = build_wishlist_book

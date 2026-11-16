@@ -356,6 +356,39 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal donor.id, ir.owner_id
   end
 
+  test "wishlist endpoint hides wishes whose requests are all cancelled" do
+    group = community_groups(:one)
+    active = create_wishlist_book_for_scope(group: group, title: "Still Wanted Wish")
+    inactive = create_wishlist_book_for_scope(group: group, title: "No Longer Wanted Wish")
+    inactive.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+
+    get "/api/items/wishlist", params: { type: Book.name, community_group_id: group.id }
+    assert_response :success
+
+    ids = (JSON.parse(response.body)["data"] || []).map { |item| item["id"] }
+    assert_includes ids, active.id
+    assert_not_includes ids, inactive.id
+  end
+
+  test "fulfill_wishlist rejects a wish nobody is waiting for" do
+    donor = users(:one)
+    group = community_groups(:one)
+    CommunityGroupMembership.find_or_create_by!(user: donor, community_group: group)
+    book = create_wishlist_book_for_scope(group: group, title: "Abandoned Wish")
+    book.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+
+    sign_in_as(donor)
+    post fulfill_wishlist_api_item_url(book),
+      params: { item: { condition: "good", community_group_ids: [ group.id ] } },
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"], "No one is waiting for this item anymore"
+    book.reload
+    assert_nil book.user_id
+    assert_equal ShareableItemStatus::WISHLIST, book.status
+  end
+
   test "fulfill_wishlist rejects non wishlist item" do
     sign_in_as(users(:two))
     post fulfill_wishlist_api_item_url(items(:one)),
@@ -547,7 +580,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def create_wishlist_book_for_scope(group:, title:, sub_group: nil, requester: nil)
+  def create_wishlist_book_for_scope(group:, title:, sub_group: nil, requester: users(:two))
     item = Book.create!(
       user_id: nil,
       type: Book.name,
@@ -563,15 +596,14 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       sub_group: sub_group
     )
-    if requester
-      ItemRequest.create!(
-        item: item,
-        requester: requester,
-        owner: nil,
-        message: "I would love this book if anyone in the community has a copy.",
-        status: ItemRequest::PENDING_STATUS
-      )
-    end
+    # Every real wish has at least one requester (see ItemService#create_wishlist_item).
+    ItemRequest.create!(
+      item: item,
+      requester: requester,
+      owner: nil,
+      message: "I would love this book if anyone in the community has a copy.",
+      status: ItemRequest::PENDING_STATUS
+    )
     item
   end
 

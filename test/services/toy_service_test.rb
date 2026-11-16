@@ -369,7 +369,7 @@ class ToyServiceTest < ActiveSupport::TestCase
   end
 
   describe "#wishlist_items" do
-    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil, requester: nil)
+    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil, requester: users(:two))
       group ||= @other_group
       toy = Toy.create!(
         user_id: nil,
@@ -381,15 +381,14 @@ class ToyServiceTest < ActiveSupport::TestCase
         status: ShareableItemStatus::WISHLIST
       )
       GroupItemAvailability.create!(item: toy, community_group: group)
-      if requester
-        ItemRequest.create!(
-          item: toy,
-          requester: requester,
-          owner: nil,
-          message: "I would love this toy if anyone in the community has one.",
-          status: ItemRequest::PENDING_STATUS
-        )
-      end
+      # Every real wish has at least one requester (see ItemService#create_wishlist_item).
+      ItemRequest.create!(
+        item: toy,
+        requester: requester,
+        owner: nil,
+        message: "I would love this toy if anyone in the community has one.",
+        status: ItemRequest::PENDING_STATUS
+      )
       toy
     end
 

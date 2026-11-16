@@ -149,6 +149,21 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_equal ItemRequest::PENDING_STATUS, request.reload.status
     end
 
+    it "refuses to fulfill a wish nobody is waiting for any more" do
+      wishlist_book, request = create_wishlist_with_request
+      request.update!(status: ItemRequest::CANCELLED_STATUS)
+      service = ItemService.new(wishlist_book)
+
+      assert_no_difference -> { UserNotification.count } do
+        assert_equal false, service.fulfill_wishlist_item(@user, { condition: "good" })
+      end
+
+      assert_includes service.errors, "No one is waiting for this item anymore"
+      wishlist_book.reload
+      assert_nil wishlist_book.user_id
+      assert_equal ShareableItemStatus::WISHLIST, wishlist_book.status
+    end
+
     it "returns false and changes nothing when the item update fails" do
       wishlist_book, request = create_wishlist_with_request
       service = ItemService.new(wishlist_book)

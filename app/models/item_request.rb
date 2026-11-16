@@ -9,6 +9,9 @@ class ItemRequest < ApplicationRecord
   COMPLETED_STATUS = 4
   CANCELLED_STATUS = 5
 
+  # Statuses where the requester is still waiting on a wishlist item.
+  ACTIVE_WISH_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
+
   belongs_to :requester, class_name: "User"
   belongs_to :item
   belongs_to :owner, class_name: "User", optional: true
@@ -27,6 +30,7 @@ class ItemRequest < ApplicationRecord
   scope :completed, -> { where(status: COMPLETED_STATUS) }
   scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
   scope :cancelled, -> { where(status: CANCELLED_STATUS) }
+  scope :active_wish, -> { where(status: ACTIVE_WISH_STATUSES) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_item_owner, ->(user) { where(owner: user) }
   scope :recent, -> { order(created_at: :desc) }
