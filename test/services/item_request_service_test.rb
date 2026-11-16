@@ -28,7 +28,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_book_for_request(book, groups: [ @other_group ], status: ShareableItemStatus::AVAILABLE)
+  def setup_book_for_request(book, groups: [ @other_group ], status: "available")
     ItemRequest.where(item: book).destroy_all
     GroupItemAvailability.where(item: book).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: book, community_group: group) }
@@ -36,7 +36,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     book
   end
 
-  def create_item_request(book, requester: @requester, status: ItemRequest::PENDING_STATUS)
+  def create_item_request(book, requester: @requester, status: "pending")
     ItemRequest.create!(
       item: book,
       requester: requester,
@@ -73,7 +73,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_equal @requester, result.requester
       assert_equal book, result.item
       assert_equal message, result.message
-      assert_equal ItemRequest::PENDING_STATUS, result.status
+      assert_equal "pending", result.status
       assert service.errors.empty?
     end
 
@@ -110,7 +110,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns nil and sets error when book cannot be requested - book not available" do
-      book = setup_book_for_request(items(:one), status: ShareableItemStatus::DONATED)
+      book = setup_book_for_request(items(:one), status: "donated")
       message = "I would love to read this book!"
 
 
@@ -142,7 +142,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Previous request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
 
@@ -189,7 +189,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   end
 
   describe "#update_request" do
-    def setup_item_request(status: ItemRequest::PENDING_STATUS)
+    def setup_item_request(status: "pending")
       book = setup_book_for_request(items(:one))
       ItemRequest.create!(
         item: book,
@@ -208,8 +208,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::ACCEPTED_STATUS, item_request.status
-      assert_equal ShareableItemStatus::REQUESTED, item_request.item.status
+      assert_equal "accepted", item_request.status
+      assert_equal "requested", item_request.item.status
       assert service.errors.empty?
     end
 
@@ -221,21 +221,21 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::DECLINED_STATUS, item_request.status
+      assert_equal "declined", item_request.status
       assert service.errors.empty?
     end
 
     it "completes an accepted request successfully" do
-      item_request = setup_item_request(status: ItemRequest::ACCEPTED_STATUS)
-      item_request.item.update!(status: ShareableItemStatus::REQUESTED)
+      item_request = setup_item_request(status: "accepted")
+      item_request.item.update!(status: "requested")
       service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::COMPLETED_STATUS, item_request.status
-      assert_equal ShareableItemStatus::DONATED, item_request.item.status
+      assert_equal "completed", item_request.status
+      assert_equal "donated", item_request.item.status
       assert service.errors.empty?
     end
 
@@ -247,7 +247,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::IN_REVIEW_STATUS, item_request.status
+      assert_equal "in_review", item_request.status
       assert service.errors.empty?
     end
 
@@ -273,7 +273,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when trying to complete a non-accepted request" do
-      item_request = setup_item_request(status: ItemRequest::PENDING_STATUS)
+      item_request = setup_item_request(status: "pending")
       service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
@@ -289,15 +289,15 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
       service = ItemRequestService.new(request1)
       service.update_request(@owner, "accept")
 
       request1.reload
-      assert_equal ItemRequest::ACCEPTED_STATUS, request1.status
-      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+      assert_equal "accepted", request1.status
+      assert_equal "requested", book.reload.status
     end
   end
 
@@ -309,7 +309,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       service = ItemRequestService.new(item_request)
 
@@ -317,7 +317,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
+      assert_equal "cancelled", item_request.status
       assert ItemRequest.exists?(item_request.id)
       assert service.errors.empty?
     end
@@ -329,7 +329,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       ItemRequestService.new(item_request).accept!
       service = ItemRequestService.new(item_request.reload)
@@ -338,8 +338,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
-      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+      assert_equal "cancelled", item_request.status
+      assert_equal "available", book.reload.status
       assert service.errors.empty?
     end
 
@@ -350,7 +350,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       # Use a different user (owner) trying to cancel requester's request
       service = ItemRequestService.new(item_request)
@@ -371,7 +371,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       ItemRequestService.new(item_request).cancel!
       service = ItemRequestService.new(item_request.reload)
@@ -380,7 +380,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       assert result
       item_request.reload
-      assert_equal ItemRequest::PENDING_STATUS, item_request.status
+      assert_equal "pending", item_request.status
       assert service.errors.empty?
     end
 
@@ -391,7 +391,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       ItemRequestService.new(item_request).cancel!
       service = ItemRequestService.new(item_request.reload)
@@ -401,7 +401,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_not result
       assert_includes service.errors.join(" "), "Not authorized"
       item_request.reload
-      assert_equal ItemRequest::CANCELLED_STATUS, item_request.status
+      assert_equal "cancelled", item_request.status
     end
   end
 
@@ -413,7 +413,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       service = ItemRequestService.new(item_request)
       service.cancel!
@@ -435,19 +435,19 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       request2 = ItemRequest.create!(
         item: book,
         requester: other_requester,
         owner: @owner,
         message: "Second request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
       ItemRequestService.new(request1).accept!
 
-      assert_equal ItemRequest::IN_REVIEW_STATUS, request2.reload.status
+      assert_equal "in_review", request2.reload.status
     end
   end
 
@@ -459,7 +459,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       service = ItemRequestService.new(item_request)
       service.cancel!
@@ -477,7 +477,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       service = ItemRequestService.new(item_request)
       service.cancel!
@@ -495,7 +495,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       service = ItemRequestService.new(item_request)
       service.accept!
@@ -514,7 +514,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       service = ItemRequestService.new(item_request)
 
@@ -531,13 +531,13 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::ACCEPTED_STATUS
+        status: "accepted"
       )
       service = ItemRequestService.new(item_request)
 
       service.mark_as_in_review!
 
-      assert_equal ItemRequest::ACCEPTED_STATUS, item_request.reload.status
+      assert_equal "accepted", item_request.reload.status
     end
   end
 
@@ -550,14 +550,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         summary: "Summary text long enough for validations on the book model here.",
         published_year: 2020,
         genre: "Fiction",
-        status: ShareableItemStatus::WISHLIST
+        status: "wishlist"
       )
       item_request = ItemRequest.create!(
         item: wishlist_book,
         requester: @requester,
         owner: nil,
         message: "I would love this book if anyone in the community has a copy.",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       donor = @owner
       service = ItemRequestService.new(item_request)
@@ -565,7 +565,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       service.match_wishlist_donor!(donor)
 
       item_request.reload
-      assert_equal ItemRequest::IN_REVIEW_STATUS, item_request.status
+      assert_equal "in_review", item_request.status
       assert_equal donor.id, item_request.owner_id
     end
 
@@ -576,14 +576,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::DECLINED_STATUS
+        status: "declined"
       )
       service = ItemRequestService.new(item_request)
 
       service.match_wishlist_donor!(@owner)
 
       item_request.reload
-      assert_equal ItemRequest::DECLINED_STATUS, item_request.status
+      assert_equal "declined", item_request.status
     end
   end
 
@@ -601,17 +601,17 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     it "does not change declined, cancelled or completed sibling requests" do
       book = setup_book_for_request(items(:one))
       request = create_item_request(book)
-      declined = create_item_request(book, requester: create_other_requester, status: ItemRequest::DECLINED_STATUS)
-      cancelled = create_item_request(book, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
-      completed = create_item_request(book, requester: create_other_requester, status: ItemRequest::COMPLETED_STATUS)
+      declined = create_item_request(book, requester: create_other_requester, status: "declined")
+      cancelled = create_item_request(book, requester: create_other_requester, status: "cancelled")
+      completed = create_item_request(book, requester: create_other_requester, status: "completed")
       pending = create_item_request(book, requester: create_other_requester)
 
       ItemRequestService.new(request).accept!
 
-      assert_equal ItemRequest::DECLINED_STATUS, declined.reload.status
-      assert_equal ItemRequest::CANCELLED_STATUS, cancelled.reload.status
-      assert_equal ItemRequest::COMPLETED_STATUS, completed.reload.status
-      assert_equal ItemRequest::IN_REVIEW_STATUS, pending.reload.status
+      assert_equal "declined", declined.reload.status
+      assert_equal "cancelled", cancelled.reload.status
+      assert_equal "completed", completed.reload.status
+      assert_equal "in_review", pending.reload.status
     end
   end
 
@@ -625,9 +625,9 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).accept! }
       end
 
-      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
-      assert_equal ItemRequest::PENDING_STATUS, sibling.reload.status
-      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+      assert_equal "pending", request.reload.status
+      assert_equal "pending", sibling.reload.status
+      assert_equal "available", book.reload.status
     end
 
     it "rolls back complete! when the item update fails" do
@@ -639,8 +639,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).complete! }
       end
 
-      assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
-      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+      assert_equal "accepted", request.reload.status
+      assert_equal "requested", book.reload.status
     end
 
     it "rolls back cancel! of an accepted request when the request update fails" do
@@ -652,8 +652,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).cancel! }
       end
 
-      assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
-      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+      assert_equal "accepted", request.reload.status
+      assert_equal "requested", book.reload.status
     end
 
     it "reports the error and leaves state untouched when update_request accept fails" do
@@ -666,7 +666,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       end
 
       assert_includes service.errors, "item save failed"
-      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+      assert_equal "pending", request.reload.status
     end
   end
 
@@ -677,7 +677,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       ItemRequestService.new(request).decline!
 
-      assert_equal ItemRequest::DECLINED_STATUS, request.reload.status
+      assert_equal "declined", request.reload.status
     end
 
     it "mark_as_in_review! moves a pending request to in review" do
@@ -686,16 +686,16 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       ItemRequestService.new(request).mark_as_in_review!
 
-      assert_equal ItemRequest::IN_REVIEW_STATUS, request.reload.status
+      assert_equal "in_review", request.reload.status
     end
 
     it "uncancel! moves a cancelled request back to pending" do
       book = setup_book_for_request(items(:one))
-      request = create_item_request(book, status: ItemRequest::CANCELLED_STATUS)
+      request = create_item_request(book, status: "cancelled")
 
       ItemRequestService.new(request).uncancel!
 
-      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+      assert_equal "pending", request.reload.status
     end
 
     it "complete! raises on a pending request" do
@@ -704,7 +704,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       error = assert_raises(RuntimeError) { ItemRequestService.new(request).complete! }
       assert_equal "Can only complete an accepted request", error.message
-      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+      assert_equal "available", book.reload.status
     end
 
     it "cancel! on a pending request leaves the item status unchanged" do
@@ -713,8 +713,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
       ItemRequestService.new(request).cancel!
 
-      assert_equal ItemRequest::CANCELLED_STATUS, request.reload.status
-      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+      assert_equal "cancelled", request.reload.status
+      assert_equal "available", book.reload.status
     end
   end
 
@@ -733,7 +733,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         condition: "good",
         summary: "This is a test book summary that is long enough.",
         published_year: 2020,
-        status: ShareableItemStatus::AVAILABLE
+        status: "available"
       )
       setup_book_for_request(book2)
 
@@ -742,14 +742,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
         message: "Second request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
       requests = service.requests_for_user(@owner, "received")
@@ -775,7 +775,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         condition: "good",
         summary: "This is a test book summary that is long enough.",
         published_year: 2020,
-        status: ShareableItemStatus::AVAILABLE
+        status: "available"
       )
       setup_book_for_request(book2)
 
@@ -784,14 +784,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "First request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
         message: "Second request message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
 
@@ -819,7 +819,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
 
@@ -846,7 +846,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         requester: @requester,
         owner: @owner,
         message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
 
 
@@ -859,32 +859,32 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   end
 
   describe "#display_status" do
-    it "returns 'Completed' for COMPLETED_STATUS" do
-      assert_equal "Completed", service.display_status(ItemRequest::COMPLETED_STATUS)
+    it "returns 'Completed' for completed" do
+      assert_equal "Completed", service.display_status("completed")
     end
 
-    it "returns 'Accepted' for ACCEPTED_STATUS" do
-      assert_equal "Accepted", service.display_status(ItemRequest::ACCEPTED_STATUS)
+    it "returns 'Accepted' for accepted" do
+      assert_equal "Accepted", service.display_status("accepted")
     end
 
-    it "returns 'Declined' for DECLINED_STATUS" do
-      assert_equal "Declined", service.display_status(ItemRequest::DECLINED_STATUS)
+    it "returns 'Declined' for declined" do
+      assert_equal "Declined", service.display_status("declined")
     end
 
-    it "returns 'In Review' for IN_REVIEW_STATUS" do
-      assert_equal "In Review", service.display_status(ItemRequest::IN_REVIEW_STATUS)
+    it "returns 'In Review' for in_review" do
+      assert_equal "In Review", service.display_status("in_review")
     end
 
-    it "returns 'Pending' for PENDING_STATUS" do
-      assert_equal "Pending", service.display_status(ItemRequest::PENDING_STATUS)
+    it "returns 'Pending' for pending" do
+      assert_equal "Pending", service.display_status("pending")
     end
 
-    it "returns 'Cancelled' for CANCELLED_STATUS" do
-      assert_equal "Cancelled", service.display_status(ItemRequest::CANCELLED_STATUS)
+    it "returns 'Cancelled' for cancelled" do
+      assert_equal "Cancelled", service.display_status("cancelled")
     end
 
     it "returns 'Pending' for unknown status" do
-      assert_equal "Pending", service.display_status(999)
+      assert_equal "Pending", service.display_status("unknown")
     end
   end
 

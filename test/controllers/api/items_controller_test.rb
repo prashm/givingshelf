@@ -167,7 +167,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "A long enough summary for an available book in this test.",
       genre: "Fiction",
       published_year: 2020,
-      status: ShareableItemStatus::AVAILABLE
+      status: "available"
     )
     GroupItemAvailability.create!(item: non_wishlist_item, community_group: group)
 
@@ -228,7 +228,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "A summary long enough for scoped available stats validation.",
       genre: "Fiction",
       published_year: 2020,
-      status: ShareableItemStatus::AVAILABLE
+      status: "available"
     )
     wishlisted_item = create_wishlist_book_for_scope(group: group, title: "Scoped Wishlist Book")
     GroupItemAvailability.create!(item: available_item, community_group: group)
@@ -326,7 +326,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "Summary text long enough for validations on the book model here.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     GroupItemAvailability.create!(item: book, community_group: group)
     ItemRequest.create!(
@@ -334,7 +334,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       requester: requester,
       owner: nil,
       message: "I would love this book if anyone in the community has a copy.",
-      status: ItemRequest::PENDING_STATUS
+      status: "pending"
     )
 
     sign_in_as(donor)
@@ -350,7 +350,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     book.reload
     assert_equal donor.id, book.user_id
-    assert_equal ShareableItemStatus::AVAILABLE, book.status
+    assert_equal "available", book.status
     ir = book.item_requests.find_by(requester: requester)
     assert ir.in_review?
     assert_equal donor.id, ir.owner_id
@@ -382,7 +382,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "Summary text long enough for validations on the book model here.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     GroupItemAvailability.create!(item: book, community_group: group)
     ItemRequest.create!(
@@ -390,7 +390,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       requester: requester,
       owner: nil,
       message: "I would love this book if anyone in the community has a copy.",
-      status: ItemRequest::PENDING_STATUS
+      status: "pending"
     )
 
     sign_in_as(requester)
@@ -408,7 +408,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_includes body["errors"], "You cannot fulfill your own wishlist request"
     book.reload
     assert_nil book.user_id
-    assert_equal ShareableItemStatus::WISHLIST, book.status
+    assert_equal "wishlist", book.status
   end
 
   test "wishlist endpoint filters by requester zipcode when no community_group_id" do
@@ -457,13 +457,13 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       user: users(:one), type: Book.name, title: "Search Local",
       author: "Author", condition: "good",
       summary: "A long enough summary for search zipcode filtering test.",
-      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+      genre: "Fiction", published_year: 2020, status: "available"
     )
     book_remote = Book.create!(
       user: users(:two), type: Book.name, title: "Search Remote",
       author: "Author", condition: "good",
       summary: "A long enough summary for search zipcode filtering test.",
-      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+      genre: "Fiction", published_year: 2020, status: "available"
     )
     GroupItemAvailability.create!(item: book_local, community_group: zip_group)
     GroupItemAvailability.create!(item: book_remote, community_group: zip_group)
@@ -501,7 +501,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       user: users(:one), type: Book.name, title: "Stats Available",
       author: "Author", condition: "good",
       summary: "A long enough summary for stats test.",
-      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+      genre: "Fiction", published_year: 2020, status: "available"
     )
     GroupItemAvailability.create!(item: available_book, community_group: group)
 
@@ -527,13 +527,13 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       user: users(:one), type: Book.name, title: "Stats Shared Local",
       author: "Author", condition: "good",
       summary: "A long enough summary for stats shared test.",
-      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+      genre: "Fiction", published_year: 2020, status: "available"
     )
     book_remote = Book.create!(
       user: users(:two), type: Book.name, title: "Stats Shared Remote",
       author: "Author", condition: "good",
       summary: "A long enough summary for stats shared test.",
-      genre: "Fiction", published_year: 2020, status: ShareableItemStatus::AVAILABLE
+      genre: "Fiction", published_year: 2020, status: "available"
     )
     GroupItemAvailability.create!(item: book_local, community_group: zip_group)
     GroupItemAvailability.create!(item: book_remote, community_group: zip_group)
@@ -544,6 +544,45 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert_equal 1, body["items_shared"]
   end
+
+test "my_items exposes item statuses and metadata by name instead of integers" do
+  sign_in_as(users(:one))
+  items(:one).requested!
+
+  get my_items_api_items_url
+  assert_response :success
+
+  body = response.parsed_body
+  assert_equal(
+    [
+      { "value" => "available", "label" => "Available" },
+      { "value" => "requested", "label" => "Requested" },
+      { "value" => "donated", "label" => "Donated" },
+      { "value" => "wishlist", "label" => "Wishlist" }
+    ],
+    body["statuses"].map { |s| s.slice("value", "label") }
+  )
+  returned_book = body["items"].find { |i| i["id"] == items(:one).id }
+  assert_not_nil returned_book
+  assert_equal "requested", returned_book["status"]
+  assert_equal "Requested", returned_book["status_display"]
+end
+
+test "show exposes item status and user_request_status by name" do
+  group = community_groups(:one)
+  GroupItemAvailability.find_or_create_by!(item: items(:one), community_group: group)
+  req = item_requests(:one)
+  req.cancelled!
+
+  sign_in_as(users(:two))
+  get api_item_url(items(:one))
+  assert_response :success
+
+  body = response.parsed_body
+  assert_equal "available", body["status"]
+  assert_equal "Available", body["status_display"]
+  assert_equal "cancelled", body["user_request_status"]
+end
 
   private
 
@@ -556,7 +595,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "Summary text long enough for validations on scoped wishlist tests.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     GroupItemAvailability.create!(
       item: item,
@@ -569,7 +608,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
         requester: requester,
         owner: nil,
         message: "I would love this book if anyone in the community has a copy.",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
     end
     item

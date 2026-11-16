@@ -154,19 +154,19 @@ requests_data = [
     requester: created_users[1],
     item: created_books[0], # Jane requests The Great Gatsby from John
     message: 'I would love to read this classic! I can pick it up this weekend if that works for you.',
-    status: ItemRequest::PENDING_STATUS
+    status: :pending
   },
   {
     requester: created_users[2],
     item: created_books[1], # Mike requests To Kill a Mockingbird from Jane
     message: 'This is one of my favorite books and I would love to have a copy. I can meet you anywhere convenient.',
-    status: ItemRequest::ACCEPTED_STATUS
+    status: :accepted
   },
   {
     requester: created_users[0],
     item: created_books[3], # John requests The Hobbit from Sarah
     message: 'I\'ve been wanting to read this for a while. Would love to add it to my collection!',
-    status: ItemRequest::PENDING_STATUS
+    status: :pending
   }
 ]
 

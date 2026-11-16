@@ -19,7 +19,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       summary: "Long enough summary for sync_group_item_availabilities tests.",
       genre: "Fiction",
       published_year: 2020,
-      status: ShareableItemStatus::AVAILABLE
+      status: "available"
     )
     @service = ItemService.new(@item)
   end
@@ -102,14 +102,14 @@ class ItemServiceTest < ActiveSupport::TestCase
         summary: "Summary text long enough for validations on the book model here.",
         published_year: 2020,
         genre: "Fiction",
-        status: ShareableItemStatus::WISHLIST
+        status: "wishlist"
       )
       request = ItemRequest.create!(
         item: wishlist_book,
         requester: users(:two),
         owner: nil,
         message: "I would love this book if anyone in the community has a copy.",
-        status: ItemRequest::PENDING_STATUS
+        status: "pending"
       )
       [ wishlist_book, request ]
     end
@@ -124,9 +124,9 @@ class ItemServiceTest < ActiveSupport::TestCase
 
       wishlist_book.reload
       assert_equal @user.id, wishlist_book.user_id
-      assert_equal ShareableItemStatus::AVAILABLE, wishlist_book.status
+      assert_equal "available", wishlist_book.status
       request.reload
-      assert_equal ItemRequest::IN_REVIEW_STATUS, request.status
+      assert_equal "in_review", request.status
       assert_equal @user.id, request.owner_id
     end
 
@@ -145,8 +145,8 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_includes service.errors, "match failed"
       wishlist_book.reload
       assert_nil wishlist_book.user_id
-      assert_equal ShareableItemStatus::WISHLIST, wishlist_book.status
-      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+      assert_equal "wishlist", wishlist_book.status
+      assert_equal "pending", request.reload.status
     end
 
     it "returns false and changes nothing when the item update fails" do
@@ -158,8 +158,8 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert service.errors.any?
       wishlist_book.reload
       assert_nil wishlist_book.user_id
-      assert_equal ShareableItemStatus::WISHLIST, wishlist_book.status
-      assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+      assert_equal "wishlist", wishlist_book.status
+      assert_equal "pending", request.reload.status
     end
   end
 end

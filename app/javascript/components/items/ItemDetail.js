@@ -285,7 +285,7 @@ const ItemDetail = ({
 
   const subtitle = getSubtitle(item);
   const detailFields = getDetailFields(item);
-  const isWishlist = item?.status_display?.toLowerCase() === 'wishlist' || item?.status === 3;
+  const isWishlist = item?.status === Constants.ITEM_STATUS_WISHLIST;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -321,7 +321,7 @@ const ItemDetail = ({
             </div>
 
             <div className="space-y-3">
-              {!isOwner && item.type === 'Book' && item.status === 3 && !item.owner && !userRequest && (
+              {!isOwner && item.type === Constants.ITEM_TYPE_BOOK && item.status === Constants.ITEM_STATUS_WISHLIST && !item.owner && !userRequest && (
                 <button
                   type="button"
                   onClick={() => {
@@ -348,7 +348,7 @@ const ItemDetail = ({
                       onClick={() => setCurrentPage('itemRequestDetails', { itemRequestId: userRequest.id })}
                       className="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
                     >
-                      {userRequest.status === 'Cancelled'
+                      {userRequest.status === Constants.ITEM_REQUEST_STATUS_CANCELLED
                         ? `Canceled request on ${new Date(userRequest.updated_at || userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                         : `Requested on ${new Date(userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                     </button>

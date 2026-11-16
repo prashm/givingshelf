@@ -130,7 +130,7 @@ class ItemService
     validate_requested_groups_for(requester, community_group_ids)
     if @errors.blank?
       ActiveRecord::Base.transaction do
-        @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
+        @item = Item.create!(item_params.merge(type: type_class.name, status: :wishlist))
         sync_group_item_availabilities!(requester, community_group_ids)
         handle_api_cover_image(cover_image_url)
         @item_request = ItemRequest.create!(
@@ -138,7 +138,7 @@ class ItemService
           requester: requester,
           owner: nil,
           message: message,
-          status: ItemRequest::PENDING_STATUS
+          status: :pending
         )
       end
     end
@@ -151,11 +151,11 @@ class ItemService
   # Assigns donor to wishlist book and sets item to available. Notifies all the requesters of the item.
   def fulfill_wishlist_item(donor_user, item_params)
     raise "Not a wishlist item" unless @item.wishlist?
-    if @item.item_requests.where(requester_id: donor_user.id).where.not(status: ItemRequest::CANCELLED_STATUS).exists?
+    if @item.item_requests.where(requester_id: donor_user.id).not_cancelled.exists?
       raise "You cannot fulfill your own wishlist request"
     end
 
-    data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
+    data = item_params.to_h.merge(user_id: donor_user.id, status: :available).with_indifferent_access
     # update_item rescues its own errors, so roll back explicitly when it fails; otherwise a
     # failure while matching requests would leave the item AVAILABLE with requests still pending.
     matched_requests = []
@@ -253,8 +253,8 @@ class ItemService
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
-      items_shared: base_items.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
-      items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
+      items_shared: base_items.where.not(status: [ :donated, :wishlist ]).distinct.count(:id),
+      items_donated: base_items.donated.distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
       happy_users: base_requests.completed.distinct.count(:requester_id),
       items_wishlisted: wishlisted_items.distinct.count(:id)

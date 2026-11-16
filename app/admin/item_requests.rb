@@ -20,7 +20,7 @@ ActiveAdmin.register ItemRequest do
       link_to request.requester.email_address, admin_user_path(request.requester)
     end
     column :owner do |request|
-      link_to request.owner.email_address, admin_user_path(request.owner)
+      link_to request.owner.email_address, admin_user_path(request.owner) if request.owner
     end
     column :status do |request|
       ItemRequestService.new.display_status(request.status)
@@ -33,13 +33,7 @@ ActiveAdmin.register ItemRequest do
   filter :item
   filter :requester
   filter :owner
-  filter :status, as: :select, collection: {
-    "Pending" => ItemRequest::PENDING_STATUS,
-    "Accepted" => ItemRequest::ACCEPTED_STATUS,
-    "Declined" => ItemRequest::DECLINED_STATUS,
-    "In Review" => ItemRequest::IN_REVIEW_STATUS,
-    "Completed" => ItemRequest::COMPLETED_STATUS
-  }
+  filter :status, as: :select, collection: -> { ItemRequest.statuses.transform_keys { |status| ItemRequestService.new.display_status(status) } }
   filter :created_at
 
   show do |item_request|
@@ -61,7 +55,7 @@ ActiveAdmin.register ItemRequest do
         link_to item_request.requester.email_address, admin_user_path(item_request.requester)
       end
       row :owner do
-        link_to item_request.owner.email_address, admin_user_path(item_request.owner)
+        link_to item_request.owner.email_address, admin_user_path(item_request.owner) if item_request.owner
       end
       row :status do
         ItemRequestService.new.display_status(item_request.status)
@@ -88,13 +82,7 @@ ActiveAdmin.register ItemRequest do
       f.input :item, collection: Item.all.map { |i| [ "#{i.type}: #{i.title}", i.id ] }
       f.input :requester, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :owner, collection: User.all.map { |u| [ u.email_address, u.id ] }
-      f.input :status, as: :select, collection: {
-        "Pending" => ItemRequest::PENDING_STATUS,
-        "Accepted" => ItemRequest::ACCEPTED_STATUS,
-        "Declined" => ItemRequest::DECLINED_STATUS,
-        "In Review" => ItemRequest::IN_REVIEW_STATUS,
-        "Completed" => ItemRequest::COMPLETED_STATUS
-      }
+      f.input :status, as: :select, collection: ItemRequest.statuses.keys.index_by { |status| ItemRequestService.new.display_status(status) }
       f.input :message
     end
     f.actions

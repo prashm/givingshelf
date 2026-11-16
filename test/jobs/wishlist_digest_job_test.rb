@@ -21,7 +21,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       summary: "Long enough summary for the digest test book creation here and now.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     GroupItemAvailability.create!(item: book, community_group: @group, sub_group_id: sub_group_id)
     CommunityGroupMembership.find_or_create_by!(user: @requester, community_group: @group) do |m|
@@ -39,7 +39,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       requester: @requester,
       owner: nil,
       message: "I would love this book if anyone in the community has a copy.",
-      status: ItemRequest::PENDING_STATUS
+      status: "pending"
     )
     book
   end

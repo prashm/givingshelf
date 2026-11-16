@@ -76,7 +76,7 @@ class BookService < ItemService
         verified: book.user.verified?,
         trust_score: book.user.trust_score || 0
       } : nil,
-      request_count: book.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
+      request_count: book.item_requests.not_cancelled.count,
       created_at: book.created_at,
       updated_at: book.updated_at,
       can_request: item_can_be_requested_by?(requester)
@@ -84,7 +84,7 @@ class BookService < ItemService
     if @user_request
       result[:user_request_id] = @user_request.id
       result[:user_request_dt] = @user_request.created_at
-      result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
+      result[:user_request_status] = @user_request.status
       result[:user_request_updated_at] = @user_request.updated_at
     end
     if @item_cannot_be_requested_by_reason.present?

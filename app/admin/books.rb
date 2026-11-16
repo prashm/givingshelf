@@ -14,7 +14,7 @@ ActiveAdmin.register Book do
       ShareableItemStatus.display_status(book.status)
     end
     column :user do |book|
-      link_to book.user.email_address, admin_user_path(book.user)
+      link_to book.user.email_address, admin_user_path(book.user) if book.user
     end
     column :view_count
     column :created_at
@@ -25,7 +25,7 @@ ActiveAdmin.register Book do
   filter :author
   filter :genre
   filter :condition
-  filter :status, as: :select, collection: ShareableItemStatus.collection
+  filter :status, as: :select, collection: -> { Book.statuses.transform_keys { |status| ShareableItemStatus.display_status(status) } }
   filter :user
   filter :created_at
 
@@ -43,7 +43,7 @@ ActiveAdmin.register Book do
         ShareableItemStatus.display_status(book.status)
       end
       row :user do |book|
-        link_to book.user.email_address, admin_user_path(book.user)
+        link_to book.user.email_address, admin_user_path(book.user) if book.user
       end
       row :view_count
       row :personal_note

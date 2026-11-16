@@ -15,7 +15,7 @@ class WishlistMailerTest < ActionMailer::TestCase
       summary: "Long enough summary for wishlist digest mailer test content here.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     entries = [ { item: book, requester: requester, group: group } ]
 
@@ -47,7 +47,7 @@ class WishlistMailerTest < ActionMailer::TestCase
       summary: "Long enough summary for zipcode wishlist digest mailer test content.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     entries = [ { item: book, requester: requester, group: zip_group } ]
 
@@ -73,7 +73,7 @@ class WishlistMailerTest < ActionMailer::TestCase
       published_year: 2020,
       genre: "Fiction",
       condition: "good",
-      status: ShareableItemStatus::AVAILABLE
+      status: "available"
     )
     GroupItemAvailability.create!(item: book, community_group: group)
     CommunityGroupMembership.find_or_create_by!(user: user, community_group: group) do |m|
@@ -85,7 +85,7 @@ class WishlistMailerTest < ActionMailer::TestCase
       requester: user,
       owner: users(:two),
       message: "I would love this book if anyone in the community has a copy.",
-      status: ItemRequest::IN_REVIEW_STATUS
+      status: "in_review"
     )
 
     email = WishlistMailer.wishlist_available(user, book, item_request)

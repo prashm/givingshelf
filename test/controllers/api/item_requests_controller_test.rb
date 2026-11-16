@@ -1,54 +1,68 @@
 require "test_helper"
 
 class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
-  test "should get index" do
+  test "should get index and expose status by name" do
     sign_in_as(users(:one))
-    get api_item_requests_url
+    get api_item_requests_url, params: { type: "received" }
     assert_response :success
+    json = response.parsed_body
+    assert json.is_a?(Array)
+    assert json.any?
+    first = json.first
+    assert_equal "pending", first["status"]
+    assert_equal "Pending", first["status_display"]
+    assert_equal "available", first.dig("book", "status") || first.dig("toy", "status")
   end
 
-  test "should get show" do
+  test "should get show and expose status by name" do
     sign_in_as(users(:one))
     get api_item_request_url(item_requests(:one))
     assert_response :success
+    json = response.parsed_body
+    assert_equal "pending", json["status"]
+    assert_equal "Pending", json["status_display"]
+    assert_equal "available", json.dig("book", "status")
+    assert_equal "Available", json.dig("book", "status_display")
   end
 
-  test "should create item request" do
+  test "should create item request and expose pending status by name" do
     sign_in_as(users(:one))
-    # users(:one) can request items(:two) since items(:two) belongs to users(:two)
-    # But first, we need to make sure there's no existing request
-    # Delete any existing request from the fixtures
     ItemRequest.where(item: items(:two), requester: users(:one)).destroy_all
 
-    # Ensure both users are in a common group (users(:one) and users(:two) are both in community_groups(:one) per fixtures)
     group = community_groups(:one)
     GroupItemAvailability.find_or_create_by!(item: items(:two), community_group: group)
-    # users(:one) is already in group via community_group_memberships(:one)
-    # users(:two) is already in group via community_group_memberships(:two)
 
     post api_item_requests_url, params: {
       item_id: items(:two).id,
       message: "I would like to borrow this book please"
     }
     assert_response :created
+    json = response.parsed_body
+    assert_equal "pending", json["status"]
+    assert_equal "Pending", json["status_display"]
   end
 
-  test "should update item request" do
+  test "should update item request and expose updated status by name" do
     sign_in_as(users(:one))
     patch api_item_request_url(item_requests(:one)), params: { action_type: "accept" }
     assert_response :success
+    json = response.parsed_body
+    assert_equal "accepted", json["status"]
+    assert_equal "Accepted", json["status_display"]
+    assert_equal "requested", json.dig("book", "status")
+    assert_equal "Requested", json.dig("book", "status_display")
   end
 
-  test "should destroy item request" do
-    # item_requests(:one) has requester: two, so sign in as users(:two) to cancel their own request
+  test "should destroy item request and expose cancelled status by name" do
     sign_in_as(users(:two))
     delete api_item_request_url(item_requests(:one))
     assert_response :success
     json = response.parsed_body
+    assert_equal "cancelled", json["status"]
     assert_equal "Cancelled", json["status_display"]
     assert_equal item_requests(:one).id, json["id"]
     assert ItemRequest.exists?(item_requests(:one).id)
-    assert_equal ItemRequest::CANCELLED_STATUS, ItemRequest.find(item_requests(:one).id).status
+    assert_equal "cancelled", ItemRequest.find(item_requests(:one).id).status
   end
 
   test "should get messages" do
