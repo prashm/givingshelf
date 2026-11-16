@@ -769,9 +769,21 @@ class BookServiceTest < ActiveSupport::TestCase
         status: ShareableItemStatus::WISHLIST
       )
       GroupItemAvailability.create!(item: wishlist_book, community_group: group)
+      create_item_request(wishlist_book, users(:two))
 
       service = BookService.new
       stats = service.community_group_stats(community_group_id: group.id)
+
+      assert_equal 1, stats[:items_wishlisted]
+    end
+
+    it "does not count wishes whose requests are all cancelled in items_wishlisted" do
+      group = community_groups(:one)
+      create_wishlist_book(title: "Active Stats Wish", group: group, requester: users(:two))
+      inactive_wish = create_wishlist_book(title: "Inactive Stats Wish", group: group, requester: users(:two))
+      inactive_wish.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+
+      stats = BookService.new.community_group_stats(community_group_id: group.id)
 
       assert_equal 1, stats[:items_wishlisted]
     end
@@ -803,6 +815,7 @@ class BookServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: wishlist_book, community_group: group)
       GroupItemAvailability.create!(item: non_wishlist_book, community_group: group)
+      create_item_request(wishlist_book, users(:two))
 
       service = BookService.new
       result = service.wishlist_items(community_group_id: group.id)
@@ -839,6 +852,7 @@ class BookServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: in_scope, community_group: group, sub_group: sg1)
       GroupItemAvailability.create!(item: out_scope, community_group: group, sub_group: sg2)
+      [ in_scope, out_scope ].each { |wish| create_item_request(wish, users(:two)) }
 
       service = BookService.new
       result = service.wishlist_items(community_group_id: group.id, sub_group_id: sg1.id)
@@ -872,6 +886,7 @@ class BookServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: matching, community_group: group)
       GroupItemAvailability.create!(item: non_matching, community_group: group)
+      [ matching, non_matching ].each { |wish| create_item_request(wish, users(:two)) }
 
       service = BookService.new
       by_title = service.wishlist_items(community_group_id: group.id, query_string: "Unique Wishlist Title")
@@ -913,6 +928,7 @@ class BookServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: matching, community_group: group)
       GroupItemAvailability.create!(item: non_matching, community_group: group)
+      [ matching, non_matching ].each { |wish| create_item_request(wish, users(:two)) }
 
       service = BookService.new
       result = service.wishlist_items(community_group_id: group.id, age_range: "5-7 years")
@@ -1032,6 +1048,50 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_includes ids, matching_local.id
       assert_not_includes ids, non_matching_local.id
       assert_not_includes ids, matching_remote.id
+    end
+
+    it "hides wishes whose requests are all cancelled on both the zip and community group paths" do
+      zip_wish = create_wishlist_book(title: "Cancelled Zip Wish", group: @zip_group, requester: @user)
+      group_wish = create_wishlist_book(title: "Cancelled Group Wish", group: @other_group, requester: @user)
+      ItemRequest.where(item: [ zip_wish, group_wish ]).update_all(status: ItemRequest::CANCELLED_STATUS)
+
+      service = BookService.new
+      assert_not_includes service.wishlist_items.pluck(:id), zip_wish.id
+      assert_not_includes service.wishlist_items(zip_code: "12345").pluck(:id), zip_wish.id
+      assert_not_includes service.wishlist_items(community_group_id: @other_group.id).pluck(:id), group_wish.id
+    end
+
+    it "shows a cancelled wish again once its request is uncancelled" do
+      wish = create_wishlist_book(title: "Uncancelled Wish", group: @other_group, requester: @user)
+      request = wish.item_requests.first
+      service = BookService.new
+
+      ItemRequestService.new(request).cancel!
+      assert_not_includes service.wishlist_items(community_group_id: @other_group.id).pluck(:id), wish.id
+
+      ItemRequestService.new(request.reload).uncancel!
+      assert_includes service.wishlist_items(community_group_id: @other_group.id).pluck(:id), wish.id
+    end
+
+    it "keeps a wish with at least one active request even if others cancelled" do
+      wish = create_wishlist_book(title: "Partly Cancelled Wish", group: @other_group, requester: @user)
+      wish.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+      create_item_request(wish, users(:two))
+
+      ids = BookService.new.wishlist_items(community_group_id: @other_group.id).pluck(:id)
+      assert_includes ids, wish.id
+      assert_equal 1, ids.count(wish.id)
+    end
+
+    it "does not match a wish on a cancelled requester's zipcode" do
+      # users(:one) is in 12345 and cancels; users(:two) in 54321 is still waiting.
+      wish = create_wishlist_book(title: "Moved Away Wish", group: @zip_group, requester: @user)
+      wish.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+      create_item_request(wish, users(:two))
+
+      service = BookService.new
+      assert_not_includes service.wishlist_items(zip_code: "12345").pluck(:id), wish.id
+      assert_includes service.wishlist_items(zip_code: "54321").pluck(:id), wish.id
     end
 
     it "combines zipcode and subgroup filtering for wishlist items when community_group_id is explicit" do

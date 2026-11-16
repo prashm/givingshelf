@@ -321,7 +321,12 @@ const ItemDetail = ({
             </div>
 
             <div className="space-y-3">
-              {!isOwner && item.type === 'Book' && item.status === 3 && !item.owner && !userRequest && (
+              {!isOwner && isWishlist && !item.owner && (item.request_count ?? 0) === 0 && (
+                <div className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 text-sm text-gray-600 text-center">
+                  No one is waiting for this wish right now.
+                </div>
+              )}
+              {!isOwner && item.type === 'Book' && item.status === 3 && !item.owner && !userRequest && (item.request_count ?? 0) > 0 && (
                 <button
                   type="button"
                   onClick={() => {
