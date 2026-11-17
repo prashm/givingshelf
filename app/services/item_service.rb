@@ -150,17 +150,20 @@ class ItemService
 
   # Assigns donor to wishlist book and sets item to available. Notifies all the requesters of the item.
   def fulfill_wishlist_item(donor_user, item_params)
-    raise "Not a wishlist item" unless @item.wishlist?
-    if @item.item_requests.where(requester_id: donor_user.id).not_cancelled.exists?
-      raise "You cannot fulfill your own wishlist request"
-    end
-
     data = item_params.to_h.merge(user_id: donor_user.id, status: :available).with_indifferent_access
     # update_item rescues its own errors, so roll back explicitly when it fails; otherwise a
     # failure while matching requests would leave the item AVAILABLE with requests still pending.
     matched_requests = []
     updated = false
     ActiveRecord::Base.transaction do
+      # Lock the wish so the checks below can't race another donor or a requester cancelling.
+      @item.lock!
+      raise "Not a wishlist item" unless @item.wishlist?
+      if @item.item_requests.where(requester_id: donor_user.id).not_cancelled.exists?
+        raise "You cannot fulfill your own wishlist request"
+      end
+      raise "No one is waiting for this item anymore" unless @item.item_requests.active_wish.exists?
+
       raise ActiveRecord::Rollback unless update_item(donor_user, data)
       @item.item_requests.pending.each do |pending_req|
         ItemRequestService.new(pending_req).match_wishlist_donor!(donor_user)
@@ -226,7 +229,8 @@ class ItemService
       items = apply_user_join(items, user_join_type)
       items = items.merge(zip_code_scope(zip_code, radius, user_join_type))
     else
-      items = apply_user_join(items, user_join_type) if user_join_type == :owner
+      # Always join for :requester too, so wishes nobody is waiting on are hidden on every path.
+      items = apply_user_join(items, user_join_type)
     end
 
     items = items.merge(Item.overlapping_age_bucket(age_range)) if age_range.present?
@@ -395,7 +399,10 @@ class ItemService
   def apply_user_join(items, user_join_type)
     case user_join_type
     when :requester
-      items.joins("INNER JOIN item_requests ON item_requests.item_id = items.id")
+      # Only requesters still waiting count: a wish whose requests are all cancelled is hidden,
+      # and a cancelled requester's location doesn't match the zip/radius filter.
+      items.joins(:item_requests)
+           .merge(ItemRequest.active_wish)
            .joins("INNER JOIN users requesters ON requesters.id = item_requests.requester_id")
     when :owner
       items.left_outer_joins(:user)

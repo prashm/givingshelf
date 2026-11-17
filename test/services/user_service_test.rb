@@ -153,30 +153,28 @@ class UserServiceTest < ActiveSupport::TestCase
       user = users(:one)
       group = community_groups(:two)
 
-      mine = GroupMembershipRequest.create!(
+      mine = GroupMembershipRequest.requested.create!(
         community_group: group,
         requester: user,
         requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE,
-        status: GroupMemberStatus::REQUESTED,
         message: "please"
       )
-      GroupMembershipRequest.create!(
+      GroupMembershipRequest.requested.create!(
         community_group: group,
         requester: users(:two),
-        requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE,
-        status: GroupMemberStatus::REQUESTED
+        requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE
       )
-      GroupMembershipRequest.create!(
+      GroupMembershipRequest.invited.create!(
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
-        status: GroupMemberStatus::INVITED,
         email_address: user.email_address
       )
 
       result = UserService.new(user).my_group_requests
       assert_equal 1, result.length
       assert_equal mine.id, result.first[:id]
+      assert_equal mine.status, result.first[:status]
       assert_equal "Requested", result.first[:status_display]
       assert result.first[:community_group]
     end
@@ -187,25 +185,25 @@ class UserServiceTest < ActiveSupport::TestCase
       user = users(:one)
       group = community_groups(:two)
 
-      mine = GroupMembershipRequest.create!(
+      mine = GroupMembershipRequest.invited.create!(
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
-        status: GroupMemberStatus::INVITED,
         email_address: user.email_address,
         message: "join us"
       )
-      GroupMembershipRequest.create!(
+      GroupMembershipRequest.invited.create!(
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
-        status: GroupMemberStatus::INVITED,
         email_address: "someone_else@example.com"
       )
 
       result = UserService.new(user).my_group_invites
       assert_equal 1, result.length
       assert_equal mine.id, result.first[:id]
+      assert_equal mine.status, result.first[:status]
+      assert_equal "Invited", result.first[:status_display]
       assert result.first[:inviter]
       assert_equal users(:two).id, result.first[:inviter][:id]
     end

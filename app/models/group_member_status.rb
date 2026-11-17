@@ -1,22 +1,19 @@
 class GroupMemberStatus < ActiveHash::Base
-  REQUESTED = 0
-  INVITED = 1
-  ACCEPTED = 2
-  REJECTED = 3
-
-  self.data = [
-    { value: REQUESTED, label: "Requested" },
-    { value: INVITED, label: "Invited" },
-    { value: ACCEPTED, label: "Accepted" },
-    { value: REJECTED, label: "Rejected" }
-  ]
+  self.data = GroupMembershipRequest.statuses.keys.map do |status|
+    { value: status, label: status.titleize }
+  end
 
   def self.display_status(status)
-    self.all.find_by(value: status)&.label || "Unknown"
+    self.all.find_by(value: status.to_s)&.label || "Unknown"
+  end
+
+  def self.collection
+    h = {}
+    self.all.each { |s| h[s.label] = s.value }
+    h
   end
 
   def self.values
     self.all.map { |s| s.value }
   end
 end
-

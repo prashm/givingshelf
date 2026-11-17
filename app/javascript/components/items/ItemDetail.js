@@ -286,6 +286,9 @@ const ItemDetail = ({
   const subtitle = getSubtitle(item);
   const detailFields = getDetailFields(item);
   const isWishlist = item?.status === Constants.ITEM_STATUS_WISHLIST;
+  // An ownerless wish viewed by someone else: show the fulfill button, or a notice if no one is waiting.
+  const isOpenWish = !isOwner && isWishlist && !item.owner;
+  const hasWaitingRequesters = (item.request_count ?? 0) > 0;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -321,7 +324,11 @@ const ItemDetail = ({
             </div>
 
             <div className="space-y-3">
-              {!isOwner && item.type === Constants.ITEM_TYPE_BOOK && item.status === Constants.ITEM_STATUS_WISHLIST && !item.owner && !userRequest && (
+              {isOpenWish && (!hasWaitingRequesters ? (
+                <div className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 text-sm text-gray-600 text-center">
+                  No one is waiting for this wish right now.
+                </div>
+              ) : item.type === Constants.ITEM_TYPE_BOOK && !userRequest && (
                 <button
                   type="button"
                   onClick={() => {
@@ -339,7 +346,7 @@ const ItemDetail = ({
                 >
                   I have this book — offer to fulfill
                 </button>
-              )}
+              ))}
               {!isOwner ? (
                 <>
                   {userRequest ? (

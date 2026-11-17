@@ -204,7 +204,7 @@ class CommunityGroupService
       community_group: @group,
       requester: user,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED,
+      status: :requested,
       message: message
     )
 
@@ -221,7 +221,7 @@ class CommunityGroupService
 
     if group.community_group_memberships.exists?(user: user)
       membership_request.update!(
-        status: GroupMemberStatus::ACCEPTED,
+        status: :accepted,
         accepted_at: Time.current,
         responded_at: Time.current
       )
@@ -229,7 +229,7 @@ class CommunityGroupService
     end
 
     membership = nil
-    current_status = membership_request.status
+    was_invited = membership_request.invited?
 
     ActiveRecord::Base.transaction do
       membership = CommunityGroupMembership.create!(
@@ -240,13 +240,13 @@ class CommunityGroupService
         group_membership_request: membership_request
       )
       membership_request.update!(
-        status: GroupMemberStatus::ACCEPTED,
+        status: :accepted,
         accepted_at: Time.current,
         responded_at: Time.current
       )
     end
 
-    if current_status == GroupMemberStatus::INVITED
+    if was_invited
       CommunityGroupMailer.invite_accepted(group, user).deliver_later
     else
       CommunityGroupMailer.membership_accepted(group, user).deliver_later
@@ -267,7 +267,7 @@ class CommunityGroupService
       requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
       email_address: invitee_email,
       message: message,
-      status: GroupMemberStatus::INVITED
+      status: :invited
     )
 
     if request.save
@@ -323,12 +323,12 @@ class CommunityGroupService
       return "member"
     end
 
-    if user.join_request_for(group).present?
-      return "requested"
+    if (join_request = user.join_request_for(group)).present?
+      return join_request.status
     end
 
-    if user.invitation_request_for(group).present?
-      return "invited"
+    if (invite_request = user.invitation_request_for(group)).present?
+      return invite_request.status
     end
 
     "none"

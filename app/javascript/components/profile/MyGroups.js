@@ -343,12 +343,12 @@ const MyGroups = ({ currentUser, setCurrentPage, fromProfile }) => {
               <div className="md:col-span-1">
                 <button
                   onClick={requestToJoin}
-                  disabled={requestingJoin || ['member', 'requested'].includes(selectedGroup.membership_state)}
+                  disabled={requestingJoin || ['member', Constants.GROUP_MEMBERSHIP_REQUEST_STATUS_REQUESTED].includes(selectedGroup.membership_state)}
                   className="w-full px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {selectedGroup.membership_state === 'member'
                     ? 'Already a member'
-                    : selectedGroup.membership_state === 'requested'
+                    : selectedGroup.membership_state === Constants.GROUP_MEMBERSHIP_REQUEST_STATUS_REQUESTED
                       ? 'Request sent'
                       : requestingJoin ? 'Requesting...' : 'Request to join'}
                 </button>

@@ -10,6 +10,9 @@ class ItemRequest < ApplicationRecord
     cancelled: 5
   }, default: :pending, validate: true
 
+  # Statuses where the requester is still waiting on a wishlist item.
+  ACTIVE_WISH_STATUSES = %w[pending in_review].freeze
+
   belongs_to :requester, class_name: "User"
   belongs_to :item
   belongs_to :owner, class_name: "User", optional: true
@@ -22,6 +25,7 @@ class ItemRequest < ApplicationRecord
   validate :requester_cannot_request_own_item
   validate :item_must_be_available, on: :create
 
+  scope :active_wish, -> { where(status: ACTIVE_WISH_STATUSES) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_item_owner, ->(user) { where(owner: user) }
   scope :recent, -> { order(created_at: :desc) }

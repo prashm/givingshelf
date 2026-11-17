@@ -10,7 +10,7 @@ class ItemServiceTest < ActiveSupport::TestCase
     @group_two = community_groups(:two)
     @sub_group_one = sub_groups(:one)
     @sub_group_two = sub_groups(:two)
-    @item = Book.create!(
+    @item = Book.available.create!(
       user: @user,
       type: Book.name,
       title: "Sync Target",
@@ -18,8 +18,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       condition: "good",
       summary: "Long enough summary for sync_group_item_availabilities tests.",
       genre: "Fiction",
-      published_year: 2020,
-      status: "available"
+      published_year: 2020
     )
     @service = ItemService.new(@item)
   end
@@ -95,21 +94,19 @@ class ItemServiceTest < ActiveSupport::TestCase
 
   describe "#fulfill_wishlist_item" do
     def create_wishlist_with_request
-      wishlist_book = Book.create!(
+      wishlist_book = Book.wishlist.create!(
         user_id: nil,
         title: "Wishlist Fulfill Book",
         author: "Author",
         summary: "Summary text long enough for validations on the book model here.",
         published_year: 2020,
-        genre: "Fiction",
-        status: "wishlist"
+        genre: "Fiction"
       )
-      request = ItemRequest.create!(
+      request = ItemRequest.pending.create!(
         item: wishlist_book,
         requester: users(:two),
         owner: nil,
-        message: "I would love this book if anyone in the community has a copy.",
-        status: "pending"
+        message: "I would love this book if anyone in the community has a copy."
       )
       [ wishlist_book, request ]
     end
@@ -124,9 +121,9 @@ class ItemServiceTest < ActiveSupport::TestCase
 
       wishlist_book.reload
       assert_equal @user.id, wishlist_book.user_id
-      assert_equal "available", wishlist_book.status
+      assert wishlist_book.available?
       request.reload
-      assert_equal "in_review", request.status
+      assert request.in_review?
       assert_equal @user.id, request.owner_id
     end
 
@@ -145,8 +142,23 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_includes service.errors, "match failed"
       wishlist_book.reload
       assert_nil wishlist_book.user_id
-      assert_equal "wishlist", wishlist_book.status
-      assert_equal "pending", request.reload.status
+      assert wishlist_book.wishlist?
+      assert request.reload.pending?
+    end
+
+    it "refuses to fulfill a wish nobody is waiting for any more" do
+      wishlist_book, request = create_wishlist_with_request
+      request.cancelled!
+      service = ItemService.new(wishlist_book)
+
+      assert_no_difference -> { UserNotification.count } do
+        assert_equal false, service.fulfill_wishlist_item(@user, { condition: "good" })
+      end
+
+      assert_includes service.errors, "No one is waiting for this item anymore"
+      wishlist_book.reload
+      assert_nil wishlist_book.user_id
+      assert wishlist_book.wishlist?
     end
 
     it "returns false and changes nothing when the item update fails" do
@@ -158,8 +170,8 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert service.errors.any?
       wishlist_book.reload
       assert_nil wishlist_book.user_id
-      assert_equal "wishlist", wishlist_book.status
-      assert_equal "pending", request.reload.status
+      assert wishlist_book.wishlist?
+      assert request.reload.pending?
     end
   end
 end

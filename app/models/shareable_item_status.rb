@@ -1,10 +1,7 @@
 class ShareableItemStatus < ActiveHash::Base
-  self.data = [
-    { value: "available", label: "Available" },
-    { value: "requested", label: "Requested" },
-    { value: "donated", label: "Donated" },
-    { value: "wishlist", label: "Wishlist" }
-  ]
+  self.data = Item.statuses.keys.map do |status|
+    { value: status, label: status.titleize }
+  end
 
   def self.display_status(status)
     self.all.find_by(value: status.to_s)&.label || "Unknown"

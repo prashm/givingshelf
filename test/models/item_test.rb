@@ -25,12 +25,12 @@ class ItemTest < ActiveSupport::TestCase
         assert_not ShareableItemStatus.const_defined?(const_name), "Expected ShareableItemStatus::#{const_name} to be removed"
       end
 
-      assert_equal %w[available requested donated wishlist], ShareableItemStatus.values
-      assert_equal "Available", ShareableItemStatus.display_status("available")
+      assert_equal Item.statuses.keys, ShareableItemStatus.values
+      assert_equal "Available", ShareableItemStatus.display_status(:available)
       assert_equal "Requested", ShareableItemStatus.display_status(:requested)
-      assert_equal "Donated", ShareableItemStatus.display_status("donated")
-      assert_equal "Wishlist", ShareableItemStatus.display_status("wishlist")
-      assert_equal "Unknown", ShareableItemStatus.display_status("unknown")
+      assert_equal "Donated", ShareableItemStatus.display_status(:donated)
+      assert_equal "Wishlist", ShareableItemStatus.display_status(:wishlist)
+      assert_equal "Unknown", ShareableItemStatus.display_status(:unknown)
     end
 
     it "supports scopes, predicates, transitions, and stores expected ints in db" do
@@ -68,7 +68,7 @@ class ItemTest < ActiveSupport::TestCase
     end
 
     it "rejects unrecognized status values via validation" do
-      b = Book.new(
+      b = Book.wishlist.new(
         type: Book.name,
         user: users(:one),
         title: "Invalid Status",
@@ -85,21 +85,20 @@ class ItemTest < ActiveSupport::TestCase
 
   describe "conditional condition validation" do
     it "does not require condition when there is no owner" do
-      b = Book.new(
+      b = Book.wishlist.new(
         type: Book.name,
         user_id: nil,
         title: "Wish",
         author: "Author",
         summary: "Summary is definitely long enough here for validation pass.",
         published_year: 2020,
-        genre: "Fiction",
-        status: "wishlist"
+        genre: "Fiction"
       )
       assert b.valid?
     end
 
     it "requires condition when an owner is present" do
-      b = Book.new(
+      b = Book.available.new(
         type: Book.name,
         user: users(:one),
         title: "Owned",
@@ -107,8 +106,7 @@ class ItemTest < ActiveSupport::TestCase
         condition: nil,
         summary: "Summary is long enough to satisfy item validation rules we use.",
         published_year: 2020,
-        genre: "Fiction",
-        status: "available"
+        genre: "Fiction"
       )
       assert_not b.valid?
       assert_includes b.errors[:condition], "can't be blank"
@@ -117,7 +115,7 @@ class ItemTest < ActiveSupport::TestCase
 
   describe "user_id and wishlist status" do
     it "rejects wishlist items that have an owner" do
-      b = Book.new(
+      b = Book.wishlist.new(
         type: Book.name,
         user: users(:one),
         title: "Bad wish",
@@ -125,7 +123,6 @@ class ItemTest < ActiveSupport::TestCase
         summary: "Summary is definitely long enough for this validation test case.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist",
         condition: "good"
       )
       assert_not b.valid?
@@ -133,15 +130,14 @@ class ItemTest < ActiveSupport::TestCase
     end
 
     it "rejects non-wishlist items with no owner" do
-      b = Book.new(
+      b = Book.available.new(
         type: Book.name,
         user_id: nil,
         title: "Orphan",
         author: "Author",
         summary: "Summary is definitely long enough for this validation test case.",
         published_year: 2020,
-        genre: "Fiction",
-        status: "available"
+        genre: "Fiction"
       )
       assert_not b.valid?
       assert_includes b.errors[:user_id], "can't be blank"

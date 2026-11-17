@@ -13,15 +13,14 @@ class WishlistDigestJobTest < ActiveJob::TestCase
   end
 
   def build_wishlist_book(sub_group_id: nil)
-    book = Book.create!(
+    book = Book.wishlist.create!(
       type: Book.name,
       user_id: nil,
       title: "Digest Test Wish",
       author: "Author",
       summary: "Long enough summary for the digest test book creation here and now.",
       published_year: 2020,
-      genre: "Fiction",
-      status: "wishlist"
+      genre: "Fiction"
     )
     GroupItemAvailability.create!(item: book, community_group: @group, sub_group_id: sub_group_id)
     CommunityGroupMembership.find_or_create_by!(user: @requester, community_group: @group) do |m|
@@ -34,12 +33,11 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       m.auto_joined = false
       m.sub_group_id = @sg1.id
     end
-    ItemRequest.create!(
+    ItemRequest.pending.create!(
       item: book,
       requester: @requester,
       owner: nil,
-      message: "I would love this book if anyone in the community has a copy.",
-      status: "pending"
+      message: "I would love this book if anyone in the community has a copy."
     )
     book
   end
@@ -72,6 +70,16 @@ class WishlistDigestJobTest < ActiveJob::TestCase
     assert_includes admin_email.body.encoded, "Recipients attempted:"
     assert_includes admin_email.body.encoded, "Successful deliveries:"
     assert_includes admin_email.body.encoded, "Failed deliveries:"
+  end
+
+  test "skips wishes whose only request is cancelled" do
+    book = build_wishlist_book
+    book.item_requests.each(&:cancelled!)
+
+    WishlistDigestJob.perform_now
+
+    assert_not UserNotification.exists?(notifiable: book, kind: UserNotification::KIND_WISHLIST_DIGEST)
+    assert_not ActionMailer::Base.deliveries.any? { |m| m.to == [ @recipient.email_address ] }
   end
 
   test "prefers named group subdomain over zipcode for fulfill links" do

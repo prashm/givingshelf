@@ -33,7 +33,6 @@ class ItemRequestTest < ActiveSupport::TestCase
       requester: users(:one),
       message: "I would love to read this book if it is still available."
     )
-    assert_equal "pending", req.status
     assert req.pending?
     assert_includes ItemRequest.pending, req
     assert_equal 0, req.reload.read_attribute_before_type_cast(:status)
@@ -77,6 +76,20 @@ class ItemRequestTest < ActiveSupport::TestCase
     sibling.cancelled!
     assert_not sibling.can_update_status?
     assert req.can_update_status?
+  end
+
+  test "active_wish scope includes only pending and in_review requests" do
+    req = item_requests(:one)
+    req.pending!
+    assert_includes ItemRequest.active_wish, req
+
+    req.in_review!
+    assert_includes ItemRequest.active_wish, req
+
+    %i[accepted declined completed cancelled].each do |inactive_status|
+      req.public_send("#{inactive_status}!")
+      assert_not_includes ItemRequest.active_wish, req
+    end
   end
 
   test "rejects invalid status values" do

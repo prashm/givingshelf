@@ -180,20 +180,8 @@ class ItemRequestService
   end
 
   def display_status(status)
-    case status&.to_s
-    when "completed"
-      "Completed"
-    when "accepted"
-      "Accepted"
-    when "declined"
-      "Declined"
-    when "in_review"
-      "In Review"
-    when "cancelled"
-      "Cancelled"
-    else
-      "Pending"
-    end
+    status_name = status.to_s
+    ItemRequest.statuses.key?(status_name) ? status_name.titleize : "Pending"
   end
 
   private

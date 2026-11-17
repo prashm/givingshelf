@@ -14,3 +14,8 @@ export const ITEM_REQUEST_STATUS_DECLINED = 'declined';
 export const ITEM_REQUEST_STATUS_IN_REVIEW = 'in_review';
 export const ITEM_REQUEST_STATUS_COMPLETED = 'completed';
 export const ITEM_REQUEST_STATUS_CANCELLED = 'cancelled';
+
+export const GROUP_MEMBERSHIP_REQUEST_STATUS_REQUESTED = 'requested';
+export const GROUP_MEMBERSHIP_REQUEST_STATUS_INVITED = 'invited';
+export const GROUP_MEMBERSHIP_REQUEST_STATUS_ACCEPTED = 'accepted';
+export const GROUP_MEMBERSHIP_REQUEST_STATUS_REJECTED = 'rejected';

@@ -30,11 +30,11 @@ class ToyServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_toy_for_request_test(toy, groups: [], status: "available")
+  def setup_toy_for_request_test(toy, groups: [], status: :available)
     ItemRequest.where(item: toy).destroy_all
     GroupItemAvailability.where(item: toy).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: toy, community_group: group) }
-    toy.update!(status: status)
+    toy.public_send("#{status}!")
     toy
   end
 
@@ -49,13 +49,12 @@ class ToyServiceTest < ActiveSupport::TestCase
     CommunityGroupMembership.where(user: user, community_group: group).delete_all
   end
 
-  def create_item_request(toy, requester, status: "pending")
-    ItemRequest.create!(
+  def create_item_request(toy, requester, status: :pending)
+    ItemRequest.public_send(status).create!(
       item: toy,
       requester: requester,
       owner: toy.user,
-      message: "Test message that is long enough",
-      status: status
+      message: "Test message that is long enough"
     )
   end
 
@@ -369,27 +368,24 @@ class ToyServiceTest < ActiveSupport::TestCase
   end
 
   describe "#wishlist_items" do
-    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil, requester: nil)
+    def create_wishlist_toy(title:, brand: "Hasbro", age_range: nil, group: nil, requester: users(:two))
       group ||= @other_group
-      toy = Toy.create!(
+      toy = Toy.wishlist.create!(
         user_id: nil,
         type: Toy.name,
         title: title,
         brand: brand,
         summary: "A long enough summary for wishlist toy filtering assertions here.",
-        age_range: age_range,
-        status: "wishlist"
+        age_range: age_range
       )
       GroupItemAvailability.create!(item: toy, community_group: group)
-      if requester
-        ItemRequest.create!(
-          item: toy,
-          requester: requester,
-          owner: nil,
-          message: "I would love this toy if anyone in the community has one.",
-          status: "pending"
-        )
-      end
+      # Every real wish has at least one requester (see ItemService#create_wishlist_item).
+      ItemRequest.pending.create!(
+        item: toy,
+        requester: requester,
+        owner: nil,
+        message: "I would love this toy if anyone in the community has one."
+      )
       toy
     end
 
@@ -441,7 +437,7 @@ class ToyServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when toy is not available" do
-      toy = setup_toy_for_request_test(items(:toy_one), status: "donated")
+      toy = setup_toy_for_request_test(items(:toy_one), status: :donated)
       requester = users(:two)
       service = ToyService.new(toy)
       result = service.item_can_be_requested_by?(requester)
@@ -461,7 +457,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "pending")
+      create_item_request(toy, requester, status: :pending)
 
       service = ToyService.new(toy)
       result = service.item_can_be_requested_by?(requester)
@@ -473,7 +469,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "accepted")
+      create_item_request(toy, requester, status: :accepted)
 
       service = ToyService.new(toy)
       result = service.item_can_be_requested_by?(requester)
@@ -528,7 +524,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "pending")
+      create_item_request(toy, requester, status: :pending)
       remove_user_from_group(requester, @other_group)
 
       service = ToyService.new(toy)
@@ -607,7 +603,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      request = create_item_request(toy, requester, status: "pending")
+      request = create_item_request(toy, requester, status: :pending)
 
       service = ToyService.new(toy)
       json = service.item_detail_map(toy, requester)
@@ -659,7 +655,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.find_or_create_by!(item: items(:toy_one), community_group: group)
       GroupItemAvailability.find_or_create_by!(item: items(:toy_two), community_group: group)
 
-      items(:toy_two).update!(status: "donated")
+      items(:toy_two).donated!
 
       service = ToyService.new
       stats = service.community_group_stats(community_group_id: group.id)
@@ -681,7 +677,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       CommunityGroupMembership.find_by!(user: users(:one), community_group: group).update!(sub_group_id: sg1.id)
       CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
 
-      items(:toy_two).update!(status: "donated")
+      items(:toy_two).donated!
 
       service = ToyService.new
       stats_sg1 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg1.id)

@@ -17,7 +17,6 @@ module Group
       @invited_requests = GroupMembershipRequest
         .invited
         .where(community_group: @group)
-        .where.not(status: GroupMemberStatus::ACCEPTED)
         .order(created_at: :desc)
     end
 
