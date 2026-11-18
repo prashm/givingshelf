@@ -58,9 +58,7 @@ class ItemService
     nil
   end
 
-  def update_item(user, item_params)
-    # Callers authorize: Api::ItemsController#update allows only the owner, and
-    # fulfill_wishlist_item checks the donor before calling this on an ownerless wish.
+  def update_item(owner, item_params)
     raise "Item can't be blank" unless self.item
 
     # Exclude any image attributes if present. They're handled separately after saving the item.
@@ -73,7 +71,7 @@ class ItemService
       self.item.update!(item_params)
       if community_group_ids.present?
         community_group_ids = community_group_ids.to_h { |gid| [ gid.to_i, nil ] } if community_group_ids.is_a?(Array)
-        sync_group_item_availabilities!(user, community_group_ids)
+        sync_group_item_availabilities!(owner, community_group_ids)
       end
 
       handle_api_cover_image(api_cover_image)
