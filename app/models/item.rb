@@ -85,6 +85,29 @@ class Item < ApplicationRecord
     current_user.present? && user == current_user
   end
 
+  # A donated copy that started as a wish; wish_group_scope holds the wish's groups.
+  def fulfilled_from_wish?
+    !wish_group_scope.nil?
+  end
+
+  # Users with a non-cancelled request on this item, oldest request first.
+  def requesters
+    User.joins(:item_requests)
+      .merge(item_requests.where.not(status: ItemRequest::CANCELLED_STATUS))
+      .order("item_requests.created_at", "item_requests.id")
+  end
+
+  # Whoever made the earliest request on this item, whatever its status now. Memoized, nil included.
+  def original_requester
+    return @original_requester if defined?(@original_requester)
+    @original_requester = item_requests.order(:created_at, :id).first&.requester
+  end
+
+  def reload(*)
+    remove_instance_variable(:@original_requester) if defined?(@original_requester)
+    super
+  end
+
   # Regenerate sitemap when items are created or updated
   # Using after_commit to ensure the database transaction is complete
   after_commit :regenerate_sitemap, on: [ :create, :update, :destroy ]

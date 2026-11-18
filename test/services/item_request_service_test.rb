@@ -883,6 +883,120 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
   end
 
+  describe "close-out on complete!" do
+    def build_wish(requesters)
+      wish = Book.create!(
+        user_id: nil, title: "Shared Wish", author: "Wish Author", isbn: "9780000000001", genre: "Fiction",
+        published_year: 2020, summary: "Summary text long enough for validations on the book model here.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
+      requests = requesters.each_with_index.map do |(user, status), i|
+        ItemRequest.create!(item: wish, requester: user, message: "I would love this book please",
+          status: status, created_at: (requesters.size - i).hours.ago)
+      end
+      [ wish, requests ]
+    end
+
+    it "marks the other open requests on a regular item as not selected" do
+      book = setup_book_for_request(items(:one))
+      winner = create_item_request(book)
+      in_review = create_item_request(book, requester: create_other_requester)
+      declined = create_item_request(book, requester: create_other_requester, status: ItemRequest::DECLINED_STATUS)
+      cancelled = create_item_request(book, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
+      ItemRequestService.new(winner).accept!
+
+      assert_no_difference -> { Item.count } do
+        ItemRequestService.new(winner.reload).complete!
+      end
+
+      assert_equal ItemRequest::NOT_SELECTED_STATUS, in_review.reload.status
+      assert_equal ItemRequest::DECLINED_STATUS, declined.reload.status
+      assert_equal ItemRequest::CANCELLED_STATUS, cancelled.reload.status
+      assert_equal ShareableItemStatus::DONATED, book.reload.status
+      assert_equal false, in_review.can_update_status?
+      assert_equal [ false, false ], service.request_json(in_review).values_at(:can_cancel, :can_uncancel)
+      error = assert_raises(RuntimeError) { ItemRequestService.new(in_review).cancel! }
+      assert_equal "This item has gone to another requester", error.message
+    end
+
+    it "moves the other wishers to a new wish in the original wish's groups" do
+      b_user = create_other_requester
+      c_user = create_other_requester
+      d_user = create_other_requester
+      wish, (a, b, c, d) = build_wish([
+        [ @requester, ItemRequest::PENDING_STATUS ],
+        [ b_user, ItemRequest::PENDING_STATUS ],
+        [ c_user, ItemRequest::PENDING_STATUS ],
+        [ d_user, ItemRequest::CANCELLED_STATUS ]
+      ])
+      wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
+      assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+      # Stand in for the donor's group choices replacing the wish's groups at fulfillment.
+      wish.group_item_availabilities.delete_all
+      GroupItemAvailability.create!(item: wish, community_group: community_groups(:two))
+
+      ItemRequestService.new(a.reload).accept!
+      ItemRequestService.new(a.reload).complete!
+
+      wish.reload
+      assert_equal ShareableItemStatus::DONATED, wish.status
+      assert_equal [ a.id, d.id ].sort, wish.item_requests.pluck(:id).sort
+      assert_equal ItemRequest::CANCELLED_STATUS, d.reload.status
+
+      new_wish = b.reload.item
+      assert_not_equal wish.id, new_wish.id
+      assert_equal new_wish, c.reload.item
+      assert new_wish.wishlist?
+      assert_nil new_wish.user_id
+      assert_equal [ "Book", "Shared Wish", "Wish Author", "9780000000001" ],
+        [ new_wish.type, new_wish.title, new_wish.author, new_wish.isbn ]
+      assert_equal wish.cover_image.blob, new_wish.cover_image.blob
+      assert_equal [ [ @other_group.id, sub_groups(:one).id ] ],
+        new_wish.group_item_availabilities.pluck(:community_group_id, :sub_group_id)
+      [ b, c ].each do |request|
+        assert_equal ItemRequest::PENDING_STATUS, request.status
+        assert_nil request.owner_id
+      end
+      assert_equal [ b_user, c_user ], new_wish.requesters.to_a
+      assert_equal b_user, new_wish.original_requester
+    end
+
+    it "creates no new wish when nobody else is still waiting" do
+      wish, (a, _b) = build_wish([
+        [ @requester, ItemRequest::PENDING_STATUS ],
+        [ create_other_requester, ItemRequest::CANCELLED_STATUS ]
+      ])
+      assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+      ItemRequestService.new(a.reload).accept!
+
+      assert_no_difference -> { Item.count } do
+        ItemRequestService.new(a.reload).complete!
+      end
+      assert_equal ShareableItemStatus::DONATED, wish.reload.status
+    end
+
+    it "rolls back the whole handoff when relisting the wish fails" do
+      wish, (a, b) = build_wish([
+        [ @requester, ItemRequest::PENDING_STATUS ],
+        [ create_other_requester, ItemRequest::PENDING_STATUS ]
+      ])
+      assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+      ItemRequestService.new(a.reload).accept!
+      failing = Object.new
+      failing.define_singleton_method(:relist_as_wish!) { raise ActiveRecord::RecordInvalid, Item.new }
+
+      ItemService.stub(:new, failing) do
+        assert_raises(ActiveRecord::RecordInvalid) { ItemRequestService.new(a.reload).complete! }
+      end
+
+      assert_equal ItemRequest::ACCEPTED_STATUS, a.reload.status
+      assert_equal ShareableItemStatus::REQUESTED, wish.reload.status
+      assert_equal wish.id, b.reload.item_id
+      assert_equal ItemRequest::IN_REVIEW_STATUS, b.status
+    end
+  end
+
   describe "#requests_for_user" do
     it "returns received requests for user" do
       # Isolate from fixture requests (e.g. toy_request_one) so we only count the 2 we create

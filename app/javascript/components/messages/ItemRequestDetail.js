@@ -151,7 +151,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const renderStatusButton = (buttonConfig) => {
     const isActive = currentStatusDisplay === buttonConfig.statusMatch;
     const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
-    const isFinished = ['Completed', 'Declined', 'Cancelled'].includes(currentStatusDisplay);
+    const isFinished = ['Completed', 'Declined', 'Cancelled', 'Gone to another requester'].includes(currentStatusDisplay);
     const tooltip = !request.can_update_status
       ? (isFinished ? `This request is already ${currentStatusDisplay.toLowerCase()}` : 'Another request for this item is already accepted')
       : isActive && buttonConfig.action === 'accept'

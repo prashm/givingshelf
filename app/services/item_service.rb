@@ -161,6 +161,10 @@ class ItemService
       end
       raise "No one is waiting for this item anymore" unless @item.item_requests.active_wish.exists?
 
+      # Remember the wish's groups before the donor's choices replace them, so the wishers who don't
+      # get this copy can be moved to a new wish in the same groups (see #relist_as_wish!).
+      data[:wish_group_scope] = @item.group_item_availabilities
+        .pluck(:community_group_id, :sub_group_id).to_h.transform_keys(&:to_s)
       raise ActiveRecord::Rollback unless update_item(donor_user, data)
       @item.item_requests.pending.each do |pending_req|
         ItemRequestService.new(pending_req).match_wishlist_donor!(donor_user)
@@ -178,6 +182,24 @@ class ItemService
   rescue => e
     @errors << e.message
     false
+  end
+
+  # Item details a relisted wish copies from the donated item.
+  WISH_COPY_ATTRIBUTES = %w[type title author brand isbn genre published_year age_range min_age max_age summary].freeze
+
+  # Creates a new ownerless wish for the same item, in the groups the original wish was in.
+  # Called when a copy fulfilled from a wish is donated and other wishers are still waiting.
+  def relist_as_wish!
+    raise "Item was not fulfilled from a wish" unless item.fulfilled_from_wish?
+
+    wish = Item.create!(item.attributes.slice(*WISH_COPY_ATTRIBUTES).merge("status" => ShareableItemStatus::WISHLIST))
+    wish.cover_image.attach(item.cover_image.blob) if item.cover_image.attached?
+    now = Time.current
+    rows = item.wish_group_scope.map do |group_id, sub_group_id|
+      { item_id: wish.id, community_group_id: group_id.to_i, sub_group_id: sub_group_id, created_at: now, updated_at: now }
+    end
+    GroupItemAvailability.insert_all(rows) if rows.any?
+    wish
   end
 
   def available_items

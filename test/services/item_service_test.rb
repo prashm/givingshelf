@@ -181,6 +181,19 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_nil wishlist_book.reload.user_id
     end
 
+    it "saves the wish's groups before the donor's groups replace them" do
+      wishlist_book, _request = create_wishlist_with_request
+      GroupItemAvailability.create!(item: wishlist_book, community_group: @group_one, sub_group: @sub_group_one)
+      GroupItemAvailability.create!(item: wishlist_book, community_group: @group_two)
+
+      assert ItemService.new(wishlist_book).fulfill_wishlist_item(@user, { condition: "good" })
+
+      wishlist_book.reload
+      assert wishlist_book.fulfilled_from_wish?
+      assert_equal({ @group_one.id.to_s => @sub_group_one.id, @group_two.id.to_s => nil }, wishlist_book.wish_group_scope)
+      assert_not @item.fulfilled_from_wish?
+    end
+
     it "returns false and changes nothing when the item update fails" do
       wishlist_book, request = create_wishlist_with_request
       service = ItemService.new(wishlist_book)

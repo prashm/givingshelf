@@ -70,4 +70,53 @@ class ItemTest < ActiveSupport::TestCase
       assert_includes b.errors[:user_id], "can't be blank"
     end
   end
+  describe "requesters and original_requester" do
+    def wish_with_requests(*specs)
+      wish = Book.create!(
+        user_id: nil, title: "Requester Wish", author: "Author", published_year: 2020, genre: "Fiction",
+        summary: "Summary is definitely long enough here for validation pass.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      specs.each_with_index do |(user, status), i|
+        ItemRequest.create!(item: wish, requester: user, message: "Please may I have this book", status: status,
+          created_at: (specs.size - i).days.ago)
+      end
+      wish
+    end
+
+    def extra_user
+      User.create!(email_address: "item_test_#{SecureRandom.hex(4)}@example.com",
+        password_digest: BCrypt::Password.create("password123!"), verified: true)
+    end
+
+    it "lists non-cancelled requesters, oldest request first" do
+      third = extra_user
+      wish = wish_with_requests(
+        [ users(:two), ItemRequest::PENDING_STATUS ],
+        [ third, ItemRequest::CANCELLED_STATUS ],
+        [ users(:one), ItemRequest::IN_REVIEW_STATUS ]
+      )
+
+      assert_equal [ users(:two), users(:one) ], wish.requesters.to_a
+    end
+
+    it "returns the earliest requester even after they cancel" do
+      wish = wish_with_requests(
+        [ users(:two), ItemRequest::CANCELLED_STATUS ],
+        [ users(:one), ItemRequest::PENDING_STATUS ]
+      )
+
+      assert_equal users(:two), wish.original_requester
+    end
+
+    it "memoizes original_requester, including nil, until reload" do
+      wish = wish_with_requests
+      assert_nil wish.original_requester
+
+      ItemRequest.create!(item: wish, requester: users(:two), message: "Please may I have this book")
+      assert_nil wish.original_requester, "memoized nil should not re-query"
+
+      assert_equal users(:two), wish.reload.original_requester
+    end
+  end
 end
