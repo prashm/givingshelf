@@ -9,6 +9,35 @@ class ItemRequest < ApplicationRecord
   COMPLETED_STATUS = 4
   CANCELLED_STATUS = 5
 
+  STATUS_LABELS = {
+    PENDING_STATUS => "Pending",
+    ACCEPTED_STATUS => "Accepted",
+    DECLINED_STATUS => "Declined",
+    IN_REVIEW_STATUS => "In Review",
+    COMPLETED_STATUS => "Completed",
+    CANCELLED_STATUS => "Cancelled"
+  }.freeze
+
+  # Allowed status moves. DECLINED and COMPLETED are final; a CANCELLED request can only be
+  # reopened (uncancel), and ItemRequestService also checks the item can still be given to it.
+  TRANSITIONS = {
+    PENDING_STATUS => [ IN_REVIEW_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
+    IN_REVIEW_STATUS => [ ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
+    ACCEPTED_STATUS => [ COMPLETED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
+    CANCELLED_STATUS => [ PENDING_STATUS ],
+    DECLINED_STATUS => [],
+    COMPLETED_STATUS => []
+  }.freeze
+
+  TRANSITION_VERBS = {
+    IN_REVIEW_STATUS => "review",
+    ACCEPTED_STATUS => "accept",
+    DECLINED_STATUS => "decline",
+    COMPLETED_STATUS => "complete",
+    CANCELLED_STATUS => "cancel",
+    PENDING_STATUS => "uncancel"
+  }.freeze
+
   # Statuses where the requester is still waiting on a wishlist item.
   ACTIVE_WISH_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
 
@@ -76,10 +105,31 @@ class ItemRequest < ApplicationRecord
     status == CANCELLED_STATUS
   end
 
+  def self.status_label(status)
+    STATUS_LABELS.fetch(status, STATUS_LABELS[PENDING_STATUS])
+  end
+
   # Whether the owner may still accept/decline/complete this request. Finished requests are locked.
   def can_update_status?
     return false if cancelled? || declined? || completed?
-    status == ACCEPTED_STATUS || !item.item_requests.exists?(status: ACCEPTED_STATUS)
+    accepted? || !other_requests.accepted.exists?
+  end
+
+  # The other requests for the same item.
+  def other_requests
+    item.item_requests.where.not(id: id)
+  end
+
+  def can_transition_to?(new_status)
+    TRANSITIONS.fetch(status, []).include?(new_status)
+  end
+
+  # Raises unless the move from the current status to new_status is allowed.
+  def guard_transition!(new_status)
+    return if can_transition_to?(new_status)
+    label = self.class.status_label(status).downcase
+    article = label.match?(/\A[aeiou]/) ? "an" : "a"
+    raise "Cannot #{TRANSITION_VERBS.fetch(new_status)} #{article} #{label} request"
   end
 
   private

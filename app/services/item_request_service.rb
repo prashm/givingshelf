@@ -1,25 +1,5 @@
 # app/services/item_request_service.rb
 class ItemRequestService
-  # Allowed request status moves. DECLINED and COMPLETED are final; a CANCELLED request can only
-  # be reopened (uncancel), and only while the item can still be given to it.
-  TRANSITIONS = {
-    ItemRequest::PENDING_STATUS => [ ItemRequest::IN_REVIEW_STATUS, ItemRequest::ACCEPTED_STATUS, ItemRequest::DECLINED_STATUS, ItemRequest::CANCELLED_STATUS ],
-    ItemRequest::IN_REVIEW_STATUS => [ ItemRequest::ACCEPTED_STATUS, ItemRequest::DECLINED_STATUS, ItemRequest::CANCELLED_STATUS ],
-    ItemRequest::ACCEPTED_STATUS => [ ItemRequest::COMPLETED_STATUS, ItemRequest::DECLINED_STATUS, ItemRequest::CANCELLED_STATUS ],
-    ItemRequest::CANCELLED_STATUS => [ ItemRequest::PENDING_STATUS ],
-    ItemRequest::DECLINED_STATUS => [],
-    ItemRequest::COMPLETED_STATUS => []
-  }.freeze
-
-  TRANSITION_VERBS = {
-    ItemRequest::IN_REVIEW_STATUS => "review",
-    ItemRequest::ACCEPTED_STATUS => "accept",
-    ItemRequest::DECLINED_STATUS => "decline",
-    ItemRequest::COMPLETED_STATUS => "complete",
-    ItemRequest::CANCELLED_STATUS => "cancel",
-    ItemRequest::PENDING_STATUS => "uncancel"
-  }.freeze
-
   attr_accessor :item_request
   attr_reader :errors
 
@@ -102,20 +82,20 @@ class ItemRequestService
   def accept!
     require_item_request!
     with_locked_item do |item|
-      guard_transition!(to: ItemRequest::ACCEPTED_STATUS)
+      item_request.guard_transition!(ItemRequest::ACCEPTED_STATUS)
       raise "This item has already been donated" if item.donated?
-      raise "Another request for this item has already been accepted" if other_request_accepted?(item_request)
+      raise "Another request for this item has already been accepted" if item_request.other_requests.accepted.exists?
       item_request.update!(status: ItemRequest::ACCEPTED_STATUS)
       item.update!(status: ShareableItemStatus::REQUESTED)
       # Mark other pending requests for this item as In Review; leave declined/cancelled/completed ones alone
-      item.item_requests.where.not(id: item_request.id).pending.update_all(status: ItemRequest::IN_REVIEW_STATUS)
+      item_request.other_requests.pending.update_all(status: ItemRequest::IN_REVIEW_STATUS)
     end
   end
 
   def decline!
     require_item_request!
     with_locked_item do |item|
-      guard_transition!(to: ItemRequest::DECLINED_STATUS)
+      item_request.guard_transition!(ItemRequest::DECLINED_STATUS)
       # Declining the accepted request frees the item for the other requesters, as cancel! does.
       item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
       item_request.update!(status: ItemRequest::DECLINED_STATUS)
@@ -126,7 +106,7 @@ class ItemRequestService
     require_item_request!
     raise "Can only complete an accepted request" if item_request.pending? || item_request.in_review?
     with_locked_item do |item|
-      guard_transition!(to: ItemRequest::COMPLETED_STATUS)
+      item_request.guard_transition!(ItemRequest::COMPLETED_STATUS)
       item_request.update!(status: ItemRequest::COMPLETED_STATUS)
       item.update!(status: ShareableItemStatus::DONATED)
     end
@@ -135,7 +115,7 @@ class ItemRequestService
   def cancel!
     require_item_request!
     with_locked_item do |item|
-      guard_transition!(to: ItemRequest::CANCELLED_STATUS)
+      item_request.guard_transition!(ItemRequest::CANCELLED_STATUS)
       item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
       item_request.update!(status: ItemRequest::CANCELLED_STATUS)
     end
@@ -145,7 +125,7 @@ class ItemRequestService
     require_item_request!
     raise "Can only uncancel a cancelled request" unless item_request.cancelled?
     with_locked_item do |item|
-      guard_transition!(to: ItemRequest::PENDING_STATUS)
+      item_request.guard_transition!(ItemRequest::PENDING_STATUS)
       reason = uncancel_blocked_reason(item_request)
       raise reason if reason
       # A wish cancelled before a donor fulfilled it was never matched, so give it the current
@@ -193,7 +173,7 @@ class ItemRequestService
       created_at: request.created_at,
       updated_at: request.updated_at,
       can_update_status: request.can_update_status?,
-      can_cancel: can_transition?(request, ItemRequest::CANCELLED_STATUS),
+      can_cancel: request.can_transition_to?(ItemRequest::CANCELLED_STATUS),
       can_uncancel: request.cancelled? && uncancel_blocked_reason(request).nil?,
       requester: {
         id: request.requester.id,
@@ -216,31 +196,14 @@ class ItemRequestService
   end
 
   def display_status(status)
-    case status
-    when ItemRequest::COMPLETED_STATUS
-      "Completed"
-    when ItemRequest::ACCEPTED_STATUS
-      "Accepted"
-    when ItemRequest::DECLINED_STATUS
-      "Declined"
-    when ItemRequest::IN_REVIEW_STATUS
-      "In Review"
-    when ItemRequest::CANCELLED_STATUS
-      "Cancelled"
-    else
-      "Pending"
-    end
-  end
-
-  def can_transition?(request, to)
-    TRANSITIONS.fetch(request.status, []).include?(to)
+    ItemRequest.status_label(status)
   end
 
   # Why a cancelled request can't be reopened right now, or nil if it can.
   def uncancel_blocked_reason(request)
     item = request.item
     return "This item has already been donated" if item.donated?
-    if !(item.available? || item.wishlist?) || other_request_accepted?(request)
+    if !(item.available? || item.wishlist?) || request.other_requests.accepted.exists?
       return "Another request for this item has already been accepted"
     end
     nil
@@ -258,17 +221,6 @@ class ItemRequestService
       raise "This request was just updated by someone else. Please refresh and try again." if current_status != item_request.status
       yield item
     end
-  end
-
-  def guard_transition!(to:)
-    return if can_transition?(item_request, to)
-    status = display_status(item_request.status).downcase
-    article = status.match?(/\A[aeiou]/) ? "an" : "a"
-    raise "Cannot #{TRANSITION_VERBS.fetch(to)} #{article} #{status} request"
-  end
-
-  def other_request_accepted?(request)
-    request.item.item_requests.where.not(id: request.id).accepted.exists?
   end
 
   def require_item_request!
