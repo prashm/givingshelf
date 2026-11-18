@@ -164,6 +164,23 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_equal ShareableItemStatus::WISHLIST, wishlist_book.status
     end
 
+    it "refuses a donor who cancelled their own request on the wish" do
+      wishlist_book, _request = create_wishlist_with_request
+      ItemRequest.create!(
+        item: wishlist_book,
+        requester: @user,
+        owner: nil,
+        message: "I wished for this too but then cancelled it.",
+        status: ItemRequest::CANCELLED_STATUS
+      )
+      service = ItemService.new(wishlist_book)
+
+      assert_equal false, service.fulfill_wishlist_item(@user, { condition: "good" })
+
+      assert_includes service.errors, "You cannot fulfill your own wishlist request"
+      assert_nil wishlist_book.reload.user_id
+    end
+
     it "returns false and changes nothing when the item update fails" do
       wishlist_book, request = create_wishlist_with_request
       service = ItemService.new(wishlist_book)

@@ -76,8 +76,9 @@ class ItemRequest < ApplicationRecord
     status == CANCELLED_STATUS
   end
 
+  # Whether the owner may still accept/decline/complete this request. Finished requests are locked.
   def can_update_status?
-    return false if cancelled?
+    return false if cancelled? || declined? || completed?
     status == ACCEPTED_STATUS || !item.item_requests.exists?(status: ACCEPTED_STATUS)
   end
 

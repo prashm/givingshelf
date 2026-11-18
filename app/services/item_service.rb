@@ -159,7 +159,9 @@ class ItemService
       # Lock the wish so the checks below can't race another donor or a requester cancelling.
       @item.lock!
       raise "Not a wishlist item" unless @item.wishlist?
-      if @item.item_requests.where(requester_id: donor_user.id).where.not(status: ItemRequest::CANCELLED_STATUS).exists?
+      # Any request counts, cancelled ones too: a donor who also wished for the item would otherwise
+      # end up owning their own (uncancellable) request.
+      if @item.item_requests.where(requester_id: donor_user.id).exists?
         raise "You cannot fulfill your own wishlist request"
       end
       raise "No one is waiting for this item anymore" unless @item.item_requests.active_wish.exists?
