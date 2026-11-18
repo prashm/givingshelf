@@ -55,6 +55,30 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:one))
     patch api_item_url(items(:one)), params: { item: { title: "Updated Title" } }
     assert_response :success
+    assert_equal "Updated Title", items(:one).reload.title
+  end
+
+  test "update returns 403 when a non-owner edits someone else's item" do
+    sign_in_as(users(:two))
+    patch api_item_url(items(:one)), params: { item: { title: "Hijacked Title" } }
+    assert_response :forbidden
+    assert_includes response.parsed_body["errors"], "Not authorized"
+    assert_not_equal "Hijacked Title", items(:one).reload.title
+  end
+
+  test "update returns 403 on an ownerless wish, even for its wisher, and leaves its groups alone" do
+    group = community_groups(:one)
+    wish = create_wishlist_book_for_scope(group: group, title: "Untouchable Wish", requester: users(:two))
+
+    [ users(:one), users(:two) ].each do |user|
+      sign_in_as(user)
+      patch api_item_url(wish), params: { item: { title: "Changed", community_group_ids: [ community_groups(:two).id ] } }
+      assert_response :forbidden
+    end
+
+    wish.reload
+    assert_equal "Untouchable Wish", wish.title
+    assert_equal [ group.id ], wish.group_item_availabilities.pluck(:community_group_id)
   end
 
   test "should destroy book item" do

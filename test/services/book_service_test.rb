@@ -636,6 +636,18 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_nil json[:user_request_dt]
     end
 
+    it "lets the requester reopen a cancelled request while the item is still available" do
+      book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
+      requester = users(:two)
+      add_user_to_group(requester, @other_group)
+      create_item_request(book, requester, status: ItemRequest::CANCELLED_STATUS)
+
+      json = BookService.new(book).item_detail_map(book, requester)
+
+      assert_equal false, json[:user_request_can_cancel]
+      assert_equal true, json[:user_request_can_uncancel]
+    end
+
     it "includes can_request and cannot_request_reason when requester has pending request" do
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
@@ -648,6 +660,8 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_not json[:can_request]
       assert_equal "You already requested this item", json[:cannot_request_reason]
       assert_equal request.id, json[:user_request_id]
+      assert_equal true, json[:user_request_can_cancel]
+      assert_equal false, json[:user_request_can_uncancel]
       assert_equal request.created_at, json[:user_request_dt]
     end
 
