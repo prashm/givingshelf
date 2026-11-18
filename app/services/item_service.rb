@@ -59,12 +59,9 @@ class ItemService
   end
 
   def update_item(user, item_params)
+    # Callers authorize: Api::ItemsController#update allows only the owner, and
+    # fulfill_wishlist_item checks the donor before calling this on an ownerless wish.
     raise "Item can't be blank" unless self.item
-    if self.item.user.present?
-      raise "Not authorized" if self.item.user != user
-    else
-      raise "Not authorized" unless self.item.wishlist?
-    end
 
     # Exclude any image attributes if present. They're handled separately after saving the item.
     api_cover_image = item_params.delete(:cover_image)

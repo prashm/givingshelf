@@ -83,6 +83,9 @@ class ToyService < ItemService
       result[:user_request_dt] = @user_request.created_at
       result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
       result[:user_request_updated_at] = @user_request.updated_at
+      actions = ItemRequestService.new.requester_actions(@user_request)
+      result[:user_request_can_cancel] = actions[:can_cancel]
+      result[:user_request_can_uncancel] = actions[:can_uncancel]
     end
     if @item_cannot_be_requested_by_reason.present?
       result[:cannot_request_reason] = @item_cannot_be_requested_by_reason

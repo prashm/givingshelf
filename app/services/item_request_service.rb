@@ -173,8 +173,7 @@ class ItemRequestService
       created_at: request.created_at,
       updated_at: request.updated_at,
       can_update_status: request.can_update_status?,
-      can_cancel: request.can_transition_to?(ItemRequest::CANCELLED_STATUS),
-      can_uncancel: request.cancelled? && uncancel_blocked_reason(request).nil?,
+      **requester_actions(request),
       requester: {
         id: request.requester.id,
         name: request.requester.display_name,
@@ -197,6 +196,14 @@ class ItemRequestService
 
   def display_status(status)
     ItemRequest.status_label(status)
+  end
+
+  # What the requester may do with their own request right now.
+  def requester_actions(request)
+    {
+      can_cancel: request.can_transition_to?(ItemRequest::CANCELLED_STATUS),
+      can_uncancel: request.cancelled? && uncancel_blocked_reason(request).nil?
+    }
   end
 
   # Why a cancelled request can't be reopened right now, or nil if it can.

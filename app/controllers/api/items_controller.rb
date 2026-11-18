@@ -33,6 +33,12 @@ class Api::ItemsController < ApplicationController
   end
 
   def update
+    # Only the owner may edit an item. An ownerless wishlist item is read-only here; donors take
+    # ownership through fulfill_wishlist instead.
+    unless @item.owner?(Current.user)
+      return render json: { errors: [ "Not authorized" ] }, status: :forbidden
+    end
+
     if item_service.update_item(Current.user, item_params)
       render json: item_service.item_detail_map(@item, Current.user), status: :ok
     else

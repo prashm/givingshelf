@@ -5,6 +5,7 @@ import { useItems } from '../../contexts/ItemContext';
 import VerificationBadge from '../common/VerificationBadge';
 import { getGroupPageInfo, parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
+import { cancelItemRequest, updateItemRequestStatus } from '../../lib/itemRequestsApi';
 
 const ItemDetail = ({
   item: initialItem,
@@ -32,6 +33,8 @@ const ItemDetail = ({
   const [mapboxToken, setMapboxToken] = useState(null);
   const [mapImageUrl, setMapImageUrl] = useState(null);
   const [pickupMapImageUrl, setPickupMapImageUrl] = useState(null);
+  const [wishActionBusy, setWishActionBusy] = useState(false);
+  const [wishActionError, setWishActionError] = useState('');
 
   const {
     itemTypeLabel = 'Item',
@@ -99,7 +102,9 @@ const ItemDetail = ({
         id: itemData.user_request_id,
         created_at: itemData.user_request_dt,
         status: itemData.user_request_status,
-        updated_at: itemData.user_request_updated_at
+        updated_at: itemData.user_request_updated_at,
+        can_cancel: !!itemData.user_request_can_cancel,
+        can_uncancel: !!itemData.user_request_can_uncancel
       };
     }
     return null;
@@ -286,6 +291,30 @@ const ItemDetail = ({
   const subtitle = getSubtitle(item);
   const detailFields = getDetailFields(item);
   const isWishlist = item?.status_display?.toLowerCase() === 'wishlist' || item?.status === 3;
+  // The wisher withdraws (cancel) or reopens (uncancel) their own request from the wish's page.
+  const handleWishAction = async (action) => {
+    if (!userRequest) return;
+    if (action === 'cancel' && !window.confirm('Cancel your wish for this item?')) return;
+    setWishActionBusy(true);
+    setWishActionError('');
+    try {
+      if (action === 'cancel') {
+        await cancelItemRequest(userRequest.id);
+      } else {
+        await updateItemRequestStatus(userRequest.id, 'uncancel');
+      }
+      const refreshed = await getItem(item.id);
+      if (refreshed) {
+        setItem(refreshed);
+        setUserRequest(deriveUserRequest(refreshed));
+      }
+    } catch (err) {
+      setWishActionError(err.response?.data?.errors?.[0] || 'Something went wrong. Please try again.');
+    } finally {
+      setWishActionBusy(false);
+    }
+  };
+
   // An ownerless wish viewed by someone else: show the fulfill button, or a notice if no one is waiting.
   const isOpenWish = !isOwner && isWishlist && !item.owner;
   const hasWaitingRequesters = (item.request_count ?? 0) > 0;
@@ -349,7 +378,7 @@ const ItemDetail = ({
               ))}
               {!isOwner ? (
                 <>
-                  {userRequest ? (
+                  {userRequest && (
                     <button
                       type="button"
                       onClick={() => setCurrentPage('itemRequestDetails', { itemRequestId: userRequest.id })}
@@ -359,7 +388,25 @@ const ItemDetail = ({
                         ? `Canceled request on ${new Date(userRequest.updated_at || userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                         : `Requested on ${new Date(userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                     </button>
-                  ) : (
+                  )}
+                  {userRequest && isWishlist && !item.owner && (userRequest.can_cancel || userRequest.can_uncancel) && (
+                    <button
+                      type="button"
+                      onClick={() => handleWishAction(userRequest.can_cancel ? 'cancel' : 'uncancel')}
+                      disabled={wishActionBusy}
+                      className={`w-full py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        userRequest.can_cancel
+                          ? 'bg-white border border-red-300 text-red-700 hover:bg-red-50'
+                          : 'bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                    >
+                      {userRequest.can_cancel ? 'Cancel my wish' : 'Reopen my wish'}
+                    </button>
+                  )}
+                  {wishActionError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">{wishActionError}</div>
+                  )}
+                  {!userRequest && (
                     <button
                       onClick={openRequestModal}
                       disabled={requestStatus === 'requesting' || (item.can_request === false && currentUser)}
