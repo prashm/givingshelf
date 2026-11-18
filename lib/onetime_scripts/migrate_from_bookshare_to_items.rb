@@ -218,7 +218,7 @@ module OnetimeScripts
           isbn: bs_book.isbn,
           genre: bs_book.genre,
           published_year: bs_book.published_year,
-          status: bs_book.status || 0,
+          status: Item.statuses.key(bs_book.status) || :available,
           view_count: bs_book.view_count || 0,
           personal_note: bs_book.personal_note,
           pickup_method: bs_book.pickup_method,
@@ -462,7 +462,7 @@ module OnetimeScripts
           item_id: gs_item_id,
           requester_id: gs_requester_id,
           owner_id: gs_owner_id,
-          status: bs_request.status || 0,
+          status: ItemRequest.statuses.key(bs_request.status) || :pending,
           message: bs_request.message
         )
 

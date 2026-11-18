@@ -83,17 +83,17 @@ class ItemRequestService
     require_item_request!
     raise "Cannot accept a cancelled request" if item_request.cancelled?
     ActiveRecord::Base.transaction do
-      item_request.update!(status: ItemRequest::ACCEPTED_STATUS)
-      item_request.item.update!(status: ShareableItemStatus::REQUESTED)
+      item_request.accepted!
+      item_request.item.requested!
       # Mark other pending requests for this item as In Review; leave declined/cancelled/completed ones alone
-      item_request.item.item_requests.where.not(id: item_request.id).pending.update_all(status: ItemRequest::IN_REVIEW_STATUS)
+      item_request.item.item_requests.where.not(id: item_request.id).pending.update_all(status: :in_review)
     end
   end
 
   def decline!
     require_item_request!
     raise "Cannot decline a cancelled request" if item_request.cancelled?
-    item_request.update!(status: ItemRequest::DECLINED_STATUS)
+    item_request.declined!
   end
 
   def complete!
@@ -101,8 +101,8 @@ class ItemRequestService
     raise "Cannot complete a cancelled request" if item_request.cancelled?
     raise "Can only complete an accepted request" unless item_request.accepted?
     ActiveRecord::Base.transaction do
-      item_request.update!(status: ItemRequest::COMPLETED_STATUS)
-      item_request.item.update!(status: ShareableItemStatus::DONATED)
+      item_request.completed!
+      item_request.item.donated!
     end
   end
 
@@ -110,27 +110,27 @@ class ItemRequestService
     require_item_request!
     raise "Cannot cancel a completed request" if item_request.completed?
     ActiveRecord::Base.transaction do
-      item_request.item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
-      item_request.update!(status: ItemRequest::CANCELLED_STATUS)
+      item_request.item.available! if item_request.accepted?
+      item_request.cancelled!
     end
   end
 
   def uncancel!
     require_item_request!
     raise "Can only uncancel a cancelled request" unless item_request.cancelled?
-    item_request.update!(status: ItemRequest::PENDING_STATUS)
+    item_request.pending!
   end
 
   def mark_as_in_review!
     require_item_request!
-    item_request.update!(status: ItemRequest::IN_REVIEW_STATUS) if item_request.pending?
+    item_request.in_review! if item_request.pending?
   end
 
   # When a donor claims a wishlist item: mark request in review and set owner without moving item to REQUESTED.
   def match_wishlist_donor!(donor_user)
     require_item_request!
     return unless item_request.pending?
-    item_request.update!(status: ItemRequest::IN_REVIEW_STATUS, owner: donor_user)
+    item_request.update!(status: :in_review, owner: donor_user)
   end
 
   def requests_for_user(user, type)
@@ -180,20 +180,8 @@ class ItemRequestService
   end
 
   def display_status(status)
-    case status
-    when ItemRequest::COMPLETED_STATUS
-      "Completed"
-    when ItemRequest::ACCEPTED_STATUS
-      "Accepted"
-    when ItemRequest::DECLINED_STATUS
-      "Declined"
-    when ItemRequest::IN_REVIEW_STATUS
-      "In Review"
-    when ItemRequest::CANCELLED_STATUS
-      "Cancelled"
-    else
-      "Pending"
-    end
+    status_name = status.to_s
+    ItemRequest.statuses.key?(status_name) ? status_name.titleize : "Pending"
   end
 
   private

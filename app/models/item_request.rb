@@ -1,16 +1,17 @@
 class ItemRequest < ApplicationRecord
   self.table_name = "item_requests"
 
-  # Status constants
-  PENDING_STATUS = 0
-  ACCEPTED_STATUS = 1
-  DECLINED_STATUS = 2
-  IN_REVIEW_STATUS = 3
-  COMPLETED_STATUS = 4
-  CANCELLED_STATUS = 5
+  enum :status, {
+    pending: 0,
+    accepted: 1,
+    declined: 2,
+    in_review: 3,
+    completed: 4,
+    cancelled: 5
+  }, default: :pending, validate: true
 
   # Statuses where the requester is still waiting on a wishlist item.
-  ACTIVE_WISH_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
+  ACTIVE_WISH_STATUSES = %w[pending in_review].freeze
 
   belongs_to :requester, class_name: "User"
   belongs_to :item
@@ -20,16 +21,10 @@ class ItemRequest < ApplicationRecord
   alias_method :book, :item
 
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
-  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS, CANCELLED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
   validate :requester_cannot_request_own_item
   validate :item_must_be_available, on: :create
 
-  scope :pending, -> { where(status: PENDING_STATUS) }
-  scope :accepted, -> { where(status: ACCEPTED_STATUS) }
-  scope :completed, -> { where(status: COMPLETED_STATUS) }
-  scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
-  scope :cancelled, -> { where(status: CANCELLED_STATUS) }
   scope :active_wish, -> { where(status: ACTIVE_WISH_STATUSES) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_item_owner, ->(user) { where(owner: user) }
@@ -47,45 +42,16 @@ class ItemRequest < ApplicationRecord
     [ "item", "owner", "requester", "messages" ]
   end
 
-  before_validation :set_default_status, on: :create
   before_validation :set_owner, on: :create
 
   after_update :notify_status_change
 
-  def pending?
-    status == PENDING_STATUS
-  end
-
-  def accepted?
-    status == ACCEPTED_STATUS
-  end
-
-  def declined?
-    status == DECLINED_STATUS
-  end
-
-  def in_review?
-    status == IN_REVIEW_STATUS
-  end
-
-  def completed?
-    status == COMPLETED_STATUS
-  end
-
-  def cancelled?
-    status == CANCELLED_STATUS
-  end
-
   def can_update_status?
     return false if cancelled?
-    status == ACCEPTED_STATUS || !item.item_requests.exists?(status: ACCEPTED_STATUS)
+    accepted? || !item.item_requests.accepted.exists?
   end
 
   private
-
-  def set_default_status
-    self.status ||= PENDING_STATUS
-  end
 
   def set_owner
     return unless item.present?

@@ -58,11 +58,10 @@ module Group
         verified: true
       )
 
-      request = GroupMembershipRequest.create!(
+      request = GroupMembershipRequest.requested.create!(
         community_group: @group,
         requester: new_user,
-        requester_type: "User",
-        status: GroupMemberStatus::REQUESTED
+        requester_type: "User"
       )
 
       delivery = Minitest::Mock.new
@@ -83,17 +82,16 @@ module Group
         password_digest: BCrypt::Password.create("password123!"),
         verified: true
       )
-      request = GroupMembershipRequest.create!(
+      request = GroupMembershipRequest.requested.create!(
         community_group: @group,
         requester: user,
-        requester_type: "User",
-        status: GroupMemberStatus::REQUESTED
+        requester_type: "User"
       )
 
       post reject_group_admin_membership_request_path(@group, request_id: request.id)
       assert_redirected_to group_admin_memberships_path(@group, tab: "requested")
       assert_equal "Request rejected.", flash[:notice]
-      assert_equal GroupMemberStatus::REJECTED, request.reload.status
+      assert request.reload.rejected?
     end
 
     test "POST create_invite creates invite request and sends email" do
@@ -116,18 +114,17 @@ module Group
 
     test "POST revoke_invite rejects an invited request" do
       sign_in_as(@group_admin_user)
-      request = GroupMembershipRequest.create!(
+      request = GroupMembershipRequest.invited.create!(
         community_group: @group,
         requester: users(:one),
         requester_type: "Admin",
-        status: GroupMemberStatus::INVITED,
         email_address: "revoke_me_#{SecureRandom.hex(6)}@example.com"
       )
 
       post revoke_invite_group_admin_membership_request_path(@group, request_id: request.id)
       assert_redirected_to group_admin_memberships_path(@group, tab: "invites")
       assert_equal "Invite revoked.", flash[:notice]
-      assert_equal GroupMemberStatus::REJECTED, request.reload.status
+      assert request.reload.rejected?
     end
 
     test "GET index with invites tab excludes accepted invitations" do
@@ -135,11 +132,10 @@ module Group
 
       # Create a pending invitation
       pending_email = "pending_invite_#{SecureRandom.hex(6)}@example.com"
-      pending_request = GroupMembershipRequest.create!(
+      pending_request = GroupMembershipRequest.invited.create!(
         community_group: @group,
         requester: @group_admin_user,
         requester_type: "Admin",
-        status: GroupMemberStatus::INVITED,
         email_address: pending_email
       )
 
@@ -150,11 +146,10 @@ module Group
         password_digest: BCrypt::Password.create("password123!"),
         verified: true
       )
-      accepted_request = GroupMembershipRequest.create!(
+      accepted_request = GroupMembershipRequest.invited.create!(
         community_group: @group,
         requester: @group_admin_user,
         requester_type: "Admin",
-        status: GroupMemberStatus::INVITED,
         email_address: accepted_email
       )
 
@@ -166,7 +161,7 @@ module Group
       end
       delivery.verify
 
-      assert_equal GroupMemberStatus::ACCEPTED, accepted_request.reload.status
+      assert accepted_request.reload.accepted?
 
       # View the invites tab
       get group_admin_memberships_path(@group, tab: "invites")

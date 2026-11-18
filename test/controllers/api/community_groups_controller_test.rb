@@ -129,16 +129,15 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     user = create_user!
     sign_in_as(user)
 
-    GroupMembershipRequest.create!(
+    GroupMembershipRequest.requested.create!(
       community_group: group,
       requester: user,
-      requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      requester_type: "User"
     )
 
     get "/api/community_groups/#{group.id}"
     assert_response :success
-    assert_equal "requested", json["membership_state"]
+    assert_equal GroupMembershipRequest.requested.new.status, json["membership_state"]
   end
 
   test "show returns membership_state invited when invite exists" do
@@ -147,17 +146,16 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     user = create_user!(email: "invitee@example.com")
     sign_in_as(user)
 
-    GroupMembershipRequest.create!(
+    GroupMembershipRequest.invited.create!(
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: user.email_address
     )
 
     get "/api/community_groups/#{group.id}"
     assert_response :success
-    assert_equal "invited", json["membership_state"]
+    assert_equal GroupMembershipRequest.invited.new.status, json["membership_state"]
   end
 
   test "request_to_join requires authentication" do
@@ -187,7 +185,8 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     assert_equal group.id, req.community_group_id
     assert_equal user.id, req.requester_id
     assert_equal "User", req.requester_type
-    assert_equal GroupMemberStatus::REQUESTED, req.status
+    assert req.requested?
+    assert_equal req.status, json["status"]
     assert_equal "Please add me", req.message
   end
 
@@ -220,11 +219,10 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     user = create_user!
     sign_in_as(user)
 
-    GroupMembershipRequest.create!(
+    GroupMembershipRequest.requested.create!(
       community_group: group,
       requester: user,
-      requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      requester_type: "User"
     )
 
     CommunityGroupMailer.stub(:join_request, ->(*) { flunk("should not email for already_requested") }) do
@@ -255,24 +253,21 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     user = create_user!
     sign_in_as(user)
 
-    mine = GroupMembershipRequest.create!(
+    mine = GroupMembershipRequest.requested.create!(
       community_group: community_groups(:one),
       requester: user,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED,
       message: "please"
     )
-    GroupMembershipRequest.create!(
+    GroupMembershipRequest.requested.create!(
       community_group: community_groups(:one),
       requester: users(:one),
-      requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      requester_type: "User"
     )
-    GroupMembershipRequest.create!(
+    GroupMembershipRequest.invited.create!(
       community_group: community_groups(:one),
       requester: user,
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: user.email_address
     )
 
@@ -282,25 +277,25 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     body = json
     assert_equal 1, body.length
     assert_equal mine.id, body.first["id"]
+    assert_equal mine.status, body.first["status"]
+    assert_equal mine.display_status, body.first["status_display"]
   end
 
   test "my_group_invites returns only invites matching current user's email" do
     user = create_user!(email: "invited@example.com")
     sign_in_as(user)
 
-    mine = GroupMembershipRequest.create!(
+    mine = GroupMembershipRequest.invited.create!(
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: user.email_address,
       message: "join us"
     )
-    GroupMembershipRequest.create!(
+    GroupMembershipRequest.invited.create!(
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: "someone_else@example.com"
     )
 
@@ -310,6 +305,8 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     body = json
     assert_equal 1, body.length
     assert_equal mine.id, body.first["id"]
+    assert_equal mine.status, body.first["status"]
+    assert_equal mine.display_status, body.first["status_display"]
     assert body.first["inviter"]
   end
 
@@ -329,11 +326,10 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     invitee = create_user!(email: "right@example.com")
     other = create_user!(email: "wrong@example.com")
 
-    req = GroupMembershipRequest.create!(
+    req = GroupMembershipRequest.invited.create!(
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: invitee.email_address
     )
 
@@ -346,11 +342,10 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     group = community_groups(:one)
     user = users(:two) # already member of group one
 
-    req = GroupMembershipRequest.create!(
+    req = GroupMembershipRequest.invited.create!(
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: user.email_address
     )
 
@@ -358,18 +353,17 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     post "/api/my_groups/invites/#{req.id}/accept"
     assert_response :unprocessable_entity
     assert_equal "already a member", json["error"]
-    assert_equal GroupMemberStatus::ACCEPTED, req.reload.status
+    assert req.reload.accepted?
   end
 
   test "accept_invite creates membership and marks request accepted" do
     group = community_groups(:two)
     invitee = create_user!(email: "acceptme@example.com")
 
-    req = GroupMembershipRequest.create!(
+    req = GroupMembershipRequest.invited.create!(
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
       email_address: invitee.email_address
     )
 
@@ -383,8 +377,8 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       delivery.verify
     end
     assert_response :success
-    assert_equal "accepted", json["status"]
-    assert_equal GroupMemberStatus::ACCEPTED, req.reload.status
+    assert req.reload.accepted?
+    assert_equal req.status, json["status"]
     assert req.accepted_at
     assert req.responded_at
   end
@@ -480,11 +474,10 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
   test "cancel_join_request returns 403 when request does not belong to user" do
     user = create_user!
     other = create_user!
-    req = GroupMembershipRequest.create!(
+    req = GroupMembershipRequest.requested.create!(
       community_group: community_groups(:one),
       requester: other,
-      requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      requester_type: "User"
     )
 
     sign_in_as(user)
@@ -494,11 +487,10 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
 
   test "cancel_join_request deletes request when owned and requested" do
     user = create_user!
-    req = GroupMembershipRequest.create!(
+    req = GroupMembershipRequest.requested.create!(
       community_group: community_groups(:one),
       requester: user,
-      requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      requester_type: "User"
     )
 
     sign_in_as(user)

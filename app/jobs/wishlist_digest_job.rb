@@ -17,7 +17,7 @@ class WishlistDigestJob < ApplicationJob
     failure_count = 0
 
     wishlist_items.find_each do |item|
-      item.item_requests.where(status: ItemRequest::PENDING_STATUS).find_each do |ir|
+      item.item_requests.pending.find_each do |ir|
         next unless ir.requester
         scoped_availabilities = item.group_item_availabilities
         next if scoped_availabilities.blank?

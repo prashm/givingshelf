@@ -42,7 +42,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
     const itemData = request.book || request.toy;
     const isOwner = currentUser.id === itemData?.owner?.id;
-    const isPending = request?.status_display === 'Pending';
+    const isPending = request?.status === Constants.ITEM_REQUEST_STATUS_PENDING;
 
     if (isOwner && isPending) {
       setHasMarkedAsViewed(true);
@@ -110,24 +110,24 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
   const itemData = request?.book || request?.toy;
   const isOwner = currentUser && itemData?.owner?.id === currentUser.id;
-  const currentStatusDisplay = request?.status_display;
+  const currentStatus = request?.status;
 
   const statusButtons = [
     {
       action: 'accept',
       label: 'Accept',
-      statusMatch: 'Accepted',
+      statusMatch: Constants.ITEM_REQUEST_STATUS_ACCEPTED,
       activeColor: 'bg-emerald-600',
       Icon: CheckIcon,
       IconSolid: CheckIconSolid,
       title: 'Accept Request',
-      additionalDisabled: currentStatusDisplay === 'Accepted',
+      additionalDisabled: currentStatus === Constants.ITEM_REQUEST_STATUS_ACCEPTED,
       description: 'Approve this request and mark the item as requested'
     },
     {
       action: 'decline',
       label: 'Decline',
-      statusMatch: 'Declined',
+      statusMatch: Constants.ITEM_REQUEST_STATUS_DECLINED,
       activeColor: 'bg-red-600',
       Icon: XMarkIcon,
       IconSolid: XMarkIconSolid,
@@ -138,18 +138,18 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     {
       action: 'complete',
       label: 'Complete',
-      statusMatch: 'Completed',
+      statusMatch: Constants.ITEM_REQUEST_STATUS_COMPLETED,
       activeColor: 'bg-blue-600',
       Icon: CheckCircleIcon,
       IconSolid: CheckCircleIconSolid,
       title: 'Mark as Completed',
-      additionalDisabled: currentStatusDisplay !== 'Accepted',
+      additionalDisabled: currentStatus !== Constants.ITEM_REQUEST_STATUS_ACCEPTED,
       description: 'This action will mark the item as "donated" (only available for accepted requests)'
     }
   ];
 
   const renderStatusButton = (buttonConfig) => {
-    const isActive = currentStatusDisplay === buttonConfig.statusMatch;
+    const isActive = currentStatus === buttonConfig.statusMatch;
     const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
     const tooltip = !request.can_update_status
       ? 'Another request for this item is already accepted'
@@ -281,7 +281,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           <div>
             <p className="font-medium text-gray-500">Requested at</p>
             <p>{createdAt}</p>
-            {isOwner && currentStatusDisplay === 'Cancelled' && request.updated_at && (
+            {isOwner && currentStatus === Constants.ITEM_REQUEST_STATUS_CANCELLED && request.updated_at && (
               <p className="mt-2 text-gray-600 bold">
                 <strong>User canceled request at {updatedAt}</strong>
               </p>
@@ -306,7 +306,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-medium text-gray-500">Status</p>
                   <p className="capitalize">{request.status_display || 'Pending'}</p>
-                  {currentStatusDisplay !== 'Cancelled' && currentStatusDisplay !== 'Completed' && (
+                  {currentStatus !== Constants.ITEM_REQUEST_STATUS_CANCELLED && currentStatus !== Constants.ITEM_REQUEST_STATUS_COMPLETED && (
                     <button
                       type="button"
                       onClick={handleCancelRequest}
@@ -318,7 +318,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                       <span>Cancel request</span>
                     </button>
                   )}
-                  {currentStatusDisplay === 'Cancelled' && (
+                  {currentStatus === Constants.ITEM_REQUEST_STATUS_CANCELLED && (
                     <button
                       type="button"
                       onClick={handleUncancelRequest}

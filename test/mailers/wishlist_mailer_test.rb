@@ -7,15 +7,14 @@ class WishlistMailerTest < ActionMailer::TestCase
     recipient = users(:two)
     requester = users(:one)
     group = community_groups(:one)
-    book = Book.create!(
+    book = Book.wishlist.create!(
       type: Book.name,
       user_id: nil,
       title: "Digest Wish Book",
       author: "Author",
       summary: "Long enough summary for wishlist digest mailer test content here.",
       published_year: 2020,
-      genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      genre: "Fiction"
     )
     entries = [ { item: book, requester: requester, group: group } ]
 
@@ -39,15 +38,14 @@ class WishlistMailerTest < ActionMailer::TestCase
     recipient = users(:two)
     requester = users(:one)
     zip_group = CommunityGroup.find_or_create_zipcode_group!
-    book = Book.create!(
+    book = Book.wishlist.create!(
       type: Book.name,
       user_id: nil,
       title: "Zip Digest Wish Book",
       author: "Author",
       summary: "Long enough summary for zipcode wishlist digest mailer test content.",
       published_year: 2020,
-      genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      genre: "Fiction"
     )
     entries = [ { item: book, requester: requester, group: zip_group } ]
 
@@ -64,7 +62,7 @@ class WishlistMailerTest < ActionMailer::TestCase
   test "wishlist_available uses group subdomain for named group items" do
     user = users(:one)
     group = community_groups(:one)
-    book = Book.create!(
+    book = Book.available.create!(
       type: Book.name,
       user: users(:two),
       title: "Available Wish Book",
@@ -72,20 +70,18 @@ class WishlistMailerTest < ActionMailer::TestCase
       summary: "Long enough summary for wishlist available mailer test content.",
       published_year: 2020,
       genre: "Fiction",
-      condition: "good",
-      status: ShareableItemStatus::AVAILABLE
+      condition: "good"
     )
     GroupItemAvailability.create!(item: book, community_group: group)
     CommunityGroupMembership.find_or_create_by!(user: user, community_group: group) do |m|
       m.admin = false
       m.auto_joined = false
     end
-    item_request = ItemRequest.create!(
+    item_request = ItemRequest.in_review.create!(
       item: book,
       requester: user,
       owner: users(:two),
-      message: "I would love this book if anyone in the community has a copy.",
-      status: ItemRequest::IN_REVIEW_STATUS
+      message: "I would love this book if anyone in the community has a copy."
     )
 
     email = WishlistMailer.wishlist_available(user, book, item_request)

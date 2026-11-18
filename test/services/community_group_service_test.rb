@@ -646,15 +646,14 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       named = community_groups(:one)
       other = community_groups(:two)
       zip = CommunityGroup.find_or_create_zipcode_group!
-      book = Book.create!(
+      book = Book.wishlist.create!(
         type: Book.name,
         user_id: nil,
         title: "Wish Book",
         author: "Author",
         summary: "Long enough summary for preferred group selection testing here.",
         published_year: 2020,
-        genre: "Fiction",
-        status: ShareableItemStatus::WISHLIST
+        genre: "Fiction"
       )
       GroupItemAvailability.create!(item: book, community_group: named)
       GroupItemAvailability.create!(item: book, community_group: other)
@@ -669,6 +668,74 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
       end
 
       assert_equal named, CommunityGroupService.preferred_group_for_item_and_user(book, user)
+    end
+  end
+
+  describe "membership requests and invitations with enum statuses" do
+    it "creates requested join requests, invited invitations, and transitions to accepted" do
+      group = community_groups(:two)
+      group.update!(public: true)
+      service = CommunityGroupService.new(group)
+
+      applicant = User.create!(
+        email_address: "applicant_#{SecureRandom.hex(4)}@example.com",
+        password_digest: BCrypt::Password.create("password123!"),
+        verified: true
+      )
+      assert_equal "none", service.membership_state_for(applicant)
+
+      join_req = nil
+      delivery = Minitest::Mock.new
+      delivery.expect(:deliver_later, true)
+      CommunityGroupMailer.stub(:join_request, delivery) do
+        join_req = service.request_to_join(applicant, message: "Hello group!")
+      end
+      delivery.verify
+
+      assert join_req.requested?
+      assert_equal join_req.status, service.membership_state_for(applicant)
+
+      accept_delivery = Minitest::Mock.new
+      accept_delivery.expect(:deliver_later, true)
+      membership = nil
+      CommunityGroupMailer.stub(:membership_accepted, accept_delivery) do
+        membership = service.add_user_to_group_from_request(applicant, join_req)
+      end
+      accept_delivery.verify
+
+      assert_not_nil membership
+      assert join_req.reload.accepted?
+      assert_equal "member", service.membership_state_for(applicant)
+
+      invitee = User.create!(
+        email_address: "invitee_#{SecureRandom.hex(4)}@example.com",
+        password_digest: BCrypt::Password.create("password123!"),
+        verified: true
+      )
+      invite_req = nil
+      invite_delivery = Minitest::Mock.new
+      invite_delivery.expect(:deliver_later, true)
+      CommunityGroupMailer.stub(:invite, invite_delivery) do
+        invite_req = service.invite_to_group(
+          invitee_email: invitee.email_address,
+          inviter_admin: users(:one),
+          message: "Welcome!"
+        )
+      end
+      invite_delivery.verify
+
+      assert invite_req.invited?
+      assert_equal invite_req.status, service.membership_state_for(invitee)
+
+      invite_accept_delivery = Minitest::Mock.new
+      invite_accept_delivery.expect(:deliver_later, true)
+      CommunityGroupMailer.stub(:invite_accepted, invite_accept_delivery) do
+        service.add_user_to_group_from_request(invitee, invite_req)
+      end
+      invite_accept_delivery.verify
+
+      assert invite_req.reload.accepted?
+      assert_equal "member", service.membership_state_for(invitee)
     end
   end
 end

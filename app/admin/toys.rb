@@ -14,7 +14,7 @@ ActiveAdmin.register Toy do
       ShareableItemStatus.display_status(toy.status)
     end
     column :user do |toy|
-      link_to toy.user.email_address, admin_user_path(toy.user)
+      link_to toy.user.email_address, admin_user_path(toy.user) if toy.user
     end
     column :view_count
     column :created_at
@@ -25,7 +25,7 @@ ActiveAdmin.register Toy do
   filter :brand
   filter :age_range
   filter :condition
-  filter :status, as: :select, collection: ShareableItemStatus.collection
+  filter :status, as: :select, collection: -> { Toy.statuses.transform_keys { |status| ShareableItemStatus.display_status(status) } }
   filter :user
   filter :created_at
 
@@ -43,7 +43,7 @@ ActiveAdmin.register Toy do
         ShareableItemStatus.display_status(toy.status)
       end
       row :user do |toy|
-        link_to toy.user.email_address, admin_user_path(toy.user)
+        link_to toy.user.email_address, admin_user_path(toy.user) if toy.user
       end
       row :view_count
       row :personal_note

@@ -67,7 +67,7 @@ class Api::CommunityGroupsController < ApplicationController
     if request.nil?
       render json: { error: group_service.errors.join(", ") }, status: :unprocessable_entity
     else
-      render json: { status: "requested", request_id: request.id }, status: :created
+      render json: { status: request.status, request_id: request.id }, status: :created
     end
   end
 
@@ -95,7 +95,7 @@ class Api::CommunityGroupsController < ApplicationController
 
     membership = group_service.add_user_to_group_from_request(Current.user, request)
     if membership
-      render json: { status: "accepted", membership_id: membership.id }, status: :ok
+      render json: { status: request.reload.status, membership_id: membership.id }, status: :ok
     else
       render json: { error: group_service.errors.join(", ") }, status: :unprocessable_entity
     end
