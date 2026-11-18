@@ -151,8 +151,9 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const renderStatusButton = (buttonConfig) => {
     const isActive = currentStatusDisplay === buttonConfig.statusMatch;
     const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
+    const isFinished = ['Completed', 'Declined', 'Cancelled'].includes(currentStatusDisplay);
     const tooltip = !request.can_update_status
-      ? 'Another request for this item is already accepted'
+      ? (isFinished ? `This request is already ${currentStatusDisplay.toLowerCase()}` : 'Another request for this item is already accepted')
       : isActive && buttonConfig.action === 'accept'
       ? 'This request is already accepted'
       : buttonConfig.title;
@@ -306,7 +307,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-medium text-gray-500">Status</p>
                   <p className="capitalize">{request.status_display || 'Pending'}</p>
-                  {currentStatusDisplay !== 'Cancelled' && currentStatusDisplay !== 'Completed' && (
+                  {request.can_cancel && (
                     <button
                       type="button"
                       onClick={handleCancelRequest}
@@ -318,7 +319,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                       <span>Cancel request</span>
                     </button>
                   )}
-                  {currentStatusDisplay === 'Cancelled' && (
+                  {request.can_uncancel && (
                     <button
                       type="button"
                       onClick={handleUncancelRequest}

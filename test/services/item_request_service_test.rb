@@ -718,6 +718,171 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
   end
 
+  describe "transition table" do
+    def accepted_request(book)
+      request = create_item_request(book)
+      ItemRequestService.new(request).accept!
+      request
+    end
+
+    it "accepts an in-review request" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book, status: ItemRequest::IN_REVIEW_STATUS)
+
+      ItemRequestService.new(request).accept!
+
+      assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+    end
+
+    it "cancels an in-review request" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book, status: ItemRequest::IN_REVIEW_STATUS)
+
+      ItemRequestService.new(request).cancel!
+
+      assert_equal ItemRequest::CANCELLED_STATUS, request.reload.status
+    end
+
+    it "refuses to cancel a declined request" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book, status: ItemRequest::DECLINED_STATUS)
+
+      error = assert_raises(RuntimeError) { ItemRequestService.new(request).cancel! }
+      assert_equal "Cannot cancel a declined request", error.message
+      assert_equal ItemRequest::DECLINED_STATUS, request.reload.status
+    end
+
+    it "refuses to accept a second request while one is accepted" do
+      book = setup_book_for_request(items(:one))
+      other = create_item_request(book, requester: create_other_requester)
+      accepted_request(book)
+
+      error = assert_raises(RuntimeError) { ItemRequestService.new(other.reload).accept! }
+      assert_equal "Another request for this item has already been accepted", error.message
+      assert_equal ItemRequest::IN_REVIEW_STATUS, other.reload.status
+    end
+
+    it "frees the item when the owner declines the accepted request, so another can be accepted" do
+      book = setup_book_for_request(items(:one))
+      other = create_item_request(book, requester: create_other_requester, status: ItemRequest::IN_REVIEW_STATUS)
+      request = accepted_request(book)
+
+      ItemRequestService.new(request).decline!
+
+      assert_equal ItemRequest::DECLINED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+
+      ItemRequestService.new(other).accept!
+      assert_equal ItemRequest::ACCEPTED_STATUS, other.reload.status
+      assert_equal ShareableItemStatus::REQUESTED, book.reload.status
+    end
+
+    it "refuses to accept or decline a completed request and keeps the item donated" do
+      book = setup_book_for_request(items(:one))
+      request = accepted_request(book)
+      ItemRequestService.new(request).complete!
+
+      accept_error = assert_raises(RuntimeError) { ItemRequestService.new(request).accept! }
+      assert_equal "Cannot accept a completed request", accept_error.message
+      decline_error = assert_raises(RuntimeError) { ItemRequestService.new(request).decline! }
+      assert_equal "Cannot decline a completed request", decline_error.message
+
+      assert_equal ItemRequest::COMPLETED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::DONATED, book.reload.status
+    end
+
+    it "refuses to accept or complete a declined request" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book, status: ItemRequest::DECLINED_STATUS)
+
+      assert_equal "Cannot accept a declined request",
+        assert_raises(RuntimeError) { ItemRequestService.new(request).accept! }.message
+      assert_equal "Cannot complete a declined request",
+        assert_raises(RuntimeError) { ItemRequestService.new(request).complete! }.message
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+    end
+
+    it "refuses to uncancel when the item has been donated" do
+      book = setup_book_for_request(items(:one))
+      cancelled = create_item_request(book, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
+      winner = accepted_request(book)
+      ItemRequestService.new(winner).complete!
+
+      error = assert_raises(RuntimeError) { ItemRequestService.new(cancelled).uncancel! }
+      assert_equal "This item has already been donated", error.message
+      assert_equal ItemRequest::CANCELLED_STATUS, cancelled.reload.status
+    end
+
+    it "refuses to uncancel while another request is accepted" do
+      book = setup_book_for_request(items(:one))
+      cancelled = create_item_request(book, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
+      accepted_request(book)
+
+      error = assert_raises(RuntimeError) { ItemRequestService.new(cancelled).uncancel! }
+      assert_equal "Another request for this item has already been accepted", error.message
+    end
+
+    it "refuses a move when the request was changed elsewhere since it was loaded" do
+      book = setup_book_for_request(items(:one))
+      request = create_item_request(book)
+      stale = ItemRequest.find(request.id)
+      ItemRequestService.new(request).decline!
+
+      error = assert_raises(RuntimeError) { ItemRequestService.new(stale).accept! }
+      assert_match "just updated by someone else", error.message
+      assert_equal ItemRequest::DECLINED_STATUS, request.reload.status
+      assert_equal ShareableItemStatus::AVAILABLE, book.reload.status
+    end
+
+    it "gives an uncancelled wish the donor as owner so it shows in their received requests" do
+      wish = Book.create!(
+        user_id: nil,
+        title: "Uncancel Wish",
+        author: "Author",
+        summary: "Summary text long enough for validations on the book model here.",
+        published_year: 2020,
+        genre: "Fiction",
+        status: ShareableItemStatus::WISHLIST
+      )
+      waiting = ItemRequest.create!(item: wish, requester: @requester, message: "Still waiting for this book", status: ItemRequest::PENDING_STATUS)
+      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, message: "Cancelled before the donor came", status: ItemRequest::CANCELLED_STATUS)
+      assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+      assert_nil cancelled.reload.owner_id
+
+      ItemRequestService.new(cancelled).uncancel!
+
+      cancelled.reload
+      assert_equal ItemRequest::PENDING_STATUS, cancelled.status
+      assert_equal @owner.id, cancelled.owner_id
+      assert_includes ItemRequestService.new.requests_for_user(@owner, "received"), cancelled
+      assert_includes ItemRequestService.new.requests_for_user(@owner, "received"), waiting
+    end
+
+    it "locks the owner's status buttons on finished requests" do
+      book = setup_book_for_request(items(:one))
+      [ ItemRequest::DECLINED_STATUS, ItemRequest::COMPLETED_STATUS, ItemRequest::CANCELLED_STATUS ].each do |status|
+        assert_equal false, create_item_request(book, requester: create_other_requester, status: status).can_update_status?
+      end
+      assert create_item_request(book).can_update_status?
+    end
+
+    it "exposes can_cancel and can_uncancel in request_json" do
+      book = setup_book_for_request(items(:one))
+      json_for = ->(status) { service.request_json(create_item_request(book, requester: create_other_requester, status: status)) }
+
+      pending = json_for.call(ItemRequest::PENDING_STATUS)
+      assert_equal [ true, false ], [ pending[:can_cancel], pending[:can_uncancel] ]
+      declined = json_for.call(ItemRequest::DECLINED_STATUS)
+      assert_equal [ false, false ], [ declined[:can_cancel], declined[:can_uncancel] ]
+      cancelled = json_for.call(ItemRequest::CANCELLED_STATUS)
+      assert_equal [ false, true ], [ cancelled[:can_cancel], cancelled[:can_uncancel] ]
+
+      book.update!(status: ShareableItemStatus::DONATED)
+      assert_equal false, service.request_json(ItemRequest.find(cancelled[:id]))[:can_uncancel]
+    end
+  end
+
   describe "#requests_for_user" do
     it "returns received requests for user" do
       # Isolate from fixture requests (e.g. toy_request_one) so we only count the 2 we create

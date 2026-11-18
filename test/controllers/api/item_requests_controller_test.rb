@@ -51,6 +51,34 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
     assert_equal ItemRequest::CANCELLED_STATUS, ItemRequest.find(item_requests(:one).id).status
   end
 
+  test "returns 422 when cancelling a declined request" do
+    item_requests(:one).update!(status: ItemRequest::DECLINED_STATUS)
+    sign_in_as(users(:two))
+    delete api_item_request_url(item_requests(:one))
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body["errors"], "Cannot cancel a declined request"
+    assert_equal ItemRequest::DECLINED_STATUS, item_requests(:one).reload.status
+  end
+
+  test "returns 422 when uncancelling a request on a donated item" do
+    item_requests(:one).update!(status: ItemRequest::CANCELLED_STATUS)
+    items(:one).update!(status: ShareableItemStatus::DONATED)
+    sign_in_as(users(:two))
+    patch api_item_request_url(item_requests(:one)), params: { action_type: "uncancel" }
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body["errors"], "This item has already been donated"
+  end
+
+  test "returns 422 when accepting a completed request" do
+    item_requests(:one).update!(status: ItemRequest::COMPLETED_STATUS)
+    items(:one).update!(status: ShareableItemStatus::DONATED)
+    sign_in_as(users(:one))
+    patch api_item_request_url(item_requests(:one)), params: { action_type: "accept" }
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body["errors"], "Cannot accept a completed request"
+    assert_equal ShareableItemStatus::DONATED, items(:one).reload.status
+  end
+
   test "should get messages" do
     sign_in_as(users(:one))
     get messages_api_item_request_url(item_requests(:one))
