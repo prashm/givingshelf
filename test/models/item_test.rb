@@ -70,6 +70,25 @@ class ItemTest < ActiveSupport::TestCase
       assert_includes b.errors[:user_id], "can't be blank"
     end
   end
+
+  describe "wishlist_item" do
+    it "is set on a wish when created and never changes after" do
+      wish = Book.create!(
+        user_id: nil, title: "A wish", author: "Author", published_year: 2020, genre: "Fiction",
+        summary: "Summary is definitely long enough for this validation test case.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      assert wish.wishlist_item?
+
+      wish.update!(user: users(:one), status: ShareableItemStatus::AVAILABLE, condition: "good")
+      assert wish.reload.wishlist_item?
+      assert_raises(ActiveRecord::ReadonlyAttributeError) { wish.wishlist_item = false }
+    end
+
+    it "is false for an item listed by its owner" do
+      assert_not items(:one).wishlist_item?
+    end
+  end
   describe "requesters and original_requester" do
     def wish_with_requests(*specs)
       wish = Book.create!(

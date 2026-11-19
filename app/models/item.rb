@@ -16,6 +16,10 @@ class Item < ApplicationRecord
   validates :status, inclusion: { in: ShareableItemStatus.values, default: ShareableItemStatus::AVAILABLE }
   validate :user_id_consistency_with_wishlist_status
 
+  # wishlist_item marks an item that started as a wish. It is set once, on create, and never changes.
+  attr_readonly :wishlist_item
+  before_create { self.wishlist_item = true if wishlist? }
+
   # Shared scopes
   scope :available, -> { where(status: ShareableItemStatus::AVAILABLE) }
   scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
@@ -83,11 +87,6 @@ class Item < ApplicationRecord
 
   def owner?(current_user)
     current_user.present? && user == current_user
-  end
-
-  # A donated copy that started as a wish; wish_group_scope holds the wish's groups.
-  def fulfilled_from_wish?
-    !wish_group_scope.nil?
   end
 
   # Users with a non-cancelled request on this item, oldest request first.

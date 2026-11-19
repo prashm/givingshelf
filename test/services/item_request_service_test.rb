@@ -920,7 +920,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_equal "Cannot cancel a declined request", error.message
     end
 
-    it "moves the other wishers to a new wish in the original wish's groups" do
+    it "moves the other wishers to a new wish in the same groups" do
       b_user = create_other_requester
       c_user = create_other_requester
       d_user = create_other_requester
@@ -932,9 +932,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       ])
       wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
       assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
-      # Stand in for the donor's group choices replacing the wish's groups at fulfillment.
-      wish.group_item_availabilities.delete_all
-      GroupItemAvailability.create!(item: wish, community_group: community_groups(:two))
 
       ItemRequestService.new(a.reload).accept!
       ItemRequestService.new(a.reload).complete!

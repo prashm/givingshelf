@@ -239,7 +239,7 @@ class ItemRequestService
     @close_out = { item: item, requests: open_requests, new_wish: nil }
     return if open_requests.empty?
 
-    if item.fulfilled_from_wish?
+    if item.wishlist_item?
       new_wish = ItemService.new(item).relist_as_wish!
       open_requests.each { |request| request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS) }
       @close_out[:new_wish] = new_wish
