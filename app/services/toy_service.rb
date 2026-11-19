@@ -12,88 +12,17 @@ class ToyService < ItemService
     )
   end
 
-  def item_map(toy)
-    {
-      id: toy.id,
-      type: Toy.name,
-      title: toy.title,
-      summary: toy.summary,
-      brand: toy.brand,
-      age_range: toy.age_range,
-      age_range_display: ToyAgeRange.display_age_range(toy.age_range),
-      min_age: toy.min_age,
-      max_age: toy.max_age,
-      condition: toy.condition,
-      status: toy.status,
-      status_display: ShareableItemStatus.display_status(toy.status),
-      cover_image_url: toy.cover_image.attached? ? toy.cover_image.attachment.url : nil,
-      created_at: toy.created_at
-    }
-  end
-
-  def item_detail_map(toy, requester = nil)
-    # Get community groups in one query
-    community_groups = toy.available_community_groups.to_a
-    community_group_ids = []
-    community_group_names = []
-    community_groups.each do |grp|
-      community_group_ids << grp.id
-      if grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME
-        community_group_names << (toy.user ? "#{toy.user.zip_code} Community" : "ZIP Code Community")
-      else
-        community_group_names << grp.name
-      end
-    end
-
-    result = {
-      id: toy.id,
-      type: Toy.name,
-      title: toy.title,
-      brand: toy.brand,
-      age_range: toy.age_range,
-      age_range_display: ToyAgeRange.display_age_range(toy.age_range),
-      min_age: toy.min_age,
-      max_age: toy.max_age,
-      condition: toy.condition,
-      summary: toy.summary,
-      status: toy.status,
-      status_display: ShareableItemStatus.display_status(toy.status),
-      cover_image_url: toy.cover_image.attached? ? toy.cover_image.attachment.url : nil,
-      user_images_urls: toy.user_images.attached? ? toy.user_images.map { |img| img.url } : [],
-      view_count: toy.view_count || 0,
-      personal_note: toy.personal_note,
-      pickup_method: toy.pickup_method,
-      pickup_address: toy.pickup_address,
-      community_group_ids: community_group_ids,
-      community_group_names: community_group_names,
-      owner: toy.user ? {
-        id: toy.user.id,
-        name: toy.user.display_name,
-        location: toy.user.location,
-        verified: toy.user.verified?,
-        trust_score: toy.user.trust_score || 0
-      } : nil,
-      request_count: toy.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
-      created_at: toy.created_at,
-      updated_at: toy.updated_at,
-      can_request: item_can_be_requested_by?(requester)
-    }
-    if @user_request
-      result[:user_request_id] = @user_request.id
-      result[:user_request_dt] = @user_request.created_at
-      result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
-      result[:user_request_updated_at] = @user_request.updated_at
-      actions = ItemRequestService.new.requester_actions(@user_request)
-      result[:user_request_can_cancel] = actions[:can_cancel]
-      result[:user_request_can_uncancel] = actions[:can_uncancel]
-    end
-    if @item_cannot_be_requested_by_reason.present?
-      result[:cannot_request_reason] = @item_cannot_be_requested_by_reason
-    end
-    result
-  end
-
   private
+
+  def type_fields(toy, detail:)
+    {
+      brand: toy.brand,
+      age_range: toy.age_range,
+      age_range_display: ToyAgeRange.display_age_range(toy.age_range),
+      min_age: toy.min_age,
+      max_age: toy.max_age
+    }
+  end
 
   def type_class
     Toy

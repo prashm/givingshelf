@@ -15,6 +15,8 @@ const ItemFulfillmentFields = ({
   excludePickupMethods = [],
   isToy = false,
   hidePickupAddressForMeetInPerson = false,
+  // When set, the groups belong to a wish and can't be changed: list them instead of the picker.
+  lockedGroupNames = null,
 }) => {
   const pickupMethodOptions = [
     { value: 'meet_in_person', label: 'Meet in person' },
@@ -58,7 +60,22 @@ const ItemFulfillmentFields = ({
   return (
     <>
       {/* Group availability */}
-      {sortedGroups.length > 0 && (updateFormData || onToggleGroup) && (
+      {lockedGroupNames && (
+        <div className="mt-4 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {shareLabel}
+          </label>
+          <ul className="border border-gray-200 bg-gray-50 rounded-md p-3 space-y-1 text-sm text-gray-800">
+            {lockedGroupNames.length > 0
+              ? lockedGroupNames.map((name, i) => <li key={i}>{name}</li>)
+              : <li className="text-gray-500">No groups</li>}
+          </ul>
+          <p className="mt-2 text-xs text-gray-500">
+            These are the groups the wish was made in, so they can't be changed.
+          </p>
+        </div>
+      )}
+      {!lockedGroupNames && sortedGroups.length > 0 && (updateFormData || onToggleGroup) && (
         <div className="mt-4 mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {shareLabel}

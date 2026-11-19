@@ -55,13 +55,22 @@ const ItemCard = ({ item, itemType = Constants.ITEM_TYPE_BOOK, onSelect }) => {
           {renderItemSubtitle()}
           <div className="flex items-center justify-between">
             {renderItemMeta()}
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.condition === 'excellent' ? 'bg-green-100 text-green-800' :
-              item.condition === 'good' ? 'bg-blue-100 text-blue-800' :
-                item.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-            }`}>
-              {item.condition || 'wishlist'}
-            </span>
+            <div className="flex items-center gap-1">
+              {item.wishlist_item && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
+                  wishlist
+                </span>
+              )}
+              {item.condition && (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.condition === 'excellent' ? 'bg-green-100 text-green-800' :
+                  item.condition === 'good' ? 'bg-blue-100 text-blue-800' :
+                    item.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                }`}>
+                  {item.condition}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

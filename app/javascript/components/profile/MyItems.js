@@ -242,13 +242,20 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                     )}
 
                     <div className="flex items-center justify-between mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.condition === 'excellent' ? 'bg-green-100 text-green-800' :
-                        item.condition === 'good' ? 'bg-blue-100 text-blue-800' :
-                          item.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                        }`}>
-                        {item.condition}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.condition === 'excellent' ? 'bg-green-100 text-green-800' :
+                          item.condition === 'good' ? 'bg-blue-100 text-blue-800' :
+                            item.condition === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                          }`}>
+                          {item.condition}
+                        </span>
+                        {item.wishlist_item && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
+                            wishlist
+                          </span>
+                        )}
+                      </div>
 
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                         {item.status_display}

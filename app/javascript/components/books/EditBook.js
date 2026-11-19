@@ -206,6 +206,12 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, re
       ...formData,
       remove_user_image_indices: Array.from(removedExistingImageIndices)
     };
+    // A wishlist item's title, author and groups are fixed by the wish (the server refuses changes).
+    if (book?.wishlist_item) {
+      delete updateData.title;
+      delete updateData.author;
+      delete updateData.community_group_ids;
+    }
 
     const result = await updateItem(bookId, updateData);
     if (result.success) {
@@ -306,6 +312,8 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, re
               existingUserImages={existingUserImages}
               updateFormData={updateFormData}
               communityGroups={currentUser.community_groups || []}
+              lockedIdentity={Boolean(book?.wishlist_item)}
+              lockedGroupNames={book?.wishlist_item ? (book.community_group_names || []) : null}
               onCropUserImage={handleUserImageCrop}
               onRemoveExistingImage={handleRemoveExistingImage}
             />

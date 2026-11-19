@@ -25,6 +25,9 @@ const ItemForm = ({
   pickupAddressPlaceholder = 'Enter the address for pickup',
   excludePickupMethods = [],
   isToy = false,
+  // A wishlist item's title (and author, in BookForm) and groups are fixed by the wish.
+  lockedIdentity = false,
+  lockedGroupNames = null,
 }) => {
   return (
     <>
@@ -35,7 +38,7 @@ const ItemForm = ({
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
           Title *
         </label>
-        {renderTitleInput ? (
+        {renderTitleInput && !lockedIdentity ? (
           renderTitleInput()
         ) : (
           <input
@@ -44,9 +47,13 @@ const ItemForm = ({
             name="title"
             value={formData.title || ''}
             onChange={onInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${validationErrors.title ? 'border-red-300' : 'border-gray-300'}`}
+            readOnly={lockedIdentity}
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${lockedIdentity ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''} ${validationErrors.title ? 'border-red-300' : 'border-gray-300'}`}
             placeholder="Enter title"
           />
+        )}
+        {lockedIdentity && (
+          <p className="mt-1 text-xs text-gray-500">Another member created this item with this title, so it can't be changed.</p>
         )}
         {validationErrors.title && (
           <p className="mt-1 text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">{validationErrors.title}</p>
@@ -138,6 +145,7 @@ const ItemForm = ({
         pickupAddressPlaceholder={pickupAddressPlaceholder}
         excludePickupMethods={excludePickupMethods}
         isToy={isToy}
+        lockedGroupNames={lockedGroupNames}
       />
     </>
   );

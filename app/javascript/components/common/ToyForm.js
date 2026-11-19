@@ -14,6 +14,8 @@ const ToyForm = ({
   ageRangeHint = '',
   bucketLabels = [],
   onAgeRangeBlur,
+  lockedIdentity = false,
+  lockedGroupNames = null,
 }) => {
   return (
     <ItemForm
@@ -35,6 +37,8 @@ const ToyForm = ({
       pickupAddressPlaceholder="Enter the address for pickup"
       excludePickupMethods={['pickup_little_library_drop']}
       isToy={true}
+      lockedIdentity={lockedIdentity}
+      lockedGroupNames={lockedGroupNames}
       renderTypeSpecificFields={() => (
         <>
           {/* Brand */}
