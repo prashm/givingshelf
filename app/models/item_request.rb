@@ -155,12 +155,7 @@ class ItemRequest < ApplicationRecord
   end
 
   def item_must_be_available
-    if item.wishlist?
-      return
-    end
-    unless item.available?
-      errors.add(:base, "This item is not available for request")
-    end
+    errors.add(:base, "This item is not available for request") unless item.open_to_requests?
   end
 
   def notify_status_change

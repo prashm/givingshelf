@@ -103,7 +103,7 @@ class Api::ItemsController < ApplicationController
   def create_wishlist
     @item = item_service.create_wishlist_item(Current.user, create_wishlist_item_params)
     if @item && item_service.item_request.present?
-      render json: { item_request_id: item_service.item_request.id }, status: :created
+      render json: { item_request_id: item_service.item_request.id, item_id: @item.id, joined_existing: item_service.joined_existing.present? }, status: :created
     else
       render json: { errors: item_service.errors }, status: :unprocessable_entity
     end

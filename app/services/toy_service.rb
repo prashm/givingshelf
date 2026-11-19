@@ -14,6 +14,10 @@ class ToyService < ItemService
 
   private
 
+  def wish_creator_attribute
+    "brand"
+  end
+
   def type_fields(toy, detail:)
     {
       brand: toy.brand,

@@ -2,7 +2,18 @@ require "open-uri"
 
 class ItemService
   attr_accessor :item
-  attr_reader :errors, :item_cannot_be_requested_by_reason, :item_request
+  attr_reader :errors, :item_cannot_be_requested_by_reason, :item_request, :joined_existing
+
+  # A wish can be joined while it's open, or fulfilled and not yet donated.
+  JOINABLE_WISH_STATUSES = [ ShareableItemStatus::WISHLIST, ShareableItemStatus::AVAILABLE, ShareableItemStatus::REQUESTED ].freeze
+  # Requests whose requester is still waiting on a wish, open or fulfilled.
+  WAITING_REQUEST_STATUSES = [ ItemRequest::PENDING_STATUS, ItemRequest::IN_REVIEW_STATUS, ItemRequest::ACCEPTED_STATUS ].freeze
+  # Lower-cased, trimmed, with runs of whitespace collapsed; see #normalize_wish_text.
+  NORMALIZED_WISH_SQL = {
+    "title" => "regexp_replace(lower(btrim(coalesce(items.title, ''))), '\\s+', ' ', 'g')",
+    "author" => "regexp_replace(lower(btrim(coalesce(items.author, ''))), '\\s+', ' ', 'g')",
+    "brand" => "regexp_replace(lower(btrim(coalesce(items.brand, ''))), '\\s+', ' ', 'g')"
+  }.freeze
 
   def initialize(item = nil)
     @item = item
@@ -113,6 +124,8 @@ class ItemService
   end
 
   # Creates a book with no owner (wishlist) plus the requester's pending ItemRequest.
+  # If the same item is already wished for where the requester is, they join that wish instead:
+  # no item is created, #item is the existing wish and #joined_existing is true.
   def create_wishlist_item(requester, params)
     raise "User profile is incomplete." unless requester.profile_complete?
     item_params = params.to_h.with_indifferent_access
@@ -127,6 +140,14 @@ class ItemService
     validate_requested_groups_for(requester, community_group_ids)
     if @errors.blank?
       ActiveRecord::Base.transaction do
+        # Serialize wishes for the same title in the group, so two wishers can't both miss the match.
+        lock_wish_key!(cg_id, item_params[:title])
+        sub_group_id = requester.group_memberships[cg_id.to_i]
+        if (match = find_matching_wish(requester, item_params, cg_id, sub_group_id))
+          join_wish!(requester, match, message)
+          next
+        end
+
         @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
         sync_group_item_availabilities!(requester, community_group_ids)
         handle_api_cover_image(cover_image_url)
@@ -145,6 +166,22 @@ class ItemService
     nil
   end
 
+  # The wish this requester would duplicate: same type and identity (see #wish_identity_scope),
+  # in that group and where the requester is (see #wish_location_scope), still open or fulfilled
+  # but not donated, with someone still waiting. Oldest first.
+  def find_matching_wish(requester, attrs, community_group_id, sub_group_id)
+    attrs = attrs.to_h.with_indifferent_access
+    candidates = type_class
+      .where(wishlist_item: true, status: JOINABLE_WISH_STATUSES)
+      .where("items.user_id IS DISTINCT FROM ?", requester.id)
+      .joins(:group_item_availabilities)
+      .where(group_item_availabilities: { community_group_id: community_group_id })
+      .where("EXISTS (SELECT 1 FROM item_requests waiting WHERE waiting.item_id = items.id AND waiting.status IN (?))", WAITING_REQUEST_STATUSES)
+    candidates = wish_identity_scope(candidates, attrs)
+    candidates = wish_location_scope(candidates, requester, community_group_id, sub_group_id)
+    candidates.order(:created_at, :id).first
+  end
+
   # Assigns donor to wishlist book and sets item to available. Notifies all the requesters of the item.
   def fulfill_wishlist_item(donor_user, item_params)
     data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
@@ -155,7 +192,9 @@ class ItemService
     ActiveRecord::Base.transaction do
       # Lock the wish so the checks below can't race another donor or a requester cancelling.
       @item.lock!
-      raise "Not a wishlist item" unless @item.wishlist?
+      unless @item.wishlist?
+        raise(@item.wishlist_item? ? "Another donor just fulfilled this wish" : "Not a wishlist item")
+      end
       # Any request counts, cancelled ones too: a donor who also wished for the item would otherwise
       # end up owning their own (uncancellable) request.
       if @item.item_requests.where(requester_id: donor_user.id).exists?
@@ -228,12 +267,17 @@ class ItemService
       if sub_group_id.present?
         # Keep existing owner-membership based subgroup filtering, but also support
         # subgroup scoping on availability rows (needed for ownerless wishlist items).
+        sub_group_sql = "(community_group_memberships.community_group_id = :community_group_id AND community_group_memberships.sub_group_id = :sub_group_id) OR group_item_availabilities.sub_group_id = :sub_group_id"
+        if user_join_type == :requester
+          # A wish also shows in a sub-group when someone still waiting on it belongs to that
+          # sub-group, the way ZIP matching follows its requesters (`requesters` is joined below).
+          sub_group_sql += " OR EXISTS (SELECT 1 FROM community_group_memberships requester_memberships" \
+                           " WHERE requester_memberships.user_id = requesters.id" \
+                           " AND requester_memberships.community_group_id = :community_group_id" \
+                           " AND requester_memberships.sub_group_id = :sub_group_id)"
+        end
         items = items.left_outer_joins(user: :community_group_memberships)
-                     .where(
-                       "(community_group_memberships.community_group_id = :community_group_id AND community_group_memberships.sub_group_id = :sub_group_id) OR group_item_availabilities.sub_group_id = :sub_group_id",
-                       community_group_id: community_group_id,
-                       sub_group_id: sub_group_id
-                     )
+                     .where(sub_group_sql, community_group_id: community_group_id, sub_group_id: sub_group_id)
       end
     else
       # Default browse/search behavior: only show items available in the ZIP Code Community group.
@@ -304,7 +348,7 @@ class ItemService
   def item_can_be_requested_by?(user)
     @item_cannot_be_requested_by_reason = nil
     return false if user.nil?
-    return false unless item.available? || item.wishlist?
+    return false unless item.open_to_requests?
     return false if item.user.present? && user == item.user
     @user_request = item.item_requests.find_by(requester: user)
     if @user_request
@@ -424,6 +468,63 @@ class ItemService
     zips = item.wishlist? ? item.requesters.pluck("users.zip_code") : [ item.user&.zip_code ]
     zips = zips.compact_blank.uniq.sort
     zips.any? ? "#{zips.join(', ')} Community" : "ZIP Code Community"
+  end
+
+  # Adds the requester to an existing wish. Raises (rolling back) if they can't request it,
+  # e.g. "You already requested this item".
+  def join_wish!(requester, wish, message)
+    wish.lock!
+    request_service = ItemRequestService.new
+    request = request_service.create_request(requester, wish.id, message)
+    raise request_service.errors.first || "Could not join this wish" unless request
+    @item = wish
+    @item_request = request
+    @joined_existing = true
+  end
+
+  def lock_wish_key!(community_group_id, title)
+    key = "wish:#{type_class.name}:#{community_group_id}:#{normalize_wish_text(title)}"
+    ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.sanitize_sql_array([ "SELECT pg_advisory_xact_lock(hashtext(?))", key ])
+    )
+  end
+
+  def normalize_wish_text(value)
+    value.to_s.strip.downcase.gsub(/\s+/, " ")
+  end
+
+  # Same title and same creator. BookService also matches on ISBN.
+  def wish_identity_scope(scope, attrs)
+    scope = scope.where("#{NORMALIZED_WISH_SQL.fetch('title')} = ?", normalize_wish_text(attrs[:title]))
+    return scope unless (creator = wish_creator_attribute)
+    scope.where("#{NORMALIZED_WISH_SQL.fetch(creator)} = ?", normalize_wish_text(attrs[creator]))
+  end
+
+  # The column that, with the title, identifies an item: author for books, brand for toys.
+  def wish_creator_attribute
+    nil
+  end
+
+  # Where the requester is, using the same rule as browsing wishes. In the ZIP Code Community a
+  # waiting requester must share their ZIP code. In any other group the wish must be in their
+  # sub-group, or someone waiting on it must belong to that sub-group.
+  def wish_location_scope(scope, requester, community_group_id, sub_group_id)
+    if community_group_id.to_i == CommunityGroup.zipcode_group&.id
+      return scope.where(<<~SQL.squish, WAITING_REQUEST_STATUSES, requester.zip_code)
+        EXISTS (SELECT 1 FROM item_requests waiting
+                JOIN users waiting_users ON waiting_users.id = waiting.requester_id
+                WHERE waiting.item_id = items.id AND waiting.status IN (?) AND waiting_users.zip_code = ?)
+      SQL
+    end
+    return scope.where(group_item_availabilities: { sub_group_id: nil }) if sub_group_id.blank?
+
+    scope.where(<<~SQL.squish, sub_group_id: sub_group_id, statuses: WAITING_REQUEST_STATUSES, group_id: community_group_id)
+      group_item_availabilities.sub_group_id = :sub_group_id
+      OR EXISTS (SELECT 1 FROM item_requests waiting
+                 JOIN community_group_memberships waiting_members ON waiting_members.user_id = waiting.requester_id
+                 WHERE waiting.item_id = items.id AND waiting.status IN (:statuses)
+                   AND waiting_members.community_group_id = :group_id AND waiting_members.sub_group_id = :sub_group_id)
+    SQL
   end
 
   # Raises if the update would change a wishlist item's title, author or set of groups.

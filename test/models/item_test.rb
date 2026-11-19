@@ -90,6 +90,25 @@ class ItemTest < ActiveSupport::TestCase
     end
   end
 
+  describe "#open_to_requests?" do
+    it "takes requests on a requested item only when it started as a wish" do
+      wish = Book.create!(
+        user_id: nil, title: "A wish", author: "Author", published_year: 2020, genre: "Fiction",
+        summary: "Summary is definitely long enough for this validation test case.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      assert wish.open_to_requests?
+      wish.update!(user: users(:one), status: ShareableItemStatus::REQUESTED, condition: "good")
+      assert wish.open_to_requests?
+
+      listed = items(:one)
+      listed.update_columns(status: ShareableItemStatus::REQUESTED)
+      assert_not listed.open_to_requests?
+      listed.update_columns(status: ShareableItemStatus::DONATED)
+      assert_not listed.open_to_requests?
+    end
+  end
+
   describe "requesters and original_requester" do
     def wish_with_requests(*specs)
       wish = Book.create!(

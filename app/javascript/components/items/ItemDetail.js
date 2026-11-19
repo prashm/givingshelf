@@ -51,6 +51,7 @@ const ItemDetail = ({
     emptyStateText = 'No Cover Available',
     requestModalTitle = 'Request this item',
     requestModalDescription = "Add a short message to the donor explaining why you'd like this item or how you plan to pick it up.",
+    joinWishModalDescription = "No one has offered this item yet. You'll be added to the members waiting for it, and the donor will see your note when someone offers one.",
     DetailIcon = null
   } = config || {};
 
@@ -320,6 +321,10 @@ const ItemDetail = ({
 
   // An ownerless wish viewed by someone else: show the fulfill button, or a notice if no one is waiting.
   const isOpenWish = !isOwner && isWishlist && !item.owner;
+  // Asking for an open wish joins the members waiting on it; there's no donor to ask yet.
+  const requestCopy = isOpenWish
+    ? { button: 'Join this wish', title: 'Join this wish', description: joinWishModalDescription, field: 'Note for the donor', submit: 'Join wish', sending: 'Joining...' }
+    : { button: requestLabel, title: requestModalTitle, description: requestModalDescription, field: 'Message to donor', submit: 'Send Request', sending: 'Sending...' };
   const hasWaitingRequesters = (item.request_count ?? 0) > 0;
 
   return (
@@ -416,7 +421,7 @@ const ItemDetail = ({
                       className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       title={item.can_request === false && currentUser && item.cannot_request_reason ? item.cannot_request_reason : ''}
                     >
-                      {requestStatus === 'requesting' ? 'Sending Request...' : requestLabel}
+                      {requestStatus === 'requesting' ? requestCopy.sending : requestCopy.button}
                     </button>
                   )}
                   {requestStatus === 'error' && (
@@ -596,17 +601,17 @@ const ItemDetail = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center px-4">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative">
             <button type="button" onClick={() => setShowRequestModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><XMarkIcon className="h-6 w-6" /></button>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">{requestModalTitle}</h2>
-            <p className="text-sm text-gray-600 mb-4">{requestModalDescription}</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">{requestCopy.title}</h2>
+            <p className="text-sm text-gray-600 mb-4">{requestCopy.description}</p>
             <form onSubmit={handleSubmitRequest} className="space-y-4">
               <div>
-                <label htmlFor="request-message" className="block text-sm font-medium text-gray-700 mb-1">Message to donor</label>
+                <label htmlFor="request-message" className="block text-sm font-medium text-gray-700 mb-1">{requestCopy.field}</label>
                 <textarea id="request-message" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" rows={4} value={requestMessage} onChange={e => setRequestMessage(e.target.value)} disabled={requestStatus === 'requesting'} />
                 {requestError && <p className="mt-1 text-sm text-red-600">{requestError}</p>}
               </div>
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setShowRequestModal(false)} className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" disabled={requestStatus === 'requesting'}>Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={requestStatus === 'requesting'}>{requestStatus === 'requesting' ? 'Sending...' : 'Send Request'}</button>
+                <button type="submit" className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={requestStatus === 'requesting'}>{requestStatus === 'requesting' ? requestCopy.sending : requestCopy.submit}</button>
               </div>
             </form>
           </div>

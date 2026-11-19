@@ -19,6 +19,7 @@ const BOOK_CONFIG = {
   emptyPlaceholder: '📖',
   requestModalTitle: 'Request this book',
   requestModalDescription: "Add a short message to the donor explaining why you'd like this book or how you plan to pick it up.",
+  joinWishModalDescription: "No one has offered this book yet. You'll be added to the members waiting for it, and the donor will see your note when someone offers a copy.",
   DetailIcon: BookOpenIcon
 };
 

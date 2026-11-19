@@ -41,6 +41,8 @@ const WishlistBookCard = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [requestMessage, setRequestMessage] = useState(DEFAULT_WISHLIST_MESSAGE);
   const [modalError, setModalError] = useState('');
+  // Set when the server added the user to an existing wish instead of creating one.
+  const [joinedRequestId, setJoinedRequestId] = useState(null);
 
   if (!selectedSuggestion) {
     return null;
@@ -66,6 +68,7 @@ const WishlistBookCard = ({
     }
     setRequestMessage(DEFAULT_WISHLIST_MESSAGE);
     setModalError('');
+    setJoinedRequestId(null);
     setShowConfirmModal(true);
   };
 
@@ -107,7 +110,9 @@ const WishlistBookCard = ({
     try {
       const res = await axios.post('/api/items/wishlist', body, { withCredentials: true });
       const id = res.data?.item_request_id;
-      if (id) {
+      if (id && res.data?.joined_existing) {
+        setJoinedRequestId(String(id));
+      } else if (id) {
         setShowConfirmModal(false);
         setCurrentPage('itemRequestDetails', { itemRequestId: String(id) });
       } else {
@@ -189,6 +194,35 @@ const WishlistBookCard = ({
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
+            {joinedRequestId ? (
+              <>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">You've joined an existing wish</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Someone already wished for this book here, so we&apos;ve added you to that wish instead of
+                  creating a new one. The donor will see your note when someone offers a copy.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeConfirmModal}
+                    className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowConfirmModal(false);
+                      setCurrentPage('itemRequestDetails', { itemRequestId: joinedRequestId });
+                    }}
+                    className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    View my request
+                  </button>
+                </div>
+              </>
+            ) : (
+            <>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Confirm Wishlist Request</h2>
             <p className="text-sm text-gray-600 mb-4">
               Add a short message before placing the request.
@@ -227,6 +261,8 @@ const WishlistBookCard = ({
                 </button>
               </div>
             </form>
+            </>
+            )}
           </div>
         </div>
       )}
