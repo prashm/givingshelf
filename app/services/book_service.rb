@@ -34,6 +34,7 @@ class BookService < ItemService
       condition: book.condition,
       status: book.status,
       status_display: ShareableItemStatus.display_status(book.status),
+      wishlist_item: book.wishlist_item,
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       created_at: book.created_at
     }
@@ -46,7 +47,8 @@ class BookService < ItemService
     community_group_names = []
     community_groups.each do |grp|
       community_group_ids << grp.id
-      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? "#{book.user&.zip_code} Community" : grp.name)
+      zip_name = book.user ? "#{book.user.zip_code} Community" : "ZIP Code Community"
+      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? zip_name : grp.name)
     end
 
     result = {
@@ -61,6 +63,7 @@ class BookService < ItemService
       published_year: book.published_year,
       status: book.status,
       status_display: ShareableItemStatus.display_status(book.status),
+      wishlist_item: book.wishlist_item,
       cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
       user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
       view_count: book.view_count || 0,

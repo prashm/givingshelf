@@ -81,6 +81,40 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ group.id ], wish.group_item_availabilities.pluck(:community_group_id)
   end
 
+  test "update returns 422 when the owner of a fulfilled wish changes its title" do
+    wish = Book.create!(
+      user_id: nil, title: "Original Wish", author: "Author", genre: "Fiction", published_year: 2020,
+      summary: "Summary text long enough for validations on the book model here.",
+      status: ShareableItemStatus::WISHLIST
+    )
+    ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+    assert ItemService.new(wish).fulfill_wishlist_item(users(:one), { condition: "good" })
+
+    sign_in_as(users(:one))
+    patch api_item_url(wish), params: { item: { title: "Renamed Wish" } }
+
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body["errors"], "A wishlist item's title, author and groups can't be changed"
+    assert_equal "Original Wish", wish.reload.title
+  end
+
+  test "item detail exposes wishlist_item for a fulfilled wish" do
+    wish = Book.create!(
+      user_id: nil, title: "Shown Wish", author: "Author", genre: "Fiction", published_year: 2020,
+      summary: "Summary text long enough for validations on the book model here.",
+      status: ShareableItemStatus::WISHLIST
+    )
+    ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+    assert ItemService.new(wish).fulfill_wishlist_item(users(:one), { condition: "good" })
+
+    get api_item_url(wish), as: :json
+    assert_response :success
+    assert_equal true, response.parsed_body["wishlist_item"]
+
+    get api_item_url(items(:one)), as: :json
+    assert_equal false, response.parsed_body["wishlist_item"]
+  end
+
   test "should destroy book item" do
     sign_in_as(users(:one))
     delete api_item_url(items(:one))

@@ -26,6 +26,7 @@ class ToyService < ItemService
       condition: toy.condition,
       status: toy.status,
       status_display: ShareableItemStatus.display_status(toy.status),
+      wishlist_item: toy.wishlist_item,
       cover_image_url: toy.cover_image.attached? ? toy.cover_image.attachment.url : nil,
       created_at: toy.created_at
     }
@@ -58,6 +59,7 @@ class ToyService < ItemService
       summary: toy.summary,
       status: toy.status,
       status_display: ShareableItemStatus.display_status(toy.status),
+      wishlist_item: toy.wishlist_item,
       cover_image_url: toy.cover_image.attached? ? toy.cover_image.attachment.url : nil,
       user_images_urls: toy.user_images.attached? ? toy.user_images.map { |img| img.url } : [],
       view_count: toy.view_count || 0,

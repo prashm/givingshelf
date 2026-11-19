@@ -66,10 +66,12 @@ class ItemService
     user_images = item_params.delete(:user_images)
     remove_user_image_indices = item_params.delete(:remove_user_image_indices)
     community_group_ids = item_params.delete(:community_group_ids)
+    guard_wish_identity!(item_params, community_group_ids) if item.wishlist_item?
 
     ActiveRecord::Base.transaction do
       self.item.update!(item_params)
-      if community_group_ids.present?
+      # A wishlist item keeps its groups (and sub-groups); the guard above has refused any change.
+      if community_group_ids.present? && !item.wishlist_item?
         community_group_ids = community_group_ids.to_h { |gid| [ gid.to_i, nil ] } if community_group_ids.is_a?(Array)
         sync_group_item_availabilities!(owner, community_group_ids)
       end
@@ -351,6 +353,20 @@ class ItemService
   end
 
   private
+
+  # Raises if the update would change a wishlist item's title, author or set of groups.
+  # Sending the current values is fine, since edit forms send the whole record.
+  def guard_wish_identity!(item_params, community_group_ids)
+    attrs = item_params.to_h.with_indifferent_access
+    changed = Item::WISH_LOCKED_ATTRIBUTES.any? do |attr|
+      attrs.key?(attr) && attrs[attr].to_s != item[attr].to_s
+    end
+    if community_group_ids.present?
+      requested = (community_group_ids.is_a?(Hash) ? community_group_ids.keys : Array(community_group_ids)).map(&:to_i).sort
+      changed ||= requested != item.group_item_availabilities.pluck(:community_group_id).sort
+    end
+    raise "A wishlist item's title, author and groups can't be changed" if changed
+  end
 
   def type_class
     Item

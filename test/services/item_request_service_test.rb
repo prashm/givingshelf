@@ -931,7 +931,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         [ d_user, ItemRequest::CANCELLED_STATUS ]
       ])
       wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
-      assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+      # The donor's form sends the wish's group; its sub-group must survive to the relisted wish.
+      assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good", community_group_ids: [ @other_group.id ] })
 
       ItemRequestService.new(a.reload).accept!
       ItemRequestService.new(a.reload).complete!

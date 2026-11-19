@@ -118,8 +118,8 @@ const FulfillWishlistItemPage = ({
             condition: formData.condition,
             pickup_method: formData.pickup_method || undefined,
             pickup_address: formData.pickup_address || undefined,
-            personal_note: formData.personal_note || undefined,
-            community_group_ids: formData.community_group_ids || []
+            personal_note: formData.personal_note || undefined
+            // No community_group_ids: the item stays in the wish's groups (GS-14).
           }
         },
         { withCredentials: true, headers: { 'Content-Type': 'application/json', Accept: 'application/json' } }

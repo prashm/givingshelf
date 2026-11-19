@@ -290,7 +290,10 @@ const ItemDetail = ({
 
   const subtitle = getSubtitle(item);
   const detailFields = getDetailFields(item);
+  // isWishlist: the wish is still open (no donor yet). Drives the open-wish actions.
   const isWishlist = item?.status_display?.toLowerCase() === 'wishlist' || item?.status === 3;
+  // isWishlistItem: the item started as a wish, whatever its status now. Drives the indicator.
+  const isWishlistItem = Boolean(item?.wishlist_item) || isWishlist;
   // The wisher withdraws (cancel) or reopens (uncancel) their own request from the wish's page.
   const handleWishAction = async (action) => {
     if (!userRequest) return;
@@ -478,18 +481,25 @@ const ItemDetail = ({
 
           <div className="md:w-2/3 p-6">
             <div className="mb-6">
-              {isWishlist ? (
-                <>
+              <div className="flex flex-wrap items-center gap-2">
+                {isWishlistItem && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-900">
                     Wishlist Item
                   </span>
-                  <p className="text-sm text-gray-600 mt-1">This item is a community wishlist request.</p>
-                </>
-              ) : (
-                <>
+                )}
+                {!isWishlist && (
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(item.condition)}`}>
                     {item.condition?.charAt(0).toUpperCase() + item.condition?.slice(1)} Condition
                   </span>
+                )}
+              </div>
+              {isWishlist ? (
+                <p className="text-sm text-gray-600 mt-1">This item is a community wishlist request.</p>
+              ) : (
+                <>
+                  {isWishlistItem && (
+                    <p className="text-sm text-gray-600 mt-1">A donor offered this item to fulfill a community wish.</p>
+                  )}
                   <p className="text-sm text-gray-600 mt-1">{getConditionDescription(item.condition)}</p>
                 </>
               )}

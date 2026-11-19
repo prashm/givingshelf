@@ -274,4 +274,76 @@ class ItemServiceTest < ActiveSupport::TestCase
       end
     end
   end
+
+  describe "locked wish identity" do
+    def open_wish
+      wish = Book.create!(
+        user_id: nil, title: "Locked Wish", author: "Wish Author", genre: "Fiction", published_year: 2021,
+        summary: "Summary text long enough for validations on the book model here.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: wish, community_group: @group_one, sub_group: @sub_group_one)
+      ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+      wish
+    end
+
+    def group_pairs(item)
+      item.reload.group_item_availabilities.pluck(:community_group_id, :sub_group_id)
+    end
+
+    it "keeps the wish's groups and sub-group when the donor sends the same groups" do
+      wish = open_wish
+
+      assert ItemService.new(wish).fulfill_wishlist_item(@user, { condition: "good", community_group_ids: [ @group_one.id ] })
+
+      assert_equal ShareableItemStatus::AVAILABLE, wish.reload.status
+      assert_equal [ [ @group_one.id, @sub_group_one.id ] ], group_pairs(wish)
+    end
+
+    it "refuses a fulfillment that changes the wish's groups and leaves the wish open" do
+      wish = open_wish
+      service = ItemService.new(wish)
+
+      assert_not service.fulfill_wishlist_item(@user, { condition: "good", community_group_ids: [ @group_one.id, @group_two.id ] })
+
+      assert_includes service.errors, "A wishlist item's title, author and groups can't be changed"
+      assert_equal ShareableItemStatus::WISHLIST, wish.reload.status
+      assert_nil wish.user_id
+      assert_equal [ [ @group_one.id, @sub_group_one.id ] ], group_pairs(wish)
+    end
+
+    it "refuses an owner edit that changes the title or author of a fulfilled wish" do
+      wish = open_wish
+      assert ItemService.new(wish).fulfill_wishlist_item(@user, { condition: "good" })
+
+      [ { title: "Something Else" }, { author: "Someone Else" } ].each do |change|
+        service = ItemService.new(wish.reload)
+        assert_not service.update_item(@user, change.dup), "#{change.keys.first} should be locked"
+        assert_includes service.errors, "A wishlist item's title, author and groups can't be changed"
+      end
+      assert_equal [ "Locked Wish", "Wish Author" ], [ wish.reload.title, wish.author ]
+    end
+
+    it "accepts an owner edit that sends the locked fields unchanged and keeps the sub-group" do
+      wish = open_wish
+      assert ItemService.new(wish).fulfill_wishlist_item(@user, { condition: "good" })
+
+      assert ItemService.new(wish.reload).update_item(@user, {
+        title: "Locked Wish", author: "Wish Author", community_group_ids: [ @group_one.id ],
+        summary: "A new summary that is long enough for the validations here."
+      })
+
+      assert_equal "A new summary that is long enough for the validations here.", wish.reload.summary
+      assert_equal [ [ @group_one.id, @sub_group_one.id ] ], group_pairs(wish)
+    end
+
+    it "still lets a regular item change its title and groups" do
+      GroupItemAvailability.create!(item: @item, community_group: @group_one)
+
+      assert @service.update_item(@user, { title: "Renamed", community_group_ids: [ @group_two.id ] })
+
+      assert_equal "Renamed", @item.reload.title
+      assert_equal [ [ @group_two.id, nil ] ], group_pairs(@item)
+    end
+  end
 end

@@ -36,9 +36,9 @@ const FulfillWishlistItemForm = ({
         onInputChange={onInputChange}
         communityGroups={communityGroups}
         onToggleGroup={onToggleGroup}
+        lockedGroupNames={book?.community_group_names || []}
         conditionLabel="Condition"
-        shareLabel="Share this item in"
-        shareHelpText="This item will only be shared in the groups you select."
+        shareLabel="Shared in"
         pickupAddressPlaceholder="Where readers can pick up (optional in many cases)"
         hidePickupAddressForMeetInPerson={true}
       />

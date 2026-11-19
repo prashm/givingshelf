@@ -17,6 +17,8 @@ class Item < ApplicationRecord
   validate :user_id_consistency_with_wishlist_status
 
   # wishlist_item marks an item that started as a wish. It is set once, on create, and never changes.
+  # The wish's title, author and groups can't change either (see ItemService#update_item).
+  WISH_LOCKED_ATTRIBUTES = %w[title author].freeze
   attr_readonly :wishlist_item
   before_create { self.wishlist_item = true if wishlist? }
 
