@@ -9,6 +9,9 @@ class ItemRequest < ApplicationRecord
   COMPLETED_STATUS = 4
   CANCELLED_STATUS = 5
 
+  # Requests still waiting for the owner's decision.
+  OPEN_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
+
   STATUS_LABELS = {
     PENDING_STATUS => "Pending",
     ACCEPTED_STATUS => "Accepted",
@@ -59,6 +62,7 @@ class ItemRequest < ApplicationRecord
   scope :completed, -> { where(status: COMPLETED_STATUS) }
   scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
   scope :cancelled, -> { where(status: CANCELLED_STATUS) }
+  scope :awaiting_decision, -> { where(status: OPEN_STATUSES) }
   scope :active_wish, -> { where(status: ACTIVE_WISH_STATUSES) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_item_owner, ->(user) { where(owner: user) }

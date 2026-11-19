@@ -16,6 +16,10 @@ class Item < ApplicationRecord
   validates :status, inclusion: { in: ShareableItemStatus.values, default: ShareableItemStatus::AVAILABLE }
   validate :user_id_consistency_with_wishlist_status
 
+  # wishlist_item marks an item that started as a wish. It is set once, on create, and never changes.
+  attr_readonly :wishlist_item
+  before_create { self.wishlist_item = true if wishlist? }
+
   # Shared scopes
   scope :available, -> { where(status: ShareableItemStatus::AVAILABLE) }
   scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
@@ -83,6 +87,24 @@ class Item < ApplicationRecord
 
   def owner?(current_user)
     current_user.present? && user == current_user
+  end
+
+  # Users with a non-cancelled request on this item, oldest request first.
+  def requesters
+    User.joins(:item_requests)
+      .merge(item_requests.where.not(status: ItemRequest::CANCELLED_STATUS))
+      .order("item_requests.created_at", "item_requests.id")
+  end
+
+  # Whoever made the earliest request on this item, whatever its status now. Memoized, nil included.
+  def original_requester
+    return @original_requester if defined?(@original_requester)
+    @original_requester = item_requests.order(:created_at, :id).first&.requester
+  end
+
+  def reload(*)
+    remove_instance_variable(:@original_requester) if defined?(@original_requester)
+    super
   end
 
   # Regenerate sitemap when items are created or updated

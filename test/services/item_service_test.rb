@@ -181,6 +181,18 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_nil wishlist_book.reload.user_id
     end
 
+    it "keeps the item marked as a wishlist item after a donor fulfills it" do
+      wishlist_book, _request = create_wishlist_with_request
+      assert wishlist_book.wishlist_item?
+
+      assert ItemService.new(wishlist_book).fulfill_wishlist_item(@user, { condition: "good" })
+
+      wishlist_book.reload
+      assert_equal ShareableItemStatus::AVAILABLE, wishlist_book.status
+      assert wishlist_book.wishlist_item?
+      assert_not @item.wishlist_item?
+    end
+
     it "returns false and changes nothing when the item update fails" do
       wishlist_book, request = create_wishlist_with_request
       service = ItemService.new(wishlist_book)
@@ -192,6 +204,74 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_nil wishlist_book.user_id
       assert_equal ShareableItemStatus::WISHLIST, wishlist_book.status
       assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+    end
+  end
+
+  describe "#relist_as_wish!" do
+    def fulfilled_wish
+      wish = Book.create!(
+        user_id: nil, title: "Relist Me", author: "Wish Author", isbn: "9780000000002", genre: "Fiction",
+        published_year: 2019, summary: "Summary text long enough for validations on the book model here.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: wish, community_group: @group_one, sub_group: @sub_group_one)
+      GroupItemAvailability.create!(item: wish, community_group: @group_two)
+      request = ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+      wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
+      wish.update!(user: @user, status: ShareableItemStatus::DONATED, condition: "good")
+      [ wish, request ]
+    end
+
+    it "creates an ownerless wish with the same details, cover and groups" do
+      wish, _request = fulfilled_wish
+
+      new_wish = ItemService.new(wish).relist_as_wish!
+
+      assert new_wish.persisted?
+      assert_not_equal wish.id, new_wish.id
+      assert new_wish.wishlist?
+      assert new_wish.wishlist_item?
+      assert_nil new_wish.user_id
+      assert_nil new_wish.condition
+      assert_equal wish.attributes.slice(*ItemService::WISH_COPY_ATTRIBUTES),
+        new_wish.attributes.slice(*ItemService::WISH_COPY_ATTRIBUTES)
+      assert_equal wish.cover_image.blob, new_wish.cover_image.blob
+      assert_equal [ [ @group_one.id, @sub_group_one.id ], [ @group_two.id, nil ] ].sort_by { |g, _| g },
+        new_wish.group_item_availabilities.pluck(:community_group_id, :sub_group_id).sort_by { |g, _| g }
+    end
+
+    it "leaves the original item, its groups and its requests untouched" do
+      wish, request = fulfilled_wish
+
+      ItemService.new(wish).relist_as_wish!
+
+      wish.reload
+      assert_equal ShareableItemStatus::DONATED, wish.status
+      assert_equal @user, wish.user
+      assert_equal 2, wish.group_item_availabilities.count
+      assert_equal wish.id, request.reload.item_id
+      assert wish.cover_image.attached?
+    end
+
+    it "creates the wish with no groups or cover when the item has none" do
+      wish, _request = fulfilled_wish
+      wish.group_item_availabilities.delete_all
+      wish.cover_image.purge
+
+      new_wish = ItemService.new(wish.reload).relist_as_wish!
+
+      assert new_wish.wishlist?
+      assert_empty new_wish.group_item_availabilities
+      assert_not new_wish.cover_image.attached?
+    end
+
+    it "refuses an item that did not start as a wish" do
+      error = assert_raises(RuntimeError) { ItemService.new(@item).relist_as_wish! }
+
+      assert_equal "Item did not start as a wish", error.message
+      assert_no_difference -> { Item.count } do
+        assert_raises(RuntimeError) { ItemService.new(@item).relist_as_wish! }
+      end
     end
   end
 end

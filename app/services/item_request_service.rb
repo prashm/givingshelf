@@ -109,7 +109,9 @@ class ItemRequestService
       item_request.guard_transition!(ItemRequest::COMPLETED_STATUS)
       item_request.update!(status: ItemRequest::COMPLETED_STATUS)
       item.update!(status: ShareableItemStatus::DONATED)
+      close_out_other_requests!(item)
     end
+    log_close_out
   end
 
   def cancel!
@@ -227,6 +229,34 @@ class ItemRequestService
       current_status = ItemRequest.where(id: item_request.id).pick(:status)
       raise "This request was just updated by someone else. Please refresh and try again." if current_status != item_request.status
       yield item
+    end
+  end
+
+  # After a handoff, give every other request still awaiting a decision a final result: wishers move
+  # to a new wish for the same item; requesters of a regular item are declined. GS-9 will record why in the thread.
+  def close_out_other_requests!(item)
+    open_requests = item_request.other_requests.awaiting_decision.order(:created_at, :id).to_a
+    @close_out = { item: item, requests: open_requests, new_wish: nil }
+    return if open_requests.empty?
+
+    if item.wishlist_item?
+      new_wish = ItemService.new(item).relist_as_wish!
+      open_requests.each { |request| request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS) }
+      @close_out[:new_wish] = new_wish
+    else
+      ItemRequest.where(id: open_requests.map(&:id))
+        .update_all(status: ItemRequest::DECLINED_STATUS, updated_at: Time.current)
+    end
+  end
+
+  # Runs after commit. The emails to these requesters come with GS-11.
+  def log_close_out
+    return if @close_out.blank? || @close_out[:requests].empty?
+    ids = @close_out[:requests].map(&:id)
+    if @close_out[:new_wish]
+      Rails.logger.info "Item #{@close_out[:item].id} donated; moved requests #{ids} to new wish #{@close_out[:new_wish].id}"
+    else
+      Rails.logger.info "Item #{@close_out[:item].id} donated; declined requests #{ids}"
     end
   end
 

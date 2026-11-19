@@ -160,7 +160,6 @@ class ItemService
         raise "You cannot fulfill your own wishlist request"
       end
       raise "No one is waiting for this item anymore" unless @item.item_requests.active_wish.exists?
-
       raise ActiveRecord::Rollback unless update_item(donor_user, data)
       @item.item_requests.pending.each do |pending_req|
         ItemRequestService.new(pending_req).match_wishlist_donor!(donor_user)
@@ -178,6 +177,24 @@ class ItemService
   rescue => e
     @errors << e.message
     false
+  end
+
+  # Item details a relisted wish copies from the donated item.
+  WISH_COPY_ATTRIBUTES = %w[type title author brand isbn genre published_year age_range min_age max_age summary].freeze
+
+  # Creates a new ownerless wish for the same item, in the same groups.
+  # Called when a fulfilled wish is donated and other wishers are still waiting.
+  def relist_as_wish!
+    raise "Item did not start as a wish" unless item.wishlist_item?
+
+    wish = Item.create!(item.attributes.slice(*WISH_COPY_ATTRIBUTES).merge("status" => ShareableItemStatus::WISHLIST))
+    wish.cover_image.attach(item.cover_image.blob) if item.cover_image.attached?
+    now = Time.current
+    rows = item.group_item_availabilities.pluck(:community_group_id, :sub_group_id).map do |group_id, sub_group_id|
+      { item_id: wish.id, community_group_id: group_id, sub_group_id: sub_group_id, created_at: now, updated_at: now }
+    end
+    GroupItemAvailability.insert_all(rows) if rows.any?
+    wish
   end
 
   def available_items
