@@ -8,8 +8,6 @@ class ItemRequest < ApplicationRecord
   IN_REVIEW_STATUS = 3
   COMPLETED_STATUS = 4
   CANCELLED_STATUS = 5
-  # Final state for requests left open when the item went to another requester.
-  NOT_SELECTED_STATUS = 6
 
   # Requests still waiting for the owner's decision.
   OPEN_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
@@ -20,20 +18,18 @@ class ItemRequest < ApplicationRecord
     DECLINED_STATUS => "Declined",
     IN_REVIEW_STATUS => "In Review",
     COMPLETED_STATUS => "Completed",
-    CANCELLED_STATUS => "Cancelled",
-    NOT_SELECTED_STATUS => "Gone to another requester"
+    CANCELLED_STATUS => "Cancelled"
   }.freeze
 
   # Allowed status moves. DECLINED and COMPLETED are final; a CANCELLED request can only be
   # reopened (uncancel), and ItemRequestService also checks the item can still be given to it.
   TRANSITIONS = {
-    PENDING_STATUS => [ IN_REVIEW_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS, NOT_SELECTED_STATUS ],
-    IN_REVIEW_STATUS => [ ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS, NOT_SELECTED_STATUS ],
+    PENDING_STATUS => [ IN_REVIEW_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
+    IN_REVIEW_STATUS => [ ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
     ACCEPTED_STATUS => [ COMPLETED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
     CANCELLED_STATUS => [ PENDING_STATUS ],
     DECLINED_STATUS => [],
-    COMPLETED_STATUS => [],
-    NOT_SELECTED_STATUS => []
+    COMPLETED_STATUS => []
   }.freeze
 
   TRANSITION_VERBS = {
@@ -42,8 +38,7 @@ class ItemRequest < ApplicationRecord
     DECLINED_STATUS => "decline",
     COMPLETED_STATUS => "complete",
     CANCELLED_STATUS => "cancel",
-    PENDING_STATUS => "uncancel",
-    NOT_SELECTED_STATUS => "close"
+    PENDING_STATUS => "uncancel"
   }.freeze
 
   # Statuses where the requester is still waiting on a wishlist item.
@@ -57,7 +52,7 @@ class ItemRequest < ApplicationRecord
   alias_method :book, :item
 
   validates :message, presence: true, length: { minimum: 10, maximum: 500 }
-  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS, CANCELLED_STATUS, NOT_SELECTED_STATUS ] }
+  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS, CANCELLED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
   validate :requester_cannot_request_own_item
   validate :item_must_be_available, on: :create
@@ -114,17 +109,13 @@ class ItemRequest < ApplicationRecord
     status == CANCELLED_STATUS
   end
 
-  def not_selected?
-    status == NOT_SELECTED_STATUS
-  end
-
   def self.status_label(status)
     STATUS_LABELS.fetch(status, STATUS_LABELS[PENDING_STATUS])
   end
 
   # Whether the owner may still accept/decline/complete this request. Finished requests are locked.
   def can_update_status?
-    return false if cancelled? || declined? || completed? || not_selected?
+    return false if cancelled? || declined? || completed?
     accepted? || !other_requests.accepted.exists?
   end
 
@@ -140,7 +131,6 @@ class ItemRequest < ApplicationRecord
   # Raises unless the move from the current status to new_status is allowed.
   def guard_transition!(new_status)
     return if can_transition_to?(new_status)
-    raise "This item has gone to another requester" if not_selected?
     label = self.class.status_label(status).downcase
     article = label.match?(/\A[aeiou]/) ? "an" : "a"
     raise "Cannot #{TRANSITION_VERBS.fetch(new_status)} #{article} #{label} request"

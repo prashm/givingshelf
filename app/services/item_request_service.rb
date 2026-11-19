@@ -233,7 +233,7 @@ class ItemRequestService
   end
 
   # After a handoff, give every other request still awaiting a decision a final result: wishers move
-  # to a new wish for the same item; requesters of a regular item are marked not selected.
+  # to a new wish for the same item; requesters of a regular item are declined. GS-9 will record why in the thread.
   def close_out_other_requests!(item)
     open_requests = item_request.other_requests.awaiting_decision.order(:created_at, :id).to_a
     @close_out = { item: item, requests: open_requests, new_wish: nil }
@@ -245,7 +245,7 @@ class ItemRequestService
       @close_out[:new_wish] = new_wish
     else
       ItemRequest.where(id: open_requests.map(&:id))
-        .update_all(status: ItemRequest::NOT_SELECTED_STATUS, updated_at: Time.current)
+        .update_all(status: ItemRequest::DECLINED_STATUS, updated_at: Time.current)
     end
   end
 
@@ -256,7 +256,7 @@ class ItemRequestService
     if @close_out[:new_wish]
       Rails.logger.info "Item #{@close_out[:item].id} donated; moved requests #{ids} to new wish #{@close_out[:new_wish].id}"
     else
-      Rails.logger.info "Item #{@close_out[:item].id} donated; marked requests #{ids} as not selected"
+      Rails.logger.info "Item #{@close_out[:item].id} donated; declined requests #{ids}"
     end
   end
 

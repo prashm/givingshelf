@@ -898,7 +898,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       [ wish, requests ]
     end
 
-    it "marks the other open requests on a regular item as not selected" do
+    it "declines the other open requests on a regular item" do
       book = setup_book_for_request(items(:one))
       winner = create_item_request(book)
       in_review = create_item_request(book, requester: create_other_requester)
@@ -910,14 +910,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         ItemRequestService.new(winner.reload).complete!
       end
 
-      assert_equal ItemRequest::NOT_SELECTED_STATUS, in_review.reload.status
+      assert_equal ItemRequest::DECLINED_STATUS, in_review.reload.status
       assert_equal ItemRequest::DECLINED_STATUS, declined.reload.status
       assert_equal ItemRequest::CANCELLED_STATUS, cancelled.reload.status
       assert_equal ShareableItemStatus::DONATED, book.reload.status
       assert_equal false, in_review.can_update_status?
       assert_equal [ false, false ], service.request_json(in_review).values_at(:can_cancel, :can_uncancel)
       error = assert_raises(RuntimeError) { ItemRequestService.new(in_review).cancel! }
-      assert_equal "This item has gone to another requester", error.message
+      assert_equal "Cannot cancel a declined request", error.message
     end
 
     it "moves the other wishers to a new wish in the original wish's groups" do
