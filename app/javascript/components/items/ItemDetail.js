@@ -494,11 +494,11 @@ const ItemDetail = ({
                 )}
               </div>
               {isWishlist ? (
-                <p className="text-sm text-gray-600 mt-1">This item is a community wishlist request.</p>
+                <p className="text-sm text-gray-600 mt-1">This item is a wishlist request.</p>
               ) : (
                 <>
                   {isWishlistItem && (
-                    <p className="text-sm text-gray-600 mt-1">A donor offered this item to fulfill a community wish.</p>
+                    <p className="text-sm text-gray-600 mt-1">A member offered to fulfill this wishlist request.</p>
                   )}
                   <p className="text-sm text-gray-600 mt-1">{getConditionDescription(item.condition)}</p>
                 </>

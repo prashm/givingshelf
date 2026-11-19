@@ -22,84 +22,12 @@ class BookService < ItemService
     super
   end
 
-  def item_map(book)
-    {
-      id: book.id,
-      type: Book.name,
-      title: book.title,
-      summary: book.summary,
-      author: book.author,
-      genre: book.genre,
-      published_year: book.published_year,
-      condition: book.condition,
-      status: book.status,
-      status_display: ShareableItemStatus.display_status(book.status),
-      wishlist_item: book.wishlist_item,
-      cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
-      created_at: book.created_at
-    }
-  end
-
-  def item_detail_map(book, requester = nil)
-    # Get community groups in one query
-    community_groups = book.available_community_groups.to_a
-    community_group_ids = []
-    community_group_names = []
-    community_groups.each do |grp|
-      community_group_ids << grp.id
-      zip_name = book.user ? "#{book.user.zip_code} Community" : "ZIP Code Community"
-      community_group_names << (grp.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? zip_name : grp.name)
-    end
-
-    result = {
-      id: book.id,
-      type: Book.name,
-      title: book.title,
-      author: book.author,
-      condition: book.condition,
-      summary: book.summary,
-      isbn: book.isbn,
-      genre: book.genre,
-      published_year: book.published_year,
-      status: book.status,
-      status_display: ShareableItemStatus.display_status(book.status),
-      wishlist_item: book.wishlist_item,
-      cover_image_url: book.cover_image.attached? ? book.cover_image.attachment.url : nil,
-      user_images_urls: book.user_images.attached? ? book.user_images.map { |img| img.url } : [],
-      view_count: book.view_count || 0,
-      personal_note: book.personal_note,
-      pickup_method: book.pickup_method,
-      pickup_address: book.pickup_address,
-      community_group_ids: community_group_ids,
-      community_group_names: community_group_names,
-      owner: book.user ? {
-        id: book.user.id,
-        name: book.user.display_name,
-        location: book.user.location,
-        verified: book.user.verified?,
-        trust_score: book.user.trust_score || 0
-      } : nil,
-      request_count: book.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
-      created_at: book.created_at,
-      updated_at: book.updated_at,
-      can_request: item_can_be_requested_by?(requester)
-    }
-    if @user_request
-      result[:user_request_id] = @user_request.id
-      result[:user_request_dt] = @user_request.created_at
-      result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
-      result[:user_request_updated_at] = @user_request.updated_at
-      actions = ItemRequestService.new.requester_actions(@user_request)
-      result[:user_request_can_cancel] = actions[:can_cancel]
-      result[:user_request_can_uncancel] = actions[:can_uncancel]
-    end
-    if @item_cannot_be_requested_by_reason.present?
-      result[:cannot_request_reason] = @item_cannot_be_requested_by_reason
-    end
-    result
-  end
-
   private
+
+  def type_fields(book, detail:)
+    fields = { author: book.author, genre: book.genre, published_year: book.published_year }
+    detail ? fields.merge(isbn: book.isbn) : fields
+  end
 
   def type_class
     Book

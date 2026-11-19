@@ -328,31 +328,103 @@ class ItemService
     false
   end
 
+  # Detail JSON for one item. The shared fields are built here; BookService/ToyService add their
+  # own through #type_fields. Called on a plain ItemService, it hands off to the typed service.
   def item_detail_map(item, requester = nil)
-    # If you're here, then child service was not set during initialization.
-    case item&.type
-    when Book.name
-      BookService.new.item_detail_map(item, requester)
-    when Toy.name
-      ToyService.new.item_detail_map(item, requester)
-    else
-      raise "Invalid item type: #{item&.type}"
+    return typed_service_for(item).item_detail_map(item, requester) if instance_of?(ItemService)
+
+    group_ids, group_names = community_group_ids_and_names(item)
+    result = {
+      id: item.id,
+      type: item.type,
+      title: item.title,
+      condition: item.condition,
+      summary: item.summary,
+      status: item.status,
+      status_display: ShareableItemStatus.display_status(item.status),
+      wishlist_item: item.wishlist_item,
+      cover_image_url: cover_image_url_for(item),
+      user_images_urls: item.user_images.attached? ? item.user_images.map(&:url) : [],
+      view_count: item.view_count || 0,
+      personal_note: item.personal_note,
+      pickup_method: item.pickup_method,
+      pickup_address: item.pickup_address,
+      community_group_ids: group_ids,
+      community_group_names: group_names,
+      owner: item.user ? {
+        id: item.user.id,
+        name: item.user.display_name,
+        location: item.user.location,
+        verified: item.user.verified?,
+        trust_score: item.user.trust_score || 0
+      } : nil,
+      request_count: item.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      can_request: item_can_be_requested_by?(requester)
+    }.merge(type_fields(item, detail: true))
+    if @user_request
+      result[:user_request_id] = @user_request.id
+      result[:user_request_dt] = @user_request.created_at
+      result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
+      result[:user_request_updated_at] = @user_request.updated_at
+      actions = ItemRequestService.new.requester_actions(@user_request)
+      result[:user_request_can_cancel] = actions[:can_cancel]
+      result[:user_request_can_uncancel] = actions[:can_uncancel]
     end
+    if @item_cannot_be_requested_by_reason.present?
+      result[:cannot_request_reason] = @item_cannot_be_requested_by_reason
+    end
+    result
   end
 
+  # List JSON for one item, built the same way as #item_detail_map.
   def item_map(item)
-    # If you're here, then child service was not set during initialization.
-    case item&.type
-    when Book.name
-      BookService.new.item_map(item)
-    when Toy.name
-      ToyService.new.item_map(item)
-    else
-      raise "Invalid item type: #{item&.type}"
-    end
+    return typed_service_for(item).item_map(item) if instance_of?(ItemService)
+
+    {
+      id: item.id,
+      type: item.type,
+      title: item.title,
+      summary: item.summary,
+      condition: item.condition,
+      status: item.status,
+      status_display: ShareableItemStatus.display_status(item.status),
+      wishlist_item: item.wishlist_item,
+      cover_image_url: cover_image_url_for(item),
+      created_at: item.created_at
+    }.merge(type_fields(item, detail: false))
   end
 
   private
+
+  # Type-specific JSON fields; BookService and ToyService override this.
+  def type_fields(_item, detail:)
+    {}
+  end
+
+  def typed_service_for(item)
+    raise "Invalid item type: #{item&.type}" unless Item.valid_type?(item&.type)
+    ItemService.get_service(item.type, item)
+  end
+
+  def cover_image_url_for(item)
+    item.cover_image.attached? ? item.cover_image.attachment.url : nil
+  end
+
+  def community_group_ids_and_names(item)
+    groups = item.available_community_groups.to_a
+    names = groups.map { |group| group.short_name == CommunityGroup::ZIPCODE_SHORT_NAME ? zip_community_name(item) : group.name }
+    [ groups.map(&:id), names ]
+  end
+
+  # An open wish is shown to members near its requesters, so its ZIP group is named after their
+  # ZIP codes. Any other item is shown by its owner's ZIP code.
+  def zip_community_name(item)
+    zips = item.wishlist? ? item.requesters.pluck("users.zip_code") : [ item.user&.zip_code ]
+    zips = zips.compact_blank.uniq.sort
+    zips.any? ? "#{zips.join(', ')} Community" : "ZIP Code Community"
+  end
 
   # Raises if the update would change a wishlist item's title, author or set of groups.
   # Sending the current values is fine, since edit forms send the whole record.
@@ -365,7 +437,7 @@ class ItemService
       requested = (community_group_ids.is_a?(Hash) ? community_group_ids.keys : Array(community_group_ids)).map(&:to_i).sort
       changed ||= requested != item.group_item_availabilities.pluck(:community_group_id).sort
     end
-    raise "A wishlist item's title, author and groups can't be changed" if changed
+    raise "You're trying to edit a restricted field for this wishlist item" if changed
   end
 
   def type_class

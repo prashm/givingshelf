@@ -53,7 +53,7 @@ const ItemForm = ({
           />
         )}
         {lockedIdentity && (
-          <p className="mt-1 text-xs text-gray-500">This item fulfilled a community wish, so its title can't be changed.</p>
+          <p className="mt-1 text-xs text-gray-500">Another member created this item with this title, so it can't be changed.</p>
         )}
         {validationErrors.title && (
           <p className="mt-1 text-sm font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">{validationErrors.title}</p>

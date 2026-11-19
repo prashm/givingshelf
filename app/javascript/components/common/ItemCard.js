@@ -56,7 +56,7 @@ const ItemCard = ({ item, itemType = Constants.ITEM_TYPE_BOOK, onSelect }) => {
           <div className="flex items-center justify-between">
             {renderItemMeta()}
             <div className="flex items-center gap-1">
-              {(item.wishlist_item || !item.condition) && (
+              {item.wishlist_item && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
                   wishlist
                 </span>

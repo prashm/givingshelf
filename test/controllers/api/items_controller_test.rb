@@ -94,7 +94,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     patch api_item_url(wish), params: { item: { title: "Renamed Wish" } }
 
     assert_response :unprocessable_entity
-    assert_includes response.parsed_body["errors"], "A wishlist item's title, author and groups can't be changed"
+    assert_includes response.parsed_body["errors"], "You're trying to edit a restricted field for this wishlist item"
     assert_equal "Original Wish", wish.reload.title
   end
 
