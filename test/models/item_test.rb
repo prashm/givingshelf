@@ -120,32 +120,23 @@ class ItemTest < ActiveSupport::TestCase
       assert_equal [ users(:two), users(:one) ], wish.requesters.to_a
     end
 
-    it "returns the first requester, skipping cancelled requests" do
+    it "returns the earliest requester even after they cancel" do
       wish = wish_with_requests(
         [ users(:two), ItemRequest::CANCELLED_STATUS ],
         [ users(:one), ItemRequest::PENDING_STATUS ]
       )
 
-      assert_equal users(:one), wish.original_requester
-    end
-
-    it "returns nil when there are no active requests" do
-      wish = wish_with_requests([ users(:two), ItemRequest::CANCELLED_STATUS ])
-
-      assert_nil wish.original_requester
-    end
-
-    it "memoizes original_requester until reload" do
-      wish = wish_with_requests(
-        [ users(:two), ItemRequest::PENDING_STATUS ],
-        [ users(:one), ItemRequest::PENDING_STATUS ]
-      )
       assert_equal users(:two), wish.original_requester
+    end
 
-      wish.item_requests.find_by(requester: users(:two)).update!(status: ItemRequest::CANCELLED_STATUS)
-      assert_equal users(:two), wish.original_requester, "memoized value should not re-query"
+    it "memoizes original_requester, including nil, until reload" do
+      wish = wish_with_requests
+      assert_nil wish.original_requester
 
-      assert_equal users(:one), wish.reload.original_requester
+      ItemRequest.create!(item: wish, requester: users(:two), message: "Please may I have this book")
+      assert_nil wish.original_requester, "memoized nil should not re-query"
+
+      assert_equal users(:two), wish.reload.original_requester
     end
   end
 end
