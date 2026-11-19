@@ -96,14 +96,13 @@ class Item < ApplicationRecord
       .order("item_requests.created_at", "item_requests.id")
   end
 
-  # Whoever made the earliest request on this item, whatever its status now. Memoized, nil included.
+  # The first of #requesters: whoever made the earliest non-cancelled request. Memoized until reload.
   def original_requester
-    return @original_requester if defined?(@original_requester)
-    @original_requester = item_requests.order(:created_at, :id).first&.requester
+    @original_requester ||= requesters.first
   end
 
   def reload(*)
-    remove_instance_variable(:@original_requester) if defined?(@original_requester)
+    @original_requester = nil
     super
   end
 
