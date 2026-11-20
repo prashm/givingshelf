@@ -3,8 +3,14 @@ class Api::ItemRequestsController < ApplicationController
   before_action :set_item_request, only: [ :show, :update, :destroy, :messages ]
 
   def index
-    item_requests = item_request_service.requests_for_user(Current.user, params[:type])
-    render json: item_requests.map { |req| item_request_service.request_json(req) }
+    item_requests = item_request_service.requests_for_user(Current.user, params[:type]).to_a
+    # The request message is each request's first PENDING event; load them in one query.
+    initial_messages = Message.transitions
+      .where(item_request_id: item_requests.map(&:id), request_transition_status: ItemRequest::PENDING_STATUS)
+      .order(:created_at, :id)
+      .pluck(:item_request_id, :content)
+      .reverse.to_h
+    render json: item_requests.map { |req| item_request_service.request_json(req, initial_message: initial_messages[req.id]) }
   end
 
   def show
@@ -26,7 +32,7 @@ class Api::ItemRequestsController < ApplicationController
   end
 
   def update
-    if item_request_service.update_request(Current.user, params[:action_type])
+    if item_request_service.update_request(Current.user, params[:action_type], note: params[:note])
       render json: item_request_service.request_json(item_request_service.item_request)
     else
       render json: { errors: item_request_service.errors }, status: :unprocessable_entity
@@ -34,7 +40,7 @@ class Api::ItemRequestsController < ApplicationController
   end
 
   def destroy
-    if item_request_service.cancel_request(Current.user)
+    if item_request_service.cancel_request(Current.user, note: params[:note])
       render json: item_request_service.request_json(item_request_service.item_request)
     else
       render json: { errors: item_request_service.errors }, status: :unprocessable_entity
@@ -56,16 +62,10 @@ class Api::ItemRequestsController < ApplicationController
       .to_a
       .reverse
 
+    initial_event_id = ItemRequestService.initial_event_id_for(@item_request)
     render json: {
-      messages: messages.map { |msg|
-        {
-          id: msg.id,
-          content: msg.content,
-          user_id: msg.user.id,
-          user_name: msg.user.display_name,
-          created_at: msg.created_at.iso8601
-        }
-      }
+      messages: messages.map { |msg| ItemRequestService.message_json(msg, initial_event_id: initial_event_id) },
+      thread_writable: @item_request.thread_writable?
     }
   end
 

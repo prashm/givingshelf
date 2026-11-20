@@ -84,7 +84,6 @@ class WishlistMailerTest < ActionMailer::TestCase
       item: book,
       requester: user,
       owner: users(:two),
-      message: "I would love this book if anyone in the community has a copy.",
       status: ItemRequest::IN_REVIEW_STATUS
     )
 

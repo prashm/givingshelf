@@ -84,4 +84,56 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
     get messages_api_item_request_url(item_requests(:one))
     assert_response :success
   end
+
+  test "messages lists events with their kind and author role, plus whether the thread is writable" do
+    request = item_requests(:one)
+    request.messages.delete_all
+    request.messages.create!(user: users(:two), request_transition_status: ItemRequest::PENDING_STATUS, content: "Could I borrow it, please?")
+    request.messages.create!(user: users(:one), content: "Sure, when suits you?")
+    request.messages.create!(user: users(:one), request_transition_status: ItemRequest::DECLINED_STATUS, content: "Sorry, it went elsewhere")
+    request.update_columns(status: ItemRequest::DECLINED_STATUS)
+
+    sign_in_as(users(:one))
+    get messages_api_item_request_url(request)
+
+    assert_response :success
+    body = response.parsed_body
+    assert_equal false, body["thread_writable"]
+    assert_equal [ [ "requested", "requester" ], [ nil, "owner" ], [ "declined", "owner" ] ],
+      body["messages"].map { |message| message.values_at("event", "user_role") }
+    assert_equal ItemRequest::DECLINED_STATUS, body["messages"].last["request_transition_status"]
+  end
+
+  test "update and destroy pass the note through to the event" do
+    request = item_requests(:one)
+    sign_in_as(users(:one))
+    patch api_item_request_url(request), params: { action_type: "decline", note: "Promised to a friend" }
+    assert_response :success
+    assert_equal "Promised to a friend", request.messages.transitions.last.content
+
+    other = item_requests(:two)
+    sign_in_as(users(:one))
+    delete api_item_request_url(other), params: { note: "Found a copy" }
+    assert_response :success
+    assert_equal [ ItemRequest::CANCELLED_STATUS, "Found a copy" ], other.messages.transitions.last.slice(:request_transition_status, :content).values
+  end
+
+  test "a donor whose wisher was moved to a new wish can no longer open that request" do
+    wish = Book.create!(user_id: nil, title: "Moved Wish", author: "Author", genre: "Fiction", published_year: 2020,
+      summary: "Summary text long enough for validations on the book model here.", status: ShareableItemStatus::WISHLIST)
+    winner = ItemRequestService.new.start_request!(users(:two), wish, "Please may I have this one?")
+    third = User.create!(email_address: "third_#{SecureRandom.hex(4)}@example.com", verified: true,
+      password_digest: BCrypt::Password.create("password123!"))
+    moved = ItemRequestService.new.start_request!(third, wish, "Me too, if there's a spare")
+    assert ItemService.new(wish).fulfill_wishlist_item(users(:one), { condition: "good" })
+    ItemRequestService.new(winner.reload).accept!
+    ItemRequestService.new(winner.reload).complete!
+    assert_not_equal wish.id, moved.reload.item_id
+
+    sign_in_as(users(:one))
+    get api_item_request_url(moved)
+    assert_response :forbidden
+    get messages_api_item_request_url(moved)
+    assert_response :forbidden
+  end
 end

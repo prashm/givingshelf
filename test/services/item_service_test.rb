@@ -108,7 +108,6 @@ class ItemServiceTest < ActiveSupport::TestCase
         item: wishlist_book,
         requester: users(:two),
         owner: nil,
-        message: "I would love this book if anyone in the community has a copy.",
         status: ItemRequest::PENDING_STATUS
       )
       [ wishlist_book, request ]
@@ -170,7 +169,6 @@ class ItemServiceTest < ActiveSupport::TestCase
         item: wishlist_book,
         requester: @user,
         owner: nil,
-        message: "I wished for this too but then cancelled it.",
         status: ItemRequest::CANCELLED_STATUS
       )
       service = ItemService.new(wishlist_book)
@@ -216,7 +214,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: wish, community_group: @group_one, sub_group: @sub_group_one)
       GroupItemAvailability.create!(item: wish, community_group: @group_two)
-      request = ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+      request = ItemRequest.create!(item: wish, requester: users(:two))
       wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
       wish.update!(user: @user, status: ShareableItemStatus::DONATED, condition: "good")
       [ wish, request ]
@@ -283,7 +281,7 @@ class ItemServiceTest < ActiveSupport::TestCase
         status: ShareableItemStatus::WISHLIST
       )
       GroupItemAvailability.create!(item: wish, community_group: @group_one, sub_group: @sub_group_one)
-      ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+      ItemRequest.create!(item: wish, requester: users(:two))
       wish
     end
 
@@ -383,9 +381,9 @@ class ItemServiceTest < ActiveSupport::TestCase
       cancelled_user = User.create!(email_address: "zip_#{SecureRandom.hex(4)}@example.com", verified: true,
         password_digest: BCrypt::Password.create("password123!"))
       cancelled_user.update_columns(zip_code: "99999")
-      ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
-      ItemRequest.create!(item: wish, requester: users(:one), message: "I would love this book please")
-      ItemRequest.create!(item: wish, requester: cancelled_user, message: "I would love this book please",
+      ItemRequest.create!(item: wish, requester: users(:two))
+      ItemRequest.create!(item: wish, requester: users(:one))
+      ItemRequest.create!(item: wish, requester: cancelled_user,
         status: ItemRequest::CANCELLED_STATUS)
 
       assert_equal [ "12345, 54321 Community" ], ItemService.new.item_detail_map(wish)[:community_group_names]
@@ -413,7 +411,7 @@ class ItemServiceTest < ActiveSupport::TestCase
         status: ShareableItemStatus::WISHLIST
       )
       GroupItemAvailability.create!(item: book, community_group: group, sub_group: sub_group)
-      ItemRequest.create!(item: book, requester: waiting, message: "I would love this book please") if waiting
+      ItemRequest.create!(item: book, requester: waiting) if waiting
       book
     end
 
@@ -449,7 +447,7 @@ class ItemServiceTest < ActiveSupport::TestCase
           summary: "A long enough summary for wishlist toy matching assertions here.",
           status: ShareableItemStatus::WISHLIST)
         GroupItemAvailability.create!(item: toy, community_group: @group_one)
-        ItemRequest.create!(item: toy, requester: users(:two), message: "I would love this toy please")
+        ItemRequest.create!(item: toy, requester: users(:two))
 
         assert_equal toy, find({ brand: "LEGO" }, service: ToyService.new)
         assert_nil find({ brand: "Mattel" }, service: ToyService.new)
@@ -493,7 +491,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       it "skips an item that didn't start as a wish" do
         @item.update!(title: "Matched Wish", author: "Jane Writer")
         GroupItemAvailability.create!(item: @item, community_group: @group_one)
-        ItemRequest.create!(item: @item, requester: users(:two), message: "I would love this book please")
+        ItemRequest.create!(item: @item, requester: users(:two))
         assert_nil find
       end
     end
@@ -521,7 +519,7 @@ class ItemServiceTest < ActiveSupport::TestCase
         match = wish(sub_group: @sub_group_one)
         neighbour = create_user("neighbour")
         CommunityGroupMembership.create!(user: neighbour, community_group: @group_one, sub_group: @sub_group_two)
-        ItemRequest.create!(item: match, requester: neighbour, message: "I would love this book please")
+        ItemRequest.create!(item: match, requester: neighbour)
         assert_equal match, find(sub_group: @sub_group_two)
 
         match.item_requests.where(requester: neighbour).update_all(status: ItemRequest::CANCELLED_STATUS)

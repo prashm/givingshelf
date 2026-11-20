@@ -4,7 +4,7 @@ class ItemRequestTest < ActiveSupport::TestCase
   test "other_requests returns the item's other requests but not this one" do
     request = item_requests(:one)
     third_user = User.create!(email_address: "third_#{SecureRandom.hex(4)}@example.com", password_digest: BCrypt::Password.create("password123!"), verified: true)
-    other = ItemRequest.create!(item: request.item, requester: third_user, message: "Another request for the same book")
+    other = ItemRequest.create!(item: request.item, requester: third_user)
 
     assert_equal [ other.id ], request.other_requests.pluck(:id)
   end

@@ -12,7 +12,7 @@ class WishFulfillRaceTest < ActiveSupport::TestCase
       summary: "Summary text long enough for validations on the book model here.",
       status: ShareableItemStatus::WISHLIST
     )
-    ItemRequest.create!(item: @wish, requester: users(:two), message: "I would love this book please")
+    ItemRequest.create!(item: @wish, requester: users(:two))
   end
 
   def teardown

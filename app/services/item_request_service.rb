@@ -3,6 +3,67 @@ class ItemRequestService
   attr_accessor :item_request
   attr_reader :errors
 
+  # Fixed notes on the events the GS-8 close-out writes. B1 (GS-9 Part B) uses the declined one to
+  # tell a close-out from the owner declining.
+  CLOSE_OUT_DECLINED_NOTE = "This item went to another requester.".freeze
+  CLOSE_OUT_MOVED_NOTE = "This copy went to another requester. You've been moved to a new wish for the same item.".freeze
+
+  # Why a request message can't be used, or nil if it's fine.
+  def self.initial_message_error(message)
+    message = message.to_s.strip
+    length = ItemRequest::INITIAL_MESSAGE_LENGTH
+    return "Message can't be blank" if message.blank?
+    return "Message is too short (minimum is #{length.min} characters)" if message.length < length.min
+    return "Message is too long (maximum is #{length.max} characters)" if message.length > length.max
+    nil
+  end
+
+  # JSON for one thread message. A transition event also carries the status it moved to, and an
+  # `event` key naming what happened, which the UI turns into wording for each viewer.
+  # Pass initial_event_id when listing a thread, to save a query per PENDING event.
+  def self.message_json(message, initial_event_id: nil)
+    request = message.item_request
+    {
+      id: message.id,
+      content: message.content,
+      user_id: message.user_id,
+      user_name: message.user.display_name,
+      user_role: message_author_role(message, request),
+      created_at: message.created_at.iso8601,
+      request_transition_status: message.request_transition_status,
+      event: event_kind(message, request, initial_event_id)
+    }
+  end
+
+  # The author's part in the request. A wish's giver is its donor; anyone else's is its owner.
+  def self.message_author_role(message, request)
+    return "requester" if message.user_id == request.requester_id
+    request.item.wishlist_item? ? "donor" : "owner"
+  end
+
+  def self.event_kind(message, request, initial_event_id = nil)
+    case message.request_transition_status
+    when nil then nil
+    when ItemRequest::PENDING_STATUS
+      return "moved" if message.user_id != request.requester_id
+      initial_event_id ||= initial_event_id_for(request)
+      message.id == initial_event_id ? "requested" : "reopened"
+    when ItemRequest::IN_REVIEW_STATUS
+      # On a wish, the donor is the one who moves a request into review (by fulfilling it, or by
+      # opening a later wisher's request), so it reads as a donor having been found.
+      request.item.wishlist_item? ? "donor_found" : "viewed"
+    when ItemRequest::DECLINED_STATUS
+      message.content == CLOSE_OUT_DECLINED_NOTE ? "closed_out" : "declined"
+    when ItemRequest::ACCEPTED_STATUS then "accepted"
+    when ItemRequest::COMPLETED_STATUS then "completed"
+    when ItemRequest::CANCELLED_STATUS then "cancelled"
+    end
+  end
+
+  def self.initial_event_id_for(request)
+    request.messages.transitions.where(request_transition_status: ItemRequest::PENDING_STATUS).order(:created_at, :id).pick(:id)
+  end
+
   def initialize(item_request = nil)
     @item_request = item_request
     @errors = []
@@ -23,39 +84,47 @@ class ItemRequestService
       end
       raise reason
     end
+    message_error = self.class.initial_message_error(message)
+    raise message_error if message_error
 
-    @item_request = requester.item_requests.build(item: item, message: message)
-
-    if @item_request.save
-      notify_item_owner
-    else
-      @errors += @item_request.errors.full_messages
-      @item_request = nil
-    end
+    ActiveRecord::Base.transaction { start_request!(requester, item, message) }
+    notify_item_owner
     @item_request
+  rescue ActiveRecord::RecordInvalid => e
+    @errors += e.record.errors.full_messages
+    @item_request = nil
   rescue => e
     @errors << e.message
     @item_request = nil
   end
 
-  def update_request(current_user, action_type)
+  # Creates the request and its initial PENDING event, whose note is the request message. Runs in
+  # the caller's transaction; callers check the message first (see .initial_message_error).
+  def start_request!(requester, item, message)
+    @item_request = requester.item_requests.create!(item: item)
+    record_event!(@item_request, ItemRequest::PENDING_STATUS, requester, message)
+    @item_request
+  end
+
+  # note: optional text from whoever made the change, shown under the event in the thread.
+  def update_request(current_user, action_type, note: nil)
     case action_type
     when "uncancel"
       raise "Not authorized" unless self.item_request.requester == current_user
-      uncancel!
+      uncancel!(note: note)
     else
       raise "Not authorized" unless self.item_request.item.owner?(current_user)
       raise "Cannot update a cancelled request" if self.item_request.cancelled?
 
       case action_type
       when "accept"
-        accept!
+        accept!(actor: current_user, note: note)
       when "decline"
-        decline!
+        decline!(actor: current_user, note: note)
       when "complete"
-        complete!
+        complete!(actor: current_user, note: note)
       when "mark_as_viewed"
-        mark_as_in_review!
+        mark_as_in_review!(actor: current_user)
       else
         raise "Invalid action"
       end
@@ -66,64 +135,72 @@ class ItemRequestService
     false
   end
 
-  def cancel_request(requester)
+  def cancel_request(requester, note: nil)
     # Only the requester can cancel their own request
     if self.item_request.requester != requester
       raise "Not authorized"
     end
 
-    cancel!
+    cancel!(note: note)
     true
   rescue => e
     @errors << e.message
     false
   end
 
-  def accept!
+  # Each transition below records an event in the request's thread, authored by whoever made the
+  # change (actor defaults to the item's owner, or the requester for cancel/uncancel), with their
+  # optional note. The event commits or rolls back with the change.
+  def accept!(actor: nil, note: nil)
     require_item_request!
     with_locked_item do |item|
       item_request.guard_transition!(ItemRequest::ACCEPTED_STATUS)
       raise "This item has already been donated" if item.donated?
       raise "Another request for this item has already been accepted" if item_request.other_requests.accepted.exists?
       item_request.update!(status: ItemRequest::ACCEPTED_STATUS)
+      record_event!(item_request, ItemRequest::ACCEPTED_STATUS, actor || item.user, note)
       item.update!(status: ShareableItemStatus::REQUESTED)
       # Mark other pending requests for this item as In Review; leave declined/cancelled/completed ones alone
       item_request.other_requests.pending.update_all(status: ItemRequest::IN_REVIEW_STATUS)
     end
   end
 
-  def decline!
+  def decline!(actor: nil, note: nil)
     require_item_request!
     with_locked_item do |item|
       item_request.guard_transition!(ItemRequest::DECLINED_STATUS)
       # Declining the accepted request frees the item for the other requesters, as cancel! does.
       item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
       item_request.update!(status: ItemRequest::DECLINED_STATUS)
+      record_event!(item_request, ItemRequest::DECLINED_STATUS, actor || item.user, note)
     end
   end
 
-  def complete!
+  def complete!(actor: nil, note: nil)
     require_item_request!
     raise "Can only complete an accepted request" if item_request.pending? || item_request.in_review?
     with_locked_item do |item|
       item_request.guard_transition!(ItemRequest::COMPLETED_STATUS)
+      actor ||= item.user
       item_request.update!(status: ItemRequest::COMPLETED_STATUS)
+      record_event!(item_request, ItemRequest::COMPLETED_STATUS, actor, note)
       item.update!(status: ShareableItemStatus::DONATED)
-      close_out_other_requests!(item)
+      close_out_other_requests!(item, actor)
     end
     log_close_out
   end
 
-  def cancel!
+  def cancel!(note: nil)
     require_item_request!
     with_locked_item do |item|
       item_request.guard_transition!(ItemRequest::CANCELLED_STATUS)
       item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
       item_request.update!(status: ItemRequest::CANCELLED_STATUS)
+      record_event!(item_request, ItemRequest::CANCELLED_STATUS, item_request.requester, note)
     end
   end
 
-  def uncancel!
+  def uncancel!(note: nil)
     require_item_request!
     raise "Can only uncancel a cancelled request" unless item_request.cancelled?
     with_locked_item do |item|
@@ -134,12 +211,19 @@ class ItemRequestService
       # owner; otherwise it would never show in their received requests.
       item_request.owner ||= item.user
       item_request.update!(status: ItemRequest::PENDING_STATUS)
+      record_event!(item_request, ItemRequest::PENDING_STATUS, item_request.requester, note)
     end
   end
 
-  def mark_as_in_review!
+  # The owner opened the request. Only the real PENDING -> IN_REVIEW move writes an event, so
+  # opening the page again writes nothing.
+  def mark_as_in_review!(actor: nil)
     require_item_request!
-    item_request.update!(status: ItemRequest::IN_REVIEW_STATUS) if item_request.pending?
+    return unless item_request.pending?
+    ActiveRecord::Base.transaction do
+      item_request.update!(status: ItemRequest::IN_REVIEW_STATUS)
+      record_event!(item_request, ItemRequest::IN_REVIEW_STATUS, actor || item_request.owner || item_request.item.user)
+    end
   end
 
   # When a donor claims a wishlist item: mark request in review and set owner without moving item to REQUESTED.
@@ -147,6 +231,7 @@ class ItemRequestService
     require_item_request!
     return unless item_request.pending?
     item_request.update!(status: ItemRequest::IN_REVIEW_STATUS, owner: donor_user)
+    record_event!(item_request, ItemRequest::IN_REVIEW_STATUS, donor_user)
   end
 
   def requests_for_user(user, type)
@@ -166,15 +251,17 @@ class ItemRequestService
     item_requests
   end
 
-  def request_json(request)
+  # initial_message: pass it when listing many requests, to save a query each.
+  def request_json(request, initial_message: :load)
     {
       id: request.id,
       status: request.status,
       status_display: display_status(request.status),
-      message: request.message,
+      message: initial_message == :load ? request.initial_message : initial_message,
       created_at: request.created_at,
       updated_at: request.updated_at,
       can_update_status: request.can_update_status?,
+      thread_writable: request.thread_writable?,
       **requester_actions(request),
       requester: {
         id: request.requester.id,
@@ -233,20 +320,43 @@ class ItemRequestService
   end
 
   # After a handoff, give every other request still awaiting a decision a final result: wishers move
-  # to a new wish for the same item; requesters of a regular item are declined. GS-9 will record why in the thread.
-  def close_out_other_requests!(item)
+  # to a new wish for the same item; requesters of a regular item are declined. Each gets an event
+  # authored by the owner who completed the handoff, with a fixed note saying why.
+  def close_out_other_requests!(item, actor)
     open_requests = item_request.other_requests.awaiting_decision.order(:created_at, :id).to_a
     @close_out = { item: item, requests: open_requests, new_wish: nil }
     return if open_requests.empty?
 
     if item.wishlist_item?
       new_wish = ItemService.new(item).relist_as_wish!
-      open_requests.each { |request| request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS) }
+      open_requests.each do |request|
+        request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS)
+        record_event!(request, ItemRequest::PENDING_STATUS, actor, CLOSE_OUT_MOVED_NOTE)
+      end
       @close_out[:new_wish] = new_wish
     else
-      ItemRequest.where(id: open_requests.map(&:id))
-        .update_all(status: ItemRequest::DECLINED_STATUS, updated_at: Time.current)
+      open_requests.each do |request|
+        request.update!(status: ItemRequest::DECLINED_STATUS)
+        record_event!(request, ItemRequest::DECLINED_STATUS, actor, CLOSE_OUT_DECLINED_NOTE)
+      end
     end
+  end
+
+  # Writes a transition event: request moved to `to_status`, caused by `author`, with an optional
+  # note. Once everything commits, it's pushed to anyone viewing the thread; a rollback drops both.
+  def record_event!(request, to_status, author, note = nil)
+    event = request.messages.create!(user: author, request_transition_status: to_status, content: note.to_s.strip.presence)
+    ActiveRecord.after_all_transactions_commit { broadcast_event(event) }
+    event
+  end
+
+  def broadcast_event(event)
+    ActionCable.server.broadcast(
+      "item_request_#{event.item_request_id}",
+      { type: "message", message: self.class.message_json(event) }
+    )
+  rescue => e
+    Rails.logger.warn "Couldn't broadcast request event #{event.id}: #{e.message}"
   end
 
   # Runs after commit. The emails to these requesters come with GS-11.

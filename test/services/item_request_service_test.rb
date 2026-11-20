@@ -41,7 +41,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       item: book,
       requester: requester,
       owner: @owner,
-      message: "Test message that is long enough",
       status: status
     )
   end
@@ -72,7 +71,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result.persisted?
       assert_equal @requester, result.requester
       assert_equal book, result.item
-      assert_equal message, result.message
+      assert_equal message, result.initial_message
       assert_equal ItemRequest::PENDING_STATUS, result.status
       assert service.errors.empty?
     end
@@ -141,7 +140,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Previous request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -195,7 +193,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: status
       )
     end
@@ -288,7 +285,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -308,7 +304,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -328,7 +323,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       ItemRequestService.new(item_request).accept!
@@ -349,7 +343,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       # Use a different user (owner) trying to cancel requester's request
@@ -370,7 +363,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       ItemRequestService.new(item_request).cancel!
@@ -390,7 +382,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       ItemRequestService.new(item_request).cancel!
@@ -412,7 +403,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -434,14 +424,12 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book,
         requester: other_requester,
         owner: @owner,
-        message: "Second request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -458,7 +446,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -476,7 +463,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -494,7 +480,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -513,7 +498,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -530,7 +514,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::ACCEPTED_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -556,7 +539,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: wishlist_book,
         requester: @requester,
         owner: nil,
-        message: "I would love this book if anyone in the community has a copy.",
         status: ItemRequest::PENDING_STATUS
       )
       donor = @owner
@@ -575,7 +557,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::DECLINED_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -845,8 +826,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         genre: "Fiction",
         status: ShareableItemStatus::WISHLIST
       )
-      waiting = ItemRequest.create!(item: wish, requester: @requester, message: "Still waiting for this book", status: ItemRequest::PENDING_STATUS)
-      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, message: "Cancelled before the donor came", status: ItemRequest::CANCELLED_STATUS)
+      waiting = ItemRequest.create!(item: wish, requester: @requester, status: ItemRequest::PENDING_STATUS)
+      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
       assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
       assert_nil cancelled.reload.owner_id
 
@@ -892,7 +873,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
       requests = requesters.each_with_index.map do |(user, status), i|
-        ItemRequest.create!(item: wish, requester: user, message: "I would love this book please",
+        ItemRequest.create!(item: wish, requester: user,
           status: status, created_at: (requesters.size - i).hours.ago)
       end
       [ wish, requests ]
@@ -1018,14 +999,12 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book1,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
-        message: "Second request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -1060,14 +1039,12 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book1,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
-        message: "Second request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -1091,21 +1068,15 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   describe "#request_json" do
     it "returns correct JSON structure" do
       book = setup_book_for_request(items(:one))
-      item_request = ItemRequest.create!(
-        item: book,
-        requester: @requester,
-        owner: @owner,
-        message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
-      )
-
+      item_request = ItemRequestService.new.start_request!(@requester, book, "Test message that is long enough")
 
       json = service.request_json(item_request)
 
       assert_equal item_request.id, json[:id]
       assert_equal item_request.status, json[:status]
       assert_equal "Pending", json[:status_display]
-      assert_equal item_request.message, json[:message]
+      assert_equal "Test message that is long enough", json[:message]
+      assert_equal true, json[:thread_writable]
       assert_equal item_request.created_at, json[:created_at]
       assert_equal item_request.updated_at, json[:updated_at]
       assert json[:book].present?
@@ -1118,14 +1089,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "includes book JSON in request JSON" do
       book = setup_book_for_request(items(:one))
-      item_request = ItemRequest.create!(
-        item: book,
-        requester: @requester,
-        owner: @owner,
-        message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
-      )
-
+      item_request = ItemRequestService.new.start_request!(@requester, book, "Test message that is long enough")
 
       json = service.request_json(item_request)
 

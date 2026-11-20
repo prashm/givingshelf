@@ -54,7 +54,6 @@ class BookServiceTest < ActiveSupport::TestCase
       item: book,
       requester: requester,
       owner: book.user,
-      message: "Test message that is long enough",
       status: status
     )
   end
@@ -75,7 +74,6 @@ class BookServiceTest < ActiveSupport::TestCase
       item: book,
       requester: requester,
       owner: nil,
-      message: "I would love this book if anyone in the community has a copy.",
       status: ItemRequest::PENDING_STATUS
     )
     book
@@ -559,7 +557,6 @@ class BookServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @user,
         owner: nil,
-        message: "I would love this book if anyone in the community has a copy.",
         status: ItemRequest::PENDING_STATUS
       )
       other = users(:two)
@@ -1206,7 +1203,7 @@ class BookServiceTest < ActiveSupport::TestCase
       wish = Book.create!(title: "Seen Wish", author: "A", summary: "A summary that is more than long enough to validate.", published_year: 2020, status: ShareableItemStatus::WISHLIST)
       GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
       CommunityGroupMembership.find_by!(user: users(:two), community_group: @other_group).update!(sub_group: sub_groups(:two))
-      request = ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+      request = ItemRequest.create!(item: wish, requester: users(:two))
       service = BookService.new
 
       assert_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:two).id).pluck(:id), wish.id
@@ -1235,7 +1232,7 @@ class BookServiceTest < ActiveSupport::TestCase
       assert ir
       assert_equal ItemRequest::PENDING_STATUS, ir.status
       assert_nil ir.owner_id
-      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.message
+      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.initial_message
       gia = book.group_item_availabilities.find_by(community_group_id: @other_group.id)
       assert gia
       assert_nil gia.sub_group_id
@@ -1254,7 +1251,7 @@ class BookServiceTest < ActiveSupport::TestCase
       })
       assert book, service.errors.to_sentence
       ir = book.item_requests.find_by(requester: @user)
-      assert_equal custom, ir.message
+      assert_equal custom, ir.initial_message
     end
 
     it "falls back to default message when blank" do
@@ -1269,7 +1266,7 @@ class BookServiceTest < ActiveSupport::TestCase
       })
       assert book, service.errors.to_sentence
       ir = book.item_requests.find_by(requester: @user)
-      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.message
+      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.initial_message
     end
 
     it "returns nil when message is too short" do

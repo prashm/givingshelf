@@ -135,6 +135,8 @@ class ItemService
     message = item_params.delete(:message).to_s.strip
     message = self.class::DEFAULT_WISHLIST_MESSAGE if message.blank?
     raise "Invalid community group selection" if cg_id.blank?
+    message_error = ItemRequestService.initial_message_error(message)
+    raise message_error if message_error
 
     community_group_ids = { cg_id.to_s => sg_id }
     validate_requested_groups_for(requester, community_group_ids)
@@ -470,13 +472,7 @@ class ItemService
     @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
     sync_group_item_availabilities!(requester, community_group_ids)
     handle_api_cover_image(cover_image_url)
-    @item_request = ItemRequest.create!(
-      item: @item,
-      requester: requester,
-      owner: nil,
-      message: message,
-      status: ItemRequest::PENDING_STATUS
-    )
+    @item_request = ItemRequestService.new.start_request!(requester, @item, message)
   end
 
   # Adds the requester to an existing wish. Raises (rolling back) if they can't request it,

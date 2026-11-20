@@ -22,6 +22,11 @@ class ItemRequestChatChannel < ApplicationCable::Channel
       return
     end
 
+    unless @item_request.thread_writable?
+      transmit({ type: "error", message: "This conversation is closed" })
+      return
+    end
+
     content = data["content"].to_s.strip
     if content.blank? || content.length > 1000
       transmit({ type: "error", message: "Invalid message content" })
@@ -36,16 +41,7 @@ class ItemRequestChatChannel < ApplicationCable::Channel
     # Broadcast to all subscribers
     ActionCable.server.broadcast(
       "item_request_#{params[:item_request_id]}",
-      {
-        type: "message",
-        message: {
-          id: message.id,
-          content: message.content,
-          user_id: message.user.id,
-          user_name: message.user.display_name,
-          created_at: message.created_at.iso8601
-        }
-      }
+      { type: "message", message: ItemRequestService.message_json(message) }
     )
 
     # Check if recipient is active and handle email notification

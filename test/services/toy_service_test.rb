@@ -54,7 +54,6 @@ class ToyServiceTest < ActiveSupport::TestCase
       item: toy,
       requester: requester,
       owner: toy.user,
-      message: "Test message that is long enough",
       status: status
     )
   end
@@ -386,7 +385,6 @@ class ToyServiceTest < ActiveSupport::TestCase
         item: toy,
         requester: requester,
         owner: nil,
-        message: "I would love this toy if anyone in the community has one.",
         status: ItemRequest::PENDING_STATUS
       )
       toy

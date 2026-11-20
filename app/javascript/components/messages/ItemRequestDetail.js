@@ -4,6 +4,7 @@ import { CheckIcon, XMarkIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons
 import * as Constants from '../../lib/constants';
 import { CheckIcon as CheckIconSolid, XMarkIcon as XMarkIconSolid, CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import ChatSection from './ChatSection';
+import ReasonDialog from '../common/ReasonDialog';
 
 const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const [request, setRequest] = useState(null);
@@ -11,6 +12,9 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [hasMarkedAsViewed, setHasMarkedAsViewed] = useState(false);
+  // The open confirm dialog: 'decline', 'cancel' or 'uncancel', or null.
+  const [dialogAction, setDialogAction] = useState(null);
+  const [dialogError, setDialogError] = useState('');
 
   useEffect(() => {
     if (!itemRequestId) {
@@ -64,47 +68,74 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
   const handleStatusUpdate = async (actionType) => {
     if (updatingStatus) return;
+    if (actionType === 'decline') {
+      openDialog('decline');
+      return;
+    }
 
     setUpdatingStatus(true);
     try {
       const updatedRequest = await updateItemRequestStatus(itemRequestId, actionType);
       setRequest(updatedRequest);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update status. Please try again.');
+      setError(err.response?.data?.errors?.[0] || err.response?.data?.error || 'Failed to update status. Please try again.');
     } finally {
       setUpdatingStatus(false);
     }
   };
 
-  const handleCancelRequest = async () => {
-    if (updatingStatus) return;
-    if (!window.confirm('Are you sure you want to cancel this request?')) return;
+  const openDialog = (action) => {
+    setDialogError('');
+    setDialogAction(action);
+  };
 
+  // Decline (owner), cancel and reopen (requester) go through the dialog, with an optional note.
+  const confirmDialog = async (note) => {
     setUpdatingStatus(true);
-    setError(null);
+    setDialogError('');
     try {
-      const updatedRequest = await cancelItemRequest(itemRequestId);
+      const updatedRequest = dialogAction === 'cancel'
+        ? await cancelItemRequest(itemRequestId, note)
+        : await updateItemRequestStatus(itemRequestId, dialogAction, note);
       setRequest(updatedRequest);
+      setDialogAction(null);
     } catch (err) {
-      setError(err.response?.data?.errors?.[0] || err.response?.data?.error || 'Failed to cancel request. Please try again.');
+      setDialogError(err.response?.data?.errors?.[0] || err.response?.data?.error || 'Something went wrong. Please try again.');
     } finally {
       setUpdatingStatus(false);
     }
   };
 
-  const handleUncancelRequest = async () => {
-    if (updatingStatus) return;
-    if (!window.confirm('Reactivate this request? The owner will see it as pending again.')) return;
-
-    setUpdatingStatus(true);
-    setError(null);
+  // A status change arrived in the thread (e.g. the other party cancelled): refresh the request.
+  const refreshRequest = async () => {
     try {
-      const updatedRequest = await updateItemRequestStatus(itemRequestId, 'uncancel');
-      setRequest(updatedRequest);
+      setRequest(await fetchItemRequestDetails(itemRequestId));
     } catch (err) {
-      setError(err.response?.data?.errors?.[0] || err.response?.data?.error || 'Failed to reactivate request. Please try again.');
-    } finally {
-      setUpdatingStatus(false);
+      console.error('Failed to refresh request:', err);
+    }
+  };
+
+  const DIALOGS = {
+    decline: {
+      title: 'Decline this request?',
+      description: "The requester will see that you declined. You can tell them why; it's optional.",
+      noteLabel: 'Reason (optional)',
+      confirmLabel: 'Decline request',
+      tone: 'danger'
+    },
+    cancel: {
+      title: 'Cancel your request?',
+      description: "The owner will see that you cancelled. You can reopen it later while the item is still available.",
+      noteLabel: 'Reason (optional)',
+      confirmLabel: 'Cancel request',
+      tone: 'danger'
+    },
+    uncancel: {
+      title: 'Reopen your request?',
+      description: 'The owner will see it as pending again.',
+      noteLabel: 'Note for the owner (optional)',
+      confirmLabel: 'Reopen request',
+      tone: 'primary'
     }
   };
 
@@ -210,6 +241,18 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     );
   }
 
+  const closedNotice = (() => {
+    if (request.thread_writable) return null;
+    if (!item?.owner) {
+      return "No one has offered this item yet. You'll be emailed when someone does, and you can message them here.";
+    }
+    if (currentStatusDisplay === 'Cancelled') {
+      return isOwner
+        ? 'The requester cancelled this request, so the conversation is read-only.'
+        : 'You cancelled this request. Reopen it to send messages again.';
+    }
+    return `This request is ${String(currentStatusDisplay || 'closed').toLowerCase()}, so the conversation is read-only.`;
+  })();
   const createdAt = new Date(request.created_at).toLocaleString();
   const updatedAt = new Date(request.updated_at).toLocaleString();
   const item = request.book || request.toy;
@@ -269,15 +312,6 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           </div>
         </section>
 
-        <section>
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Message
-          </h3>
-          <p className="text-sm text-gray-800 whitespace-pre-line">
-            {request.message}
-          </p>
-        </section>
-
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
           <div>
             <p className="font-medium text-gray-500">Requested at</p>
@@ -310,7 +344,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                   {request.can_cancel && (
                     <button
                       type="button"
-                      onClick={handleCancelRequest}
+                      onClick={() => openDialog('cancel')}
                       disabled={updatingStatus}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Cancel your request"
@@ -322,13 +356,13 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                   {request.can_uncancel && (
                     <button
                       type="button"
-                      onClick={handleUncancelRequest}
+                      onClick={() => openDialog('uncancel')}
                       disabled={updatingStatus}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-emerald-100 hover:text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Reactivate this request"
                     >
                       <ArrowPathIcon className="w-4 h-4" />
-                      <span>Uncancel request</span>
+                      <span>Reopen request</span>
                     </button>
                   )}
                 </div>
@@ -338,26 +372,27 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
         </section>
       </div>
 
-      {!item?.owner && (
-        <div className="px-2 py-2 md:px-0">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            You&apos;ll be emailed when someone offers this book. Chat will open here once there is a match.
-          </div>
-        </div>
-      )}
-
-      {/* Chat Section — need an owner on the item to message the other party */}
-      {currentUser && item?.owner && (
+      {/* The thread: messages and status changes. Read-only when there's nobody to message yet
+          (an open wish) or the request is finished or cancelled. */}
+      {currentUser && (
         <ChatSection
           itemRequestId={itemRequestId}
           currentUser={currentUser}
-          otherUser={
-            currentUser.id === request.requester.id
-              ? item?.owner
-              : request.requester
-          }
+          otherUser={currentUser.id === request.requester.id ? item?.owner : request.requester}
+          writable={Boolean(request.thread_writable)}
+          closedNotice={closedNotice}
+          onEvent={refreshRequest}
         />
       )}
+
+      <ReasonDialog
+        open={Boolean(dialogAction)}
+        {...(DIALOGS[dialogAction] || {})}
+        busy={updatingStatus}
+        error={dialogError}
+        onConfirm={confirmDialog}
+        onClose={() => setDialogAction(null)}
+      />
     </div>
   );
 };

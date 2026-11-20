@@ -3,6 +3,7 @@ import { MapPinIcon, CalendarIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, 
 import axios from '../../lib/axios';
 import { useItems } from '../../contexts/ItemContext';
 import VerificationBadge from '../common/VerificationBadge';
+import ReasonDialog from '../common/ReasonDialog';
 import { getGroupPageInfo, parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
 import { cancelItemRequest, updateItemRequestStatus } from '../../lib/itemRequestsApi';
@@ -34,6 +35,8 @@ const ItemDetail = ({
   const [mapImageUrl, setMapImageUrl] = useState(null);
   const [pickupMapImageUrl, setPickupMapImageUrl] = useState(null);
   const [wishActionBusy, setWishActionBusy] = useState(false);
+  // 'cancel' or 'uncancel' while the wisher's confirm dialog is open.
+  const [wishDialog, setWishDialog] = useState(null);
   const [wishActionError, setWishActionError] = useState('');
 
   const {
@@ -296,17 +299,23 @@ const ItemDetail = ({
   // isWishlistItem: the item started as a wish, whatever its status now. Drives the indicator.
   const isWishlistItem = Boolean(item?.wishlist_item) || isWishlist;
   // The wisher withdraws (cancel) or reopens (uncancel) their own request from the wish's page.
-  const handleWishAction = async (action) => {
+  // Both go through a confirm dialog with an optional note for the thread.
+  const handleWishAction = (action) => {
     if (!userRequest) return;
-    if (action === 'cancel' && !window.confirm('Cancel your wish for this item?')) return;
+    setWishActionError('');
+    setWishDialog(action);
+  };
+
+  const confirmWishAction = async (note) => {
     setWishActionBusy(true);
     setWishActionError('');
     try {
-      if (action === 'cancel') {
-        await cancelItemRequest(userRequest.id);
+      if (wishDialog === 'cancel') {
+        await cancelItemRequest(userRequest.id, note);
       } else {
-        await updateItemRequestStatus(userRequest.id, 'uncancel');
+        await updateItemRequestStatus(userRequest.id, 'uncancel', note);
       }
+      setWishDialog(null);
       const refreshed = await getItem(item.id);
       if (refreshed) {
         setItem(refreshed);
@@ -411,7 +420,7 @@ const ItemDetail = ({
                       {userRequest.can_cancel ? 'Cancel my wish' : 'Reopen my wish'}
                     </button>
                   )}
-                  {wishActionError && (
+                  {wishActionError && !wishDialog && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">{wishActionError}</div>
                   )}
                   {!userRequest && (
@@ -617,6 +626,21 @@ const ItemDetail = ({
           </div>
         </div>
       )}
+
+      <ReasonDialog
+        open={Boolean(wishDialog)}
+        title={wishDialog === 'cancel' ? 'Cancel your wish?' : 'Reopen your wish?'}
+        description={wishDialog === 'cancel'
+          ? "You'll stop waiting for this item. You can reopen your wish later while it's still open."
+          : "You'll be back on the list of members waiting for this item."}
+        noteLabel={wishDialog === 'cancel' ? 'Reason (optional)' : 'Note (optional)'}
+        confirmLabel={wishDialog === 'cancel' ? 'Cancel my wish' : 'Reopen my wish'}
+        tone={wishDialog === 'cancel' ? 'danger' : 'primary'}
+        busy={wishActionBusy}
+        error={wishDialog ? wishActionError : ''}
+        onConfirm={confirmWishAction}
+        onClose={() => setWishDialog(null)}
+      />
 
       {showImageModal && item.user_images_urls?.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onClick={() => setShowImageModal(false)}>
