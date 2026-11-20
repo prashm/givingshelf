@@ -247,15 +247,16 @@ export const ItemProvider = ({ children, itemType = Constants.ITEM_TYPE_BOOK }) 
     }
   }, [itemType, validateImageSize, buildItemFormData]);
 
-  const deleteItem = useCallback(async (itemId) => {
+  // note: optional message to the people still waiting on the item, shown in their request threads.
+  const deleteItem = useCallback(async (itemId, note = null) => {
     setLoading(true);
     setError(null);
     try {
-      await axios.delete(`/api/items/${itemId}`, { params: { type: itemType }, withCredentials: true });
+      await axios.delete(`/api/items/${itemId}`, { params: { type: itemType, ...(note ? { note } : {}) }, withCredentials: true });
       setItems(prev => prev.filter(item => item.id !== itemId));
       return { success: true };
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Failed to delete item';
+      const errorMsg = err.response?.data?.errors?.[0] || err.response?.data?.error || 'Failed to delete item';
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {

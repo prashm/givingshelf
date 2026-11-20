@@ -13,7 +13,7 @@ SitemapGenerator::Sitemap.create do
   add "/", priority: 1.0, changefreq: "daily"
 
   # Add all available books
-  Book.available.find_each do |book|
+  Book.kept.available.find_each do |book|
     add "/books/#{book.id}",
         lastmod: book.updated_at,
         priority: 0.8,
@@ -21,7 +21,7 @@ SitemapGenerator::Sitemap.create do
   end
 
   # Add all available toys
-  Toy.available.find_each do |toy|
+  Toy.kept.available.find_each do |toy|
     add "/toys/#{toy.id}",
         lastmod: toy.updated_at,
         priority: 0.8,

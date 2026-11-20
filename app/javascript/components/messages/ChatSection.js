@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchChatMessages, describeRequestEvent, eventShowsNote } from '../../lib/itemRequestsApi';
+import { fetchChatMessages, describeRequestEvent, eventNote } from '../../lib/itemRequestsApi';
 import { createSubscription } from '../../lib/actionCable';
 import { linkifyText } from '../../lib/textUtils';
 
@@ -320,9 +320,9 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, c
                       <span className="text-gray-400">{formatEventTime(message.created_at)} · </span>
                       {describeRequestEvent(message, currentUser?.id)}
                     </p>
-                    {eventShowsNote(message) && (
+                    {eventNote(message) && (
                       <p className="mt-1 text-sm italic text-gray-500 whitespace-pre-wrap break-words">
-                        &ldquo;{linkifyText(message.content)}&rdquo;
+                        &ldquo;{linkifyText(eventNote(message))}&rdquo;
                       </p>
                     )}
                   </div>

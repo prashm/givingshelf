@@ -12,10 +12,10 @@ class Api::ItemsController < ApplicationController
   end
 
   def my_items
-    @items = Current.user.items.includes(:item_requests).recent
+    @items = Current.user.items.kept.includes(:item_requests).recent
     render json: {
       statuses: ShareableItemStatus.data,
-      items: @items.map { |item| item_service.item_map(item) }
+      items: @items.map { |item| item_service.my_item_map(item) }
     }
   end
 
@@ -47,7 +47,7 @@ class Api::ItemsController < ApplicationController
   end
 
   def destroy
-    if item_service.remove_item(Current.user)
+    if item_service.remove_item(Current.user, note: params[:note])
       render json: { message: "Item deleted successfully" }, status: :ok
     else
       render json: { errors: item_service.errors }, status: :unprocessable_entity
@@ -125,6 +125,12 @@ class Api::ItemsController < ApplicationController
 
   def set_item
     @item = Item.find(params[:id])
+    # A deleted item is gone, except that someone who requested it can still open its page.
+    raise ActiveRecord::RecordNotFound if @item.deleted? && !(action_name == "show" && requested_by_current_user?(@item))
+  end
+
+  def requested_by_current_user?(item)
+    Current.user.present? && item.item_requests.exists?(requester: Current.user)
   end
 
   def create_wishlist_item_params

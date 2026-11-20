@@ -8,6 +8,9 @@ class ItemService
   JOINABLE_WISH_STATUSES = [ ShareableItemStatus::WISHLIST, ShareableItemStatus::AVAILABLE, ShareableItemStatus::REQUESTED ].freeze
   # Requests whose requester is still waiting on a wish, open or fulfilled.
   WAITING_REQUEST_STATUSES = [ ItemRequest::PENDING_STATUS, ItemRequest::IN_REVIEW_STATUS, ItemRequest::ACCEPTED_STATUS ].freeze
+  # The owner's note when deleting an item follows a fixed text in one message (max 1000 characters).
+  REMOVAL_NOTE_MAX = 900
+  ACCEPTED_REQUEST_BLOCKS_REMOVAL = "You have an accepted request for this item. Decline or complete it first.".freeze
   # Lower-cased, trimmed, with runs of whitespace collapsed; see #normalize_wish_text.
   NORMALIZED_WISH_SQL = {
     "title" => "regexp_replace(lower(btrim(coalesce(items.title, ''))), '\\s+', ' ', 'g')",
@@ -112,11 +115,31 @@ class ItemService
     false
   end
 
-  def remove_item(current_user)
-    # Only the owner can delete their item
-    raise "Not authorized" unless self.item.owner?(current_user)
+  # Deletes the item for its owner (GS-12). Refused while a request is accepted. Otherwise the open
+  # requests get a final result first (declined, or for a fulfilled wish, moved to a new wish), with
+  # the owner's optional note. An item that ever had a request is then only marked deleted, so the
+  # requests, their threads and past handoffs survive; one that never had a request is destroyed.
+  def remove_item(current_user, note: nil)
+    raise "Not authorized" unless item.owner?(current_user)
+    raise "This item was already removed" if item.deleted?
+    note = note.to_s.strip
+    raise "Note is too long (maximum is #{REMOVAL_NOTE_MAX} characters)" if note.length > REMOVAL_NOTE_MAX
 
-    self.item.destroy
+    ActiveRecord::Base.transaction do
+      # Lock the item so no request can be accepted or added while it's being removed.
+      item.lock!
+      raise ACCEPTED_REQUEST_BLOCKS_REMOVAL if item.item_requests.accepted.exists?
+
+      if item.item_requests.exists?
+        open_requests = item.item_requests.awaiting_decision.order(:created_at, :id).to_a
+        ItemRequestService.new.close_out_requests!(item, open_requests, current_user,
+          declined_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_NOTE, note),
+          moved_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_MOVED_NOTE, note))
+        item.update!(deleted_at: Time.current)
+      else
+        item.destroy!
+      end
+    end
     true
   rescue => e
     @errors << e.message
@@ -166,6 +189,7 @@ class ItemService
     attrs = attrs.to_h.with_indifferent_access
     candidates = type_class
       # Started as a wish, and is still open or fulfilled but not donated.
+      .kept
       .where(wishlist_item: true, status: JOINABLE_WISH_STATUSES)
       # Not something the requester is giving away themselves (they'd donated a fulfilled wish).
       .where("items.user_id IS NULL OR items.user_id <> ?", requester.id)
@@ -236,7 +260,7 @@ class ItemService
   end
 
   def available_items
-    type_class.available.includes(:user).recent
+    type_class.kept.available.includes(:user).recent
   end
 
   # Override in subclasses (e.g. BookService) for type-specific query matching.
@@ -297,7 +321,7 @@ class ItemService
 
   def wishlist_items(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, query_string: nil, age_range: nil)
     search_items(
-      base_scope: type_class.wishlist,
+      base_scope: type_class.kept.wishlist,
       query_string: query_string,
       zip_code: zip_code,
       radius: radius,
@@ -308,13 +332,15 @@ class ItemService
     )
   end
 
+  # Deleted items still count toward donations, requests and happy users (that history happened),
+  # but not toward items shared.
   def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
     base_items = search_items(base_scope: type_class, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     wishlisted_items = wishlist_items(zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
-      items_shared: base_items.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
+      items_shared: base_items.kept.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
       items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
       happy_users: base_requests.completed.distinct.count(:requester_id),
@@ -384,6 +410,7 @@ class ItemService
       status: item.status,
       status_display: ShareableItemStatus.display_status(item.status),
       wishlist_item: item.wishlist_item,
+      deleted: item.deleted?,
       cover_image_url: cover_image_url_for(item),
       user_images_urls: item.user_images.attached? ? item.user_images.map(&:url) : [],
       view_count: item.view_count || 0,
@@ -417,6 +444,17 @@ class ItemService
       result[:cannot_request_reason] = @item_cannot_be_requested_by_reason
     end
     result
+  end
+
+  # List JSON for one of the owner's items (My Items), with what the delete dialog needs: how many
+  # requests are still waiting on it, and whether one is accepted (which blocks deleting it).
+  # Expects item_requests preloaded.
+  def my_item_map(item)
+    requests = item.item_requests.to_a
+    item_map(item).merge(
+      open_request_count: requests.count { |request| ItemRequest::OPEN_STATUSES.include?(request.status) },
+      has_accepted_request: requests.any?(&:accepted?)
+    )
   end
 
   # List JSON for one item, built the same way as #item_detail_map.

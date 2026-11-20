@@ -27,6 +27,9 @@ class Item < ApplicationRecord
   scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
+  # Items not deleted by their owner (GS-12). A deleted item that had requests is kept, hidden, so
+  # those requests and their threads survive; use this scope wherever items are listed or matched.
+  scope :kept, -> { where(deleted_at: nil) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
   # Items whose age bounds overlap the given canonical browse bucket. Items
   # without a parsed minimum age are excluded when an age filter is supplied.
@@ -90,7 +93,12 @@ class Item < ApplicationRecord
   # Whether a new request can be made. A fulfilled wish takes more wishers while its donor has
   # accepted someone, so they wait their turn; the owner can't act on them meanwhile (GS-7).
   def open_to_requests?
+    return false if deleted?
     available? || wishlist? || (requested? && wishlist_item?)
+  end
+
+  def deleted?
+    deleted_at.present?
   end
 
   def owner?(current_user)

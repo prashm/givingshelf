@@ -6,6 +6,8 @@ const NOTE_MAX = 1000;
 /**
  * Confirm step for a request status change, with an optional note that's shown under the change
  * in the request's thread. Cancelling the dialog changes nothing.
+ * blockedMessage: when set, the action can't be taken right now; the dialog shows why, with no
+ * note or confirm button.
  */
 const ReasonDialog = ({
   open,
@@ -16,6 +18,9 @@ const ReasonDialog = ({
   confirmLabel,
   busyLabel = 'Saving...',
   tone = 'danger',
+  noteMax = NOTE_MAX,
+  showNote = true,
+  blockedMessage = '',
   busy = false,
   error = '',
   onConfirm,
@@ -42,24 +47,36 @@ const ReasonDialog = ({
         </button>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">{title}</h2>
         {description && <p className="text-sm text-gray-600 mb-4">{description}</p>}
+        {blockedMessage ? (
+          <div className="space-y-4">
+            <p className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">{blockedMessage}</p>
+            <div className="flex justify-end">
+              <button type="button" onClick={close} className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Close
+              </button>
+            </div>
+          </div>
+        ) : (
         <form
           onSubmit={(e) => { e.preventDefault(); if (!busy) onConfirm(note.trim()); }}
           className="space-y-4"
         >
+          {showNote && (
           <div>
             <label htmlFor="reason-dialog-note" className="block text-sm font-medium text-gray-700 mb-1">{noteLabel}</label>
             <textarea
               id="reason-dialog-note"
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               rows={3}
-              maxLength={NOTE_MAX}
+              maxLength={noteMax}
               value={note}
               placeholder={notePlaceholder}
               onChange={(e) => setNote(e.target.value)}
               disabled={busy}
             />
-            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
+          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-3">
             <button type="button" onClick={close} className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" disabled={busy}>
               Go back
@@ -69,6 +86,7 @@ const ReasonDialog = ({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

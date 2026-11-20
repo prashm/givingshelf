@@ -136,4 +136,14 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
     get messages_api_item_request_url(moved)
     assert_response :forbidden
   end
+
+  test "a request on a deleted item still opens, and says the item was removed" do
+    items(:one).update_columns(deleted_at: Time.current)
+    sign_in_as(users(:two))
+
+    get api_item_request_url(item_requests(:one))
+
+    assert_response :success
+    assert_equal true, JSON.parse(response.body)["book"]["deleted"]
+  end
 end

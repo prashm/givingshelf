@@ -263,6 +263,10 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
             <div>
               <p className="text-lg font-medium text-gray-900">{itemTitle}</p>
               {itemSubtitle && <p className="text-sm text-gray-600">{itemSubtitle}</p>}
+              {item?.deleted ? (
+                <p className="text-sm text-gray-500 mt-1">This item was removed by its owner.</p>
+              ) : (
+              <>
               <p className="text-sm text-gray-500 mt-1">
                 Status: <span className="font-medium capitalize">{item?.status_display}</span>
               </p>
@@ -279,6 +283,8 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
               >
                 View {itemLabel.toLowerCase()} details
               </button>
+              </>
+              )}
             </div>
           </div>
         </section>

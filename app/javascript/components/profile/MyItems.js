@@ -4,6 +4,32 @@ import { useItems } from '../../contexts/ItemContext';
 import { useSiteGroup } from '../../contexts/SiteGroupContext';
 import * as Constants from '../../lib/constants';
 import { truncateText } from '../../lib/textUtils';
+import ReasonDialog from '../common/ReasonDialog';
+
+// Matches ItemService::REMOVAL_NOTE_MAX: the note follows a fixed text in the requester's thread.
+const REMOVAL_NOTE_MAX = 900;
+
+// What the delete dialog says for an item, from the counts the My Items list sends.
+const deleteDialogCopy = (item) => {
+  const waiting = item.open_request_count || 0;
+  const people = waiting === 1 ? '1 person is' : `${waiting} people are`;
+  const copy = {
+    title: `Delete "${item.title}"?`,
+    confirmLabel: 'Delete item',
+    tone: 'danger',
+    noteMax: REMOVAL_NOTE_MAX,
+    noteLabel: 'Note to them (optional)',
+    showNote: waiting > 0
+  };
+  if (item.has_accepted_request) {
+    return { ...copy, blockedMessage: 'You have an accepted request for this item. Decline or complete it first.' };
+  }
+  if (waiting === 0) return { ...copy, description: "It will be removed from your items. This can't be undone." };
+  if (item.wishlist_item) {
+    return { ...copy, description: `${people} waiting on this wish. They'll stay on the wish and be moved to a new open wish for the same item.` };
+  }
+  return { ...copy, description: `${people} waiting on this item. They'll be told it was removed.` };
+};
 
 const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBook, fromProfile = false }) => {
   const [myItems, setMyItems] = useState([]);
@@ -11,6 +37,9 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
   const [filter, setFilter] = useState('all'); // all, Books, Toys
   const { deleteItem: deleteItemFromAPI } = useItems();
   const [deletingItemId, setDeletingItemId] = useState(null);
+  // The item whose delete dialog is open, and that dialog's error.
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
   const { rules } = useSiteGroup();
   const restrictedItemType = rules?.restricted_item_type || null;
 
@@ -41,22 +70,28 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (window.confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-      setDeletingItemId(itemId);
-      try {
-        const result = await deleteItemFromAPI(itemId);
-        if (result.success) {
-          setMyItems(prev => prev.filter(item => item.id !== itemId));
-        } else {
-          alert(result.error || 'Failed to delete item. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error deleting item:', error);
-        alert('An error occurred while deleting the item. Please try again.');
-      } finally {
-        setDeletingItemId(null);
+  const handleDeleteItem = (item) => {
+    setDeleteError('');
+    setDeleteTarget(item);
+  };
+
+  const confirmDeleteItem = async (note) => {
+    const itemId = deleteTarget.id;
+    setDeletingItemId(itemId);
+    setDeleteError('');
+    try {
+      const result = await deleteItemFromAPI(itemId, note);
+      if (result.success) {
+        setMyItems(prev => prev.filter(item => item.id !== itemId));
+        setDeleteTarget(null);
+      } else {
+        setDeleteError(result.error || 'Failed to delete item. Please try again.');
       }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      setDeleteError('An error occurred while deleting the item. Please try again.');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -285,7 +320,7 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                       </button>
 
                       <button
-                        onClick={() => handleDeleteItem(item.id)}
+                        onClick={() => handleDeleteItem(item)}
                         disabled={deletingItemId === item.id}
                         className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete item"
@@ -304,6 +339,16 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
           </div>
         )}
       </div>
+
+      <ReasonDialog
+        open={Boolean(deleteTarget)}
+        {...(deleteTarget ? deleteDialogCopy(deleteTarget) : {})}
+        busyLabel="Deleting..."
+        busy={Boolean(deleteTarget) && deletingItemId === deleteTarget.id}
+        error={deleteError}
+        onConfirm={confirmDeleteItem}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };
