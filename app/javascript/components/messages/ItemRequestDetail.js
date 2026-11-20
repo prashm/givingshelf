@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { fetchItemRequestDetails, updateItemRequestStatus, cancelItemRequest } from '../../lib/itemRequestsApi';
+import { fetchItemRequestDetails, updateItemRequestStatus } from '../../lib/itemRequestsApi';
 import { CheckIcon, XMarkIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import * as Constants from '../../lib/constants';
 import { CheckIcon as CheckIconSolid, XMarkIcon as XMarkIconSolid, CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import ChatSection from './ChatSection';
-import ReasonDialog from '../common/ReasonDialog';
+import RequestActionDialog, { requestActionCopy, submitRequestAction } from '../common/RequestActionDialog';
 
 const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const [request, setRequest] = useState(null);
@@ -94,9 +94,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     setUpdatingStatus(true);
     setDialogError('');
     try {
-      const updatedRequest = dialogAction === 'cancel'
-        ? await cancelItemRequest(itemRequestId, note)
-        : await updateItemRequestStatus(itemRequestId, dialogAction, note);
+      const updatedRequest = await submitRequestAction(itemRequestId, dialogAction, note);
       setRequest(updatedRequest);
       setDialogAction(null);
     } catch (err) {
@@ -115,33 +113,13 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     }
   };
 
-  const DIALOGS = {
-    decline: {
-      title: 'Decline this request?',
-      description: "The requester will see that you declined. You can tell them why; it's optional.",
-      noteLabel: 'Reason (optional)',
-      confirmLabel: 'Decline request',
-      tone: 'danger'
-    },
-    cancel: {
-      title: 'Cancel your request?',
-      description: "The owner will see that you cancelled. You can reopen it later while the item is still available.",
-      noteLabel: 'Reason (optional)',
-      confirmLabel: 'Cancel request',
-      tone: 'danger'
-    },
-    uncancel: {
-      title: 'Reopen your request?',
-      description: 'The owner will see it as pending again.',
-      noteLabel: 'Note for the owner (optional)',
-      confirmLabel: 'Reopen request',
-      tone: 'primary'
-    }
-  };
-
   const itemData = request?.book || request?.toy;
   const isOwner = currentUser && itemData?.owner?.id === currentUser.id;
   const currentStatusDisplay = request?.status_display;
+  // A wish no one has offered yet: its actions use the wish wording, as on the wish's own page.
+  const isOpenWish = Boolean(itemData?.wishlist_item) && !itemData?.owner;
+  const cancelCopy = requestActionCopy('cancel', { isWish: isOpenWish });
+  const reopenCopy = requestActionCopy('uncancel', { isWish: isOpenWish });
 
   const statusButtons = [
     {
@@ -350,10 +328,10 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                       onClick={() => openDialog('cancel')}
                       disabled={updatingStatus}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Cancel your request"
+                      title={cancelCopy.title}
                     >
                       <XMarkIcon className="w-4 h-4" />
-                      <span>Cancel request</span>
+                      <span>{cancelCopy.buttonLabel}</span>
                     </button>
                   )}
                   {request.can_uncancel && (
@@ -362,10 +340,10 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
                       onClick={() => openDialog('uncancel')}
                       disabled={updatingStatus}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-emerald-100 hover:text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Reactivate this request"
+                      title={reopenCopy.title}
                     >
                       <ArrowPathIcon className="w-4 h-4" />
-                      <span>Reopen request</span>
+                      <span>{reopenCopy.buttonLabel}</span>
                     </button>
                   )}
                 </div>
@@ -388,9 +366,9 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
         />
       )}
 
-      <ReasonDialog
-        open={Boolean(dialogAction)}
-        {...(DIALOGS[dialogAction] || {})}
+      <RequestActionDialog
+        action={dialogAction}
+        isWish={isOpenWish}
         busy={updatingStatus}
         error={dialogError}
         onConfirm={confirmDialog}

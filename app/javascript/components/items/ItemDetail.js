@@ -3,10 +3,9 @@ import { MapPinIcon, CalendarIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, 
 import axios from '../../lib/axios';
 import { useItems } from '../../contexts/ItemContext';
 import VerificationBadge from '../common/VerificationBadge';
-import ReasonDialog from '../common/ReasonDialog';
+import RequestActionDialog, { requestActionCopy, submitRequestAction } from '../common/RequestActionDialog';
 import { getGroupPageInfo, parsePageFromPath } from '../../lib/textUtils';
 import * as Constants from '../../lib/constants';
-import { cancelItemRequest, updateItemRequestStatus } from '../../lib/itemRequestsApi';
 
 const ItemDetail = ({
   item: initialItem,
@@ -310,11 +309,7 @@ const ItemDetail = ({
     setWishActionBusy(true);
     setWishActionError('');
     try {
-      if (wishDialog === 'cancel') {
-        await cancelItemRequest(userRequest.id, note);
-      } else {
-        await updateItemRequestStatus(userRequest.id, 'uncancel', note);
-      }
+      await submitRequestAction(userRequest.id, wishDialog, note);
       setWishDialog(null);
       const refreshed = await getItem(item.id);
       if (refreshed) {
@@ -417,7 +412,7 @@ const ItemDetail = ({
                           : 'bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50'
                       }`}
                     >
-                      {userRequest.can_cancel ? 'Cancel my wish' : 'Reopen my wish'}
+                      {requestActionCopy(userRequest.can_cancel ? 'cancel' : 'uncancel', { isWish: true }).buttonLabel}
                     </button>
                   )}
                   {wishActionError && !wishDialog && (
@@ -627,15 +622,9 @@ const ItemDetail = ({
         </div>
       )}
 
-      <ReasonDialog
-        open={Boolean(wishDialog)}
-        title={wishDialog === 'cancel' ? 'Cancel your wish?' : 'Reopen your wish?'}
-        description={wishDialog === 'cancel'
-          ? "You'll stop waiting for this item. You can reopen your wish later while it's still open."
-          : "You'll be back on the list of members waiting for this item."}
-        noteLabel={wishDialog === 'cancel' ? 'Reason (optional)' : 'Note (optional)'}
-        confirmLabel={wishDialog === 'cancel' ? 'Cancel my wish' : 'Reopen my wish'}
-        tone={wishDialog === 'cancel' ? 'danger' : 'primary'}
+      <RequestActionDialog
+        action={wishDialog}
+        isWish
         busy={wishActionBusy}
         error={wishDialog ? wishActionError : ''}
         onConfirm={confirmWishAction}
