@@ -3,6 +3,7 @@ require "minitest/spec"
 
 class ItemRequestServiceTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
+  include ActionCable::TestHelper
   extend Minitest::Spec::DSL
 
   def service
@@ -41,7 +42,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       item: book,
       requester: requester,
       owner: @owner,
-      message: "Test message that is long enough",
       status: status
     )
   end
@@ -72,7 +72,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result.persisted?
       assert_equal @requester, result.requester
       assert_equal book, result.item
-      assert_equal message, result.message
+      assert_equal message, result.initial_message.content
       assert_equal ItemRequest::PENDING_STATUS, result.status
       assert service.errors.empty?
     end
@@ -141,7 +141,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Previous request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -195,7 +194,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: status
       )
     end
@@ -288,7 +286,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -308,7 +305,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -328,7 +324,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       ItemRequestService.new(item_request).accept!
@@ -349,7 +344,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       # Use a different user (owner) trying to cancel requester's request
@@ -370,7 +364,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       ItemRequestService.new(item_request).cancel!
@@ -390,7 +383,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       ItemRequestService.new(item_request).cancel!
@@ -412,7 +404,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -434,14 +425,12 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book,
         requester: other_requester,
         owner: @owner,
-        message: "Second request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -458,7 +447,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -476,7 +464,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -494,7 +481,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -513,7 +499,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -530,7 +515,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::ACCEPTED_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -556,7 +540,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: wishlist_book,
         requester: @requester,
         owner: nil,
-        message: "I would love this book if anyone in the community has a copy.",
         status: ItemRequest::PENDING_STATUS
       )
       donor = @owner
@@ -575,7 +558,6 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        message: "Test message that is long enough",
         status: ItemRequest::DECLINED_STATUS
       )
       service = ItemRequestService.new(item_request)
@@ -845,8 +827,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         genre: "Fiction",
         status: ShareableItemStatus::WISHLIST
       )
-      waiting = ItemRequest.create!(item: wish, requester: @requester, message: "Still waiting for this book", status: ItemRequest::PENDING_STATUS)
-      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, message: "Cancelled before the donor came", status: ItemRequest::CANCELLED_STATUS)
+      waiting = ItemRequest.create!(item: wish, requester: @requester, status: ItemRequest::PENDING_STATUS)
+      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, status: ItemRequest::CANCELLED_STATUS)
       assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
       assert_nil cancelled.reload.owner_id
 
@@ -892,7 +874,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       )
       GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
       requests = requesters.each_with_index.map do |(user, status), i|
-        ItemRequest.create!(item: wish, requester: user, message: "I would love this book please",
+        ItemRequest.create!(item: wish, requester: user,
           status: status, created_at: (requesters.size - i).hours.ago)
       end
       [ wish, requests ]
@@ -1018,14 +1000,12 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book1,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
-        message: "Second request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -1060,14 +1040,12 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book1,
         requester: @requester,
         owner: @owner,
-        message: "First request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
-        message: "Second request message that is long enough",
         status: ItemRequest::PENDING_STATUS
       )
 
@@ -1091,21 +1069,15 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   describe "#request_json" do
     it "returns correct JSON structure" do
       book = setup_book_for_request(items(:one))
-      item_request = ItemRequest.create!(
-        item: book,
-        requester: @requester,
-        owner: @owner,
-        message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
-      )
-
+      item_request = ItemRequestService.new.start_request!(@requester, book, "Test message that is long enough")
 
       json = service.request_json(item_request)
 
       assert_equal item_request.id, json[:id]
       assert_equal item_request.status, json[:status]
       assert_equal "Pending", json[:status_display]
-      assert_equal item_request.message, json[:message]
+      assert_equal "Test message that is long enough", json[:message]
+      assert_equal true, json[:message_thread_writable]
       assert_equal item_request.created_at, json[:created_at]
       assert_equal item_request.updated_at, json[:updated_at]
       assert json[:book].present?
@@ -1116,22 +1088,262 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_equal @requester.verified?, json[:requester][:verified]
     end
 
+    it "reports whether the thread takes messages, from the request" do
+      book = setup_book_for_request(items(:one))
+      item_request = ItemRequestService.new.start_request!(@requester, book, "Test message that is long enough")
+
+      item_request.stub(:message_thread_writable?, false) do
+        assert_equal false, service.request_json(item_request)[:message_thread_writable]
+      end
+    end
+
     it "includes book JSON in request JSON" do
       book = setup_book_for_request(items(:one))
-      item_request = ItemRequest.create!(
-        item: book,
-        requester: @requester,
-        owner: @owner,
-        message: "Test message that is long enough",
-        status: ItemRequest::PENDING_STATUS
-      )
-
+      item_request = ItemRequestService.new.start_request!(@requester, book, "Test message that is long enough")
 
       json = service.request_json(item_request)
 
       assert json[:book].is_a?(Hash)
       assert_equal book.id, json[:book][:id]
       assert_equal book.title, json[:book][:title]
+    end
+  end
+
+  describe "#requests_json" do
+    it "gives each request its own initial message, loading them all in one query" do
+      book = setup_book_for_request(items(:one))
+      first = ItemRequestService.new.start_request!(@requester, book, "First requester's message here")
+      second = ItemRequestService.new.start_request!(create_other_requester, book, "Second requester's message")
+      # A later PENDING event (a reopen) must not replace the initial message.
+      first.messages.create!(user: @requester, request_transition_status: ItemRequest::PENDING_STATUS, content: "Reopening")
+      requests = ItemRequest.where(id: [ first.id, second.id ]).order(:id).to_a
+
+      message_queries = 0
+      count = ->(*, payload) { message_queries += 1 if payload[:sql].include?('FROM "messages"') }
+      json = ActiveRecord::Base.uncached do
+        ActiveSupport::Notifications.subscribed(count, "sql.active_record") { service.requests_json(requests) }
+      end
+
+      assert_equal [ "First requester's message here", "Second requester's message" ], json.map { |row| row[:message] }
+      assert_equal 1, message_queries
+    end
+
+    it "returns an empty list for no requests" do
+      assert_equal [], service.requests_json([])
+    end
+  end
+
+  # GS-9 Part A: every status change records one transition event in the request's thread.
+  describe "transition events" do
+    before do
+      @book = setup_book_for_request(items(:one))
+    end
+
+    def create_group_member(name)
+      user = User.create!(email_address: "#{name}_#{SecureRandom.hex(4)}@example.com", verified: true,
+        password_digest: BCrypt::Password.create("password123!"))
+      user.update_columns(first_name: name.capitalize, last_name: "Tester", zip_code: "12345")
+      CommunityGroupMembership.create!(user: user, community_group: @other_group)
+      user
+    end
+
+    def request_for(requester = @requester, message = "I would love to read this book, please.")
+      service = ItemRequestService.new
+      request = service.create_request(requester, @book.id, message)
+      assert request, service.errors.to_sentence
+      request
+    end
+
+    def events(request)
+      request.messages.transitions.order(:created_at, :id)
+    end
+
+    def event_summary(request)
+      events(request).map { |event| [ event.request_transition_status, event.user_id, event.content ] }
+    end
+
+    describe "creating a request" do
+      it "writes the initial PENDING event, by the requester, with the request message" do
+        request = request_for
+
+        assert_equal [ [ ItemRequest::PENDING_STATUS, @requester.id, "I would love to read this book, please." ] ], event_summary(request)
+        assert_equal "I would love to read this book, please.", request.initial_message.content
+        assert_equal "requested", ItemRequestService.message_json(events(request).first)[:event]
+      end
+
+      it "checks the message length and creates nothing when it's wrong" do
+        service = ItemRequestService.new
+        assert_no_difference [ "ItemRequest.count", "Message.count" ] do
+          assert_nil service.create_request(@requester, @book.id, "too short")
+        end
+        assert_equal [ "Message is too short (minimum is 10 characters)" ], service.errors
+
+        service = ItemRequestService.new
+        assert_nil service.create_request(@requester, @book.id, "x" * 501)
+        assert_equal [ "Message is too long (maximum is 500 characters)" ], service.errors
+      end
+
+      it "writes the initial event for a new wish too" do
+        service = BookService.new
+        wish = service.create_wishlist_item(@requester, {
+          title: "Evented Wish", author: "Author", published_year: 2020, community_group_id: @other_group.id,
+          summary: "A summary that is more than long enough to validate successfully.", message: "Please, anyone?"
+        })
+        assert wish, service.errors.to_sentence
+        assert_equal [ [ ItemRequest::PENDING_STATUS, @requester.id, "Please, anyone?" ] ], event_summary(service.item_request)
+      end
+    end
+
+    describe "status changes" do
+      it "writes one IN_REVIEW event when the owner first opens the request, and none after" do
+        request = request_for
+        service = ItemRequestService.new(request)
+
+        assert service.update_request(@owner, "mark_as_viewed")
+        assert service.update_request(@owner, "mark_as_viewed")
+
+        assert_equal [ ItemRequest::PENDING_STATUS, ItemRequest::IN_REVIEW_STATUS ], events(request).pluck(:request_transition_status)
+        viewed = events(request).last
+        assert_equal @owner.id, viewed.user_id
+        assert_nil viewed.content
+        assert_equal "viewed", ItemRequestService.message_json(viewed)[:event]
+      end
+
+      it "records accept, decline, cancel and reopen with their author and note" do
+        first = request_for
+        second = request_for(create_group_member("second"))
+
+        assert ItemRequestService.new(first).update_request(@owner, "accept", note: "  Pick up Saturday?  ")
+        assert ItemRequestService.new(first.reload).cancel_request(@requester, note: "Plans changed")
+        assert ItemRequestService.new(first.reload).update_request(@requester, "uncancel")
+        assert ItemRequestService.new(second.reload).update_request(@owner, "decline", note: "Promised to a neighbour")
+
+        assert_equal [
+          [ ItemRequest::PENDING_STATUS, @requester.id, "I would love to read this book, please." ],
+          [ ItemRequest::ACCEPTED_STATUS, @owner.id, "Pick up Saturday?" ],
+          [ ItemRequest::CANCELLED_STATUS, @requester.id, "Plans changed" ],
+          [ ItemRequest::PENDING_STATUS, @requester.id, nil ]
+        ], event_summary(first)
+        assert_equal [ ItemRequest::DECLINED_STATUS, @owner.id, "Promised to a neighbour" ], event_summary(second).last
+        kinds = events(first).map { |event| ItemRequestService.message_json(event)[:event] }
+        assert_equal %w[requested accepted cancelled reopened], kinds
+        assert_equal "declined", ItemRequestService.message_json(events(second).last)[:event]
+      end
+
+      it "records completion, and declines the other open requests with the close-out note" do
+        winner = request_for
+        other = request_for(create_group_member("other"))
+        ItemRequestService.new(winner).accept!
+        ItemRequestService.new(winner.reload).update_request(@owner, "complete", note: "Enjoy!")
+
+        assert_equal [ ItemRequest::COMPLETED_STATUS, @owner.id, "Enjoy!" ], event_summary(winner).last
+        closed = events(other).last
+        assert_equal [ ItemRequest::DECLINED_STATUS, @owner.id, ItemRequestService::CLOSE_OUT_DECLINED_NOTE ],
+          [ closed.request_transition_status, closed.user_id, closed.content ]
+        assert_equal "closed_out", ItemRequestService.message_json(closed)[:event]
+      end
+
+      it "writes no event when the change fails, or rolls back" do
+        request = request_for
+        ItemRequestService.new(request).accept!
+        service = ItemRequestService.new(request.reload)
+
+        assert_no_difference -> { Message.count } do
+          assert_not service.update_request(@owner, "accept"), "accepting twice is refused"
+          request.item.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "item save failed" }) do
+            assert_raises(ActiveRecord::RecordNotSaved) { ItemRequestService.new(request).complete! }
+          end
+        end
+        assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
+      end
+
+      it "refuses a note over 1000 characters and leaves the request as it was" do
+        request = request_for
+        service = ItemRequestService.new(request)
+
+        assert_not service.update_request(@owner, "decline", note: "x" * 1001)
+        assert_equal ItemRequest::PENDING_STATUS, request.reload.status
+        assert_equal 1, events(request).count
+      end
+
+      it "pushes each event to the thread only once it commits" do
+        request = request_for
+        assert_broadcasts("item_request_#{request.id}", 1) do
+          ItemRequestService.new(request).update_request(@owner, "accept")
+        end
+        # complete! writes its event, then fails updating the item: the event rolls back unsent.
+        request.reload
+        assert_no_broadcasts("item_request_#{request.id}") do
+          request.item.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "nope" }) do
+            assert_not ItemRequestService.new(request).update_request(@owner, "complete")
+          end
+        end
+        assert_equal ItemRequest::ACCEPTED_STATUS, request.reload.status
+      end
+    end
+
+    describe "wishes" do
+      def wish_with_waiters(*requesters)
+        wish = Book.create!(
+          user_id: nil, title: "Thread Wish", author: "Author", genre: "Fiction", published_year: 2020,
+          summary: "Summary text long enough for validations on the book model here.",
+          status: ShareableItemStatus::WISHLIST
+        )
+        GroupItemAvailability.create!(item: wish, community_group: @other_group)
+        requests = requesters.map { |user| ItemRequestService.new.start_request!(user, wish, "Please may I have this one?") }
+        [ wish, requests ]
+      end
+
+      it "records the donor fulfilling a wish as donor_found, with no stored note" do
+        wish, (request, _) = wish_with_waiters(@requester)
+        assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+
+        matched = events(request.reload).last
+        assert_equal [ ItemRequest::IN_REVIEW_STATUS, @owner.id, nil ], [ matched.request_transition_status, matched.user_id, matched.content ]
+        json = ItemRequestService.message_json(matched)
+        assert_equal "donor_found", json[:event]
+        assert_equal "donor", json[:user_role]
+      end
+
+      it "keeps a moved wisher's thread, with the previous donor's messages still named as the donor" do
+        second_user = create_group_member("second")
+        wish, (first, second) = wish_with_waiters(@requester, second_user)
+        assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
+        second.reload.messages.create!(user: @owner, content: "Sorry, it may go to someone else")
+        ItemRequestService.new(first.reload).accept!
+        ItemRequestService.new(first.reload).complete!
+
+        second.reload
+        assert_not_equal wish.id, second.item_id
+        thread = second.messages.order(:created_at, :id).to_a
+        assert_equal [ "requested", "donor_found", nil, "moved" ],
+          thread.map { |message| ItemRequestService.message_json(message)[:event] }
+        assert_equal ItemRequestService::CLOSE_OUT_MOVED_NOTE, thread.last.content
+        assert_equal [ "requester", "donor", "donor", "donor" ],
+          thread.map { |message| ItemRequestService.message_json(message)[:user_role] }
+        assert_equal "Please may I have this one?", second.initial_message.content
+        assert_not second.message_thread_writable?, "no donor on the new wish yet"
+      end
+    end
+
+    describe "naming events" do
+      it "names each event in a thread with one lookup of the initial message" do
+        request = request_for
+        ItemRequestService.new(request).cancel!
+        ItemRequestService.new(request.reload).uncancel!
+        thread = ItemRequest.find(request.id).messages.includes(:user).order(:created_at, :id).to_a
+
+        kinds = nil
+        message_queries = 0
+        count = ->(*, payload) { message_queries += 1 if payload[:sql].include?('FROM "messages"') }
+        kinds = ActiveRecord::Base.uncached do
+          ActiveSupport::Notifications.subscribed(count, "sql.active_record") do
+            thread.map { |message| ItemRequestService.message_json(message)[:event] }
+          end
+        end
+        assert_equal 1, message_queries, "the initial message is looked up once for the whole thread"
+        assert_equal %w[requested cancelled reopened], kinds
+      end
     end
   end
 

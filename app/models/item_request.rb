@@ -1,5 +1,8 @@
 class ItemRequest < ApplicationRecord
   self.table_name = "item_requests"
+  # The request message now lives in the thread as the initial PENDING event (GS-9). The column is
+  # dropped in a later deploy; ignore it now so this code never reads or writes it.
+  self.ignored_columns += [ "message" ]
 
   # Status constants
   PENDING_STATUS = 0
@@ -51,7 +54,8 @@ class ItemRequest < ApplicationRecord
 
   alias_method :book, :item
 
-  validates :message, presence: true, length: { minimum: 10, maximum: 500 }
+  # The request message (the initial event's note); checked where requests are created.
+  INITIAL_MESSAGE_LENGTH = (10..500).freeze
   validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS, CANCELLED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
   validate :requester_cannot_request_own_item
@@ -71,7 +75,7 @@ class ItemRequest < ApplicationRecord
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
     %w[
-      id id_value requester_id item_id owner_id status message
+      id id_value requester_id item_id owner_id status
       created_at updated_at
     ]
   end
@@ -117,6 +121,24 @@ class ItemRequest < ApplicationRecord
   def can_update_status?
     return false if cancelled? || declined? || completed?
     accepted? || !other_requests.accepted.exists?
+  end
+
+  # The request's first PENDING event, whose content is the message the requester sent with it.
+  # Memoized: the first event never changes once written.
+  def initial_message
+    return @initial_message if defined?(@initial_message)
+    @initial_message = messages.transitions.where(request_transition_status: PENDING_STATUS).order(:created_at, :id).first
+  end
+
+  def reload(*)
+    remove_instance_variable(:@initial_message) if defined?(@initial_message)
+    super
+  end
+
+  # Whether either party can still add messages. A finished or cancelled request is read-only, and
+  # so is a request with no owner yet (an open wish), since there's nobody to message.
+  def message_thread_writable?
+    owner_id.present? && !(cancelled? || declined? || completed?)
   end
 
   # The other requests for the same item.

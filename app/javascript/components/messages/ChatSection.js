@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchChatMessages } from '../../lib/itemRequestsApi';
+import { fetchChatMessages, describeRequestEvent, eventShowsNote } from '../../lib/itemRequestsApi';
 import { createSubscription } from '../../lib/actionCable';
 import { linkifyText } from '../../lib/textUtils';
 
-const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
+const ROLE_LABELS = { requester: 'requester', owner: 'owner', donor: 'donor' };
+
+const formatEventTime = (iso) => new Date(iso).toLocaleString([], {
+  month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+});
+
+/**
+ * The request's message thread. Status changes appear in it as italic event lines; plain messages
+ * as bubbles, each named with its author's role. When `writable` is false the input is off and
+ * `closedNotice` explains why. `onEvent` runs when a status change arrives live.
+ */
+const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, closedNotice = null, onEvent }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -19,6 +30,8 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
   const backupHeartbeatIntervalRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const typingIndicatorTimeoutRef = useRef(null);
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -50,7 +63,8 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
             },
             received: (data) => {
               if (data.type === 'message' && data.message) {
-                setMessages(prev => [...prev, data.message]);
+                setMessages(prev => (prev.some(m => m.id === data.message.id) ? prev : [...prev, data.message]));
+                if (data.message.event && onEventRef.current) onEventRef.current(data.message);
               } else if (data.type === 'typing' && data.user_id === otherUser?.id) {
                 // Handle typing indicator from other user
                 if (data.is_typing) {
@@ -213,7 +227,7 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
 
   const handleSendMessage = async () => {
     const trimmedMessage = newMessage.trim();
-    if (!trimmedMessage || trimmedMessage.length > 1000 || sending) {
+    if (!writable || !trimmedMessage || trimmedMessage.length > 1000 || sending) {
       return;
     }
 
@@ -265,9 +279,8 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Chat with {otherUser?.name || 'User'}
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900">Messages</h3>
+            {otherUser && (
             <div className="flex items-center gap-1">
               <div
                 className={`w-3 h-3 rounded-full ${
@@ -279,6 +292,7 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
                 {isOtherUserActive() ? 'Active' : 'Inactive'}
               </span>
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -299,6 +313,21 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
           <div className="space-y-4">
             {messages.map((message) => {
               const isOwnMessage = message.user_id === currentUser?.id;
+              if (message.event) {
+                return (
+                  <div key={message.id} className="text-center px-2">
+                    <p className="text-sm italic text-gray-600">
+                      <span className="text-gray-400">{formatEventTime(message.created_at)} · </span>
+                      {describeRequestEvent(message, currentUser?.id)}
+                    </p>
+                    {eventShowsNote(message) && (
+                      <p className="mt-1 text-sm italic text-gray-500 whitespace-pre-wrap break-words">
+                        &ldquo;{linkifyText(message.content)}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div
                   key={message.id}
@@ -312,7 +341,9 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
                     }`}
                   >
                     <div className="text-xs font-medium mb-1 opacity-75">
-                      {isOwnMessage ? 'You' : message.user_name}
+                      {isOwnMessage
+                        ? 'You'
+                        : `${message.user_name}${ROLE_LABELS[message.user_role] ? ` (${ROLE_LABELS[message.user_role]})` : ''}`}
                     </div>
                     <div className="text-sm whitespace-pre-wrap break-words">
                       {linkifyText(message.content)}
@@ -341,7 +372,12 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
         </div>
       )}
 
-      {/* Message Input */}
+      {/* Message Input, or why the thread is read-only */}
+      {!writable ? (
+        <div className="p-4 border-t border-gray-200 bg-gray-50 text-sm text-gray-600">
+          {closedNotice || 'This conversation is read-only.'}
+        </div>
+      ) : (
       <div className="p-4 border-t border-gray-200">
         <div className="flex gap-2">
           <textarea
@@ -380,7 +416,9 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser }) => {
             <span className="text-amber-600">Connecting to chat...</span>
           )}
         </div>
+        <p className="mt-2 text-xs text-gray-500">This request is active.</p>
       </div>
+      )}
     </div>
   );
 };

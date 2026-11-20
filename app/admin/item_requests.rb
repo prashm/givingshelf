@@ -1,5 +1,5 @@
 ActiveAdmin.register ItemRequest do
-  permit_params :requester_id, :item_id, :owner_id, :status, :message
+  permit_params :requester_id, :item_id, :owner_id, :status
 
   index do
     selectable_column
@@ -25,7 +25,7 @@ ActiveAdmin.register ItemRequest do
     column :status do |request|
       ItemRequestService.new.display_status(request.status)
     end
-    column :message
+    column :message, &:initial_message
     column :created_at
     actions
   end
@@ -66,7 +66,7 @@ ActiveAdmin.register ItemRequest do
       row :status do
         ItemRequestService.new.display_status(item_request.status)
       end
-      row :message
+      row :message, &:initial_message
       row :created_at
       row :updated_at
     end
@@ -75,6 +75,9 @@ ActiveAdmin.register ItemRequest do
       table_for item_request.messages.order(created_at: :desc) do
         column :user do |message|
           link_to message.user.email_address, admin_user_path(message.user)
+        end
+        column :event do |message|
+          ItemRequest.status_label(message.request_transition_status) if message.transition?
         end
         column :content
         column :read_at
@@ -95,7 +98,6 @@ ActiveAdmin.register ItemRequest do
         "In Review" => ItemRequest::IN_REVIEW_STATUS,
         "Completed" => ItemRequest::COMPLETED_STATUS
       }
-      f.input :message
     end
     f.actions
   end

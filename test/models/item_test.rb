@@ -117,7 +117,7 @@ class ItemTest < ActiveSupport::TestCase
         status: ShareableItemStatus::WISHLIST
       )
       specs.each_with_index do |(user, status), i|
-        ItemRequest.create!(item: wish, requester: user, message: "Please may I have this book", status: status,
+        ItemRequest.create!(item: wish, requester: user, status: status,
           created_at: (specs.size - i).days.ago)
       end
       wish
@@ -152,7 +152,7 @@ class ItemTest < ActiveSupport::TestCase
       wish = wish_with_requests
       assert_nil wish.original_requester
 
-      ItemRequest.create!(item: wish, requester: users(:two), message: "Please may I have this book")
+      ItemRequest.create!(item: wish, requester: users(:two))
       assert_nil wish.original_requester, "memoized nil should not re-query"
 
       assert_equal users(:two), wish.reload.original_requester

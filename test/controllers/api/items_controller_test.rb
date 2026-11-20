@@ -87,7 +87,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "Summary text long enough for validations on the book model here.",
       status: ShareableItemStatus::WISHLIST
     )
-    ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+    ItemRequest.create!(item: wish, requester: users(:two))
     assert ItemService.new(wish).fulfill_wishlist_item(users(:one), { condition: "good" })
 
     sign_in_as(users(:one))
@@ -128,7 +128,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       summary: "Summary text long enough for validations on the book model here.",
       status: ShareableItemStatus::WISHLIST
     )
-    ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+    ItemRequest.create!(item: wish, requester: users(:two))
     assert ItemService.new(wish).fulfill_wishlist_item(users(:one), { condition: "good" })
 
     get api_item_url(wish), as: :json
@@ -354,7 +354,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert body["item_request_id"].present?
     req = ItemRequest.find(body["item_request_id"])
-    assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, req.message
+    assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, req.initial_message.content
     gia = req.item.group_item_availabilities.find_by(community_group_id: scoped_group.id)
     assert gia
     assert_nil gia.sub_group_id
@@ -386,7 +386,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :created
     req = ItemRequest.find(JSON.parse(response.body)["item_request_id"])
-    assert_equal custom, req.message
+    assert_equal custom, req.initial_message.content
   end
 
   test "fulfill_wishlist assigns donor and sets available" do
@@ -415,7 +415,6 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       item: book,
       requester: requester,
       owner: nil,
-      message: "I would love this book if anyone in the community has a copy.",
       status: ItemRequest::PENDING_STATUS
     )
 
@@ -504,7 +503,6 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       item: book,
       requester: requester,
       owner: nil,
-      message: "I would love this book if anyone in the community has a copy.",
       status: ItemRequest::PENDING_STATUS
     )
 
@@ -683,7 +681,6 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
       item: item,
       requester: requester,
       owner: nil,
-      message: "I would love this book if anyone in the community has a copy.",
       status: ItemRequest::PENDING_STATUS
     )
     item

@@ -38,7 +38,6 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       item: book,
       requester: @requester,
       owner: nil,
-      message: "I would love this book if anyone in the community has a copy.",
       status: ItemRequest::PENDING_STATUS
     )
     book

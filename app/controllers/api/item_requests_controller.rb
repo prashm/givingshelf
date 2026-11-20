@@ -4,7 +4,7 @@ class Api::ItemRequestsController < ApplicationController
 
   def index
     item_requests = item_request_service.requests_for_user(Current.user, params[:type])
-    render json: item_requests.map { |req| item_request_service.request_json(req) }
+    render json: item_request_service.requests_json(item_requests)
   end
 
   def show
@@ -26,7 +26,7 @@ class Api::ItemRequestsController < ApplicationController
   end
 
   def update
-    if item_request_service.update_request(Current.user, params[:action_type])
+    if item_request_service.update_request(Current.user, params[:action_type], note: params[:note])
       render json: item_request_service.request_json(item_request_service.item_request)
     else
       render json: { errors: item_request_service.errors }, status: :unprocessable_entity
@@ -34,7 +34,7 @@ class Api::ItemRequestsController < ApplicationController
   end
 
   def destroy
-    if item_request_service.cancel_request(Current.user)
+    if item_request_service.cancel_request(Current.user, note: params[:note])
       render json: item_request_service.request_json(item_request_service.item_request)
     else
       render json: { errors: item_request_service.errors }, status: :unprocessable_entity
@@ -57,15 +57,8 @@ class Api::ItemRequestsController < ApplicationController
       .reverse
 
     render json: {
-      messages: messages.map { |msg|
-        {
-          id: msg.id,
-          content: msg.content,
-          user_id: msg.user.id,
-          user_name: msg.user.display_name,
-          created_at: msg.created_at.iso8601
-        }
-      }
+      messages: messages.map { |msg| ItemRequestService.message_json(msg) },
+      message_thread_writable: @item_request.message_thread_writable?
     }
   end
 
