@@ -243,13 +243,16 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
   const closedNotice = (() => {
     if (request.message_thread_writable) return null;
+    // Cancelled comes first: a cancelled wish has no owner either, but its requester won't hear
+    // about offers until they reopen it.
+    if (currentStatusDisplay === 'Cancelled') {
+      if (isOwner) return 'The requester cancelled this request, so the conversation is read-only.';
+      return itemData?.owner
+        ? 'You cancelled this request. Reopen it to send messages again.'
+        : "You cancelled this request. Reopen it if you'd still like this item, and you'll be emailed when someone offers it.";
+    }
     if (!itemData?.owner) {
       return "No one has offered this item yet. You'll be emailed when someone does, and you can message them here.";
-    }
-    if (currentStatusDisplay === 'Cancelled') {
-      return isOwner
-        ? 'The requester cancelled this request, so the conversation is read-only.'
-        : 'You cancelled this request. Reopen it to send messages again.';
     }
     return `This request is ${String(currentStatusDisplay || 'closed').toLowerCase()}, so the conversation is read-only.`;
   })();
