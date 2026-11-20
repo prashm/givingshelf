@@ -3,14 +3,8 @@ class Api::ItemRequestsController < ApplicationController
   before_action :set_item_request, only: [ :show, :update, :destroy, :messages ]
 
   def index
-    item_requests = item_request_service.requests_for_user(Current.user, params[:type]).to_a
-    # The request message is each request's first PENDING event; load them in one query.
-    initial_messages = Message.transitions
-      .where(item_request_id: item_requests.map(&:id), request_transition_status: ItemRequest::PENDING_STATUS)
-      .order(:created_at, :id)
-      .pluck(:item_request_id, :content)
-      .reverse.to_h
-    render json: item_requests.map { |req| item_request_service.request_json(req, initial_message: initial_messages[req.id]) }
+    item_requests = item_request_service.requests_for_user(Current.user, params[:type])
+    render json: item_request_service.requests_json(item_requests)
   end
 
   def show
@@ -62,10 +56,9 @@ class Api::ItemRequestsController < ApplicationController
       .to_a
       .reverse
 
-    initial_event_id = ItemRequestService.initial_event_id_for(@item_request)
     render json: {
-      messages: messages.map { |msg| ItemRequestService.message_json(msg, initial_event_id: initial_event_id) },
-      thread_writable: @item_request.thread_writable?
+      messages: messages.map { |msg| ItemRequestService.message_json(msg) },
+      message_thread_writable: @item_request.message_thread_writable?
     }
   end
 

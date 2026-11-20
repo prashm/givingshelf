@@ -22,7 +22,7 @@ class ItemRequestChatChannel < ApplicationCable::Channel
       return
     end
 
-    unless @item_request.thread_writable?
+    unless @item_request.message_thread_writable?
       transmit({ type: "error", message: "This conversation is closed" })
       return
     end

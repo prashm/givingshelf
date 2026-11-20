@@ -98,7 +98,7 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     body = response.parsed_body
-    assert_equal false, body["thread_writable"]
+    assert_equal false, body["message_thread_writable"]
     assert_equal [ [ "requested", "requester" ], [ nil, "owner" ], [ "declined", "owner" ] ],
       body["messages"].map { |message| message.values_at("event", "user_role") }
     assert_equal ItemRequest::DECLINED_STATUS, body["messages"].last["request_transition_status"]

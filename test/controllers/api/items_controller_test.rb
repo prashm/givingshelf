@@ -354,7 +354,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert body["item_request_id"].present?
     req = ItemRequest.find(body["item_request_id"])
-    assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, req.initial_message
+    assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, req.initial_message.content
     gia = req.item.group_item_availabilities.find_by(community_group_id: scoped_group.id)
     assert gia
     assert_nil gia.sub_group_id
@@ -386,7 +386,7 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :created
     req = ItemRequest.find(JSON.parse(response.body)["item_request_id"])
-    assert_equal custom, req.initial_message
+    assert_equal custom, req.initial_message.content
   end
 
   test "fulfill_wishlist assigns donor and sets available" do

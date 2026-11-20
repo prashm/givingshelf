@@ -46,7 +46,7 @@ class ItemRequestEventsTest < ActiveSupport::TestCase
       request = request_for
 
       assert_equal [ [ ItemRequest::PENDING_STATUS, @requester.id, "I would love to read this book, please." ] ], event_summary(request)
-      assert_equal "I would love to read this book, please.", request.initial_message
+      assert_equal "I would love to read this book, please.", request.initial_message.content
       assert_equal "requested", ItemRequestService.message_json(events(request).first)[:event]
     end
 
@@ -200,22 +200,61 @@ class ItemRequestEventsTest < ActiveSupport::TestCase
       assert_equal ItemRequestService::CLOSE_OUT_MOVED_NOTE, thread.last.content
       assert_equal [ "requester", "donor", "donor", "donor" ],
         thread.map { |message| ItemRequestService.message_json(message)[:user_role] }
-      assert_equal "Please may I have this one?", second.initial_message
-      assert_not second.thread_writable?, "no donor on the new wish yet"
+      assert_equal "Please may I have this one?", second.initial_message.content
+      assert_not second.message_thread_writable?, "no donor on the new wish yet"
     end
   end
 
-  describe "#thread_writable?" do
-    it "is open while the request is live with an owner, and closed otherwise" do
+  describe "#initial_message" do
+    it "is the first PENDING event, looked up once, and again after a reload" do
       request = request_for
-      assert request.thread_writable?
+      first_event = events(request).first
+      assert_equal first_event, request.initial_message
+      ActiveRecord::Base.uncached { assert_no_queries { request.initial_message } }
 
       ItemRequestService.new(request).cancel!
-      assert_not request.reload.thread_writable?
+      ItemRequestService.new(request.reload).uncancel!
+      assert_equal first_event, request.reload.initial_message, "a reopen is not the initial message"
+    end
+
+    it "is looked up again after a reload, so a missing event found later is picked up" do
+      request = ItemRequest.create!(item: @book, requester: @requester)
+      assert_nil request.initial_message
+      request.messages.create!(user: @requester, request_transition_status: ItemRequest::PENDING_STATUS, content: "Backfilled later")
+
+      assert_equal "Backfilled later", request.reload.initial_message.content
+    end
+
+    it "names each event in a thread with one lookup of the initial message" do
+      request = request_for
+      ItemRequestService.new(request).cancel!
+      ItemRequestService.new(request.reload).uncancel!
+      thread = ItemRequest.find(request.id).messages.includes(:user).order(:created_at, :id).to_a
+
+      kinds = nil
+      message_queries = 0
+      count = ->(*, payload) { message_queries += 1 if payload[:sql].include?('FROM "messages"') }
+      kinds = ActiveRecord::Base.uncached do
+        ActiveSupport::Notifications.subscribed(count, "sql.active_record") do
+          thread.map { |message| ItemRequestService.message_json(message)[:event] }
+        end
+      end
+      assert_equal 1, message_queries, "the initial message is looked up once for the whole thread"
+      assert_equal %w[requested cancelled reopened], kinds
+    end
+  end
+
+  describe "#message_thread_writable?" do
+    it "is open while the request is live with an owner, and closed otherwise" do
+      request = request_for
+      assert request.message_thread_writable?
+
+      ItemRequestService.new(request).cancel!
+      assert_not request.reload.message_thread_writable?
       ItemRequestService.new(request).uncancel!
-      assert request.reload.thread_writable?
+      assert request.reload.message_thread_writable?
       ItemRequestService.new(request).decline!
-      assert_not request.reload.thread_writable?
+      assert_not request.reload.message_thread_writable?
     end
   end
 end

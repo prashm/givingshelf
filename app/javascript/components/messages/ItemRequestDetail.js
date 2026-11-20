@@ -242,8 +242,8 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   }
 
   const closedNotice = (() => {
-    if (request.thread_writable) return null;
-    if (!item?.owner) {
+    if (request.message_thread_writable) return null;
+    if (!itemData?.owner) {
       return "No one has offered this item yet. You'll be emailed when someone does, and you can message them here.";
     }
     if (currentStatusDisplay === 'Cancelled') {
@@ -379,7 +379,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           itemRequestId={itemRequestId}
           currentUser={currentUser}
           otherUser={currentUser.id === request.requester.id ? item?.owner : request.requester}
-          writable={Boolean(request.thread_writable)}
+          writable={Boolean(request.message_thread_writable)}
           closedNotice={closedNotice}
           onEvent={refreshRequest}
         />

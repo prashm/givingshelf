@@ -71,7 +71,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert result.persisted?
       assert_equal @requester, result.requester
       assert_equal book, result.item
-      assert_equal message, result.initial_message
+      assert_equal message, result.initial_message.content
       assert_equal ItemRequest::PENDING_STATUS, result.status
       assert service.errors.empty?
     end
@@ -1076,7 +1076,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_equal item_request.status, json[:status]
       assert_equal "Pending", json[:status_display]
       assert_equal "Test message that is long enough", json[:message]
-      assert_equal true, json[:thread_writable]
+      assert_equal true, json[:message_thread_writable]
       assert_equal item_request.created_at, json[:created_at]
       assert_equal item_request.updated_at, json[:updated_at]
       assert json[:book].present?
@@ -1096,6 +1096,30 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert json[:book].is_a?(Hash)
       assert_equal book.id, json[:book][:id]
       assert_equal book.title, json[:book][:title]
+    end
+  end
+
+  describe "#requests_json" do
+    it "gives each request its own initial message, loading them all in one query" do
+      book = setup_book_for_request(items(:one))
+      first = ItemRequestService.new.start_request!(@requester, book, "First requester's message here")
+      second = ItemRequestService.new.start_request!(create_other_requester, book, "Second requester's message")
+      # A later PENDING event (a reopen) must not replace the initial message.
+      first.messages.create!(user: @requester, request_transition_status: ItemRequest::PENDING_STATUS, content: "Reopening")
+      requests = ItemRequest.where(id: [ first.id, second.id ]).order(:id).to_a
+
+      message_queries = 0
+      count = ->(*, payload) { message_queries += 1 if payload[:sql].include?('FROM "messages"') }
+      json = ActiveRecord::Base.uncached do
+        ActiveSupport::Notifications.subscribed(count, "sql.active_record") { service.requests_json(requests) }
+      end
+
+      assert_equal [ "First requester's message here", "Second requester's message" ], json.map { |row| row[:message] }
+      assert_equal 1, message_queries
+    end
+
+    it "returns an empty list for no requests" do
+      assert_equal [], service.requests_json([])
     end
   end
 

@@ -12,7 +12,7 @@
     <p><%= @requester.display_name %> has requested your <%= item_type %> "<%= item_description %>".</p>
     
     <h3>Request Message:</h3>
-    <p><%= @item_request.message %></p>
+    <p><%= @item_request.initial_message&.content %></p>
     
     <h3>Requester Details:</h3>
     <ul>

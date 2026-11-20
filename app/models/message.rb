@@ -12,7 +12,7 @@ class Message < ApplicationRecord
   scope :transitions, -> { where.not(request_transition_status: nil) }
 
   def transition?
-    !request_transition_status.nil?
+    request_transition_status.present?
   end
 
   # Ransack allowlist for ActiveAdmin search/filter

@@ -1232,7 +1232,7 @@ class BookServiceTest < ActiveSupport::TestCase
       assert ir
       assert_equal ItemRequest::PENDING_STATUS, ir.status
       assert_nil ir.owner_id
-      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.initial_message
+      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.initial_message.content
       gia = book.group_item_availabilities.find_by(community_group_id: @other_group.id)
       assert gia
       assert_nil gia.sub_group_id
@@ -1251,7 +1251,7 @@ class BookServiceTest < ActiveSupport::TestCase
       })
       assert book, service.errors.to_sentence
       ir = book.item_requests.find_by(requester: @user)
-      assert_equal custom, ir.initial_message
+      assert_equal custom, ir.initial_message.content
     end
 
     it "falls back to default message when blank" do
@@ -1266,7 +1266,7 @@ class BookServiceTest < ActiveSupport::TestCase
       })
       assert book, service.errors.to_sentence
       ir = book.item_requests.find_by(requester: @user)
-      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.initial_message
+      assert_equal BookService::DEFAULT_WISHLIST_MESSAGE, ir.initial_message.content
     end
 
     it "returns nil when message is too short" do

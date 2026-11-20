@@ -26,7 +26,7 @@ class BackfillInitialRequestEventsTest < ActiveSupport::TestCase
     event = events.first
     assert_equal [ ItemRequest::PENDING_STATUS, request.requester_id, "I would love to read this book!", request.created_at ],
       [ event.request_transition_status, event.user_id, event.content, event.created_at ]
-    assert_equal "I would love to read this book!", request.initial_message
+    assert_equal "I would love to read this book!", request.initial_message.content
     assert_nil blank.messages.transitions.sole.content
     assert_equal ItemRequest.count, Message.transitions.where(request_transition_status: ItemRequest::PENDING_STATUS).count
   end

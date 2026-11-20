@@ -20,8 +20,7 @@ class ItemRequestService
 
   # JSON for one thread message. A transition event also carries the status it moved to, and an
   # `event` key naming what happened, which the UI turns into wording for each viewer.
-  # Pass initial_event_id when listing a thread, to save a query per PENDING event.
-  def self.message_json(message, initial_event_id: nil)
+  def self.message_json(message)
     request = message.item_request
     {
       id: message.id,
@@ -31,7 +30,7 @@ class ItemRequestService
       user_role: message_author_role(message, request),
       created_at: message.created_at.iso8601,
       request_transition_status: message.request_transition_status,
-      event: event_kind(message, request, initial_event_id)
+      event: event_kind(message, request)
     }
   end
 
@@ -41,27 +40,31 @@ class ItemRequestService
     request.item.wishlist_item? ? "donor" : "owner"
   end
 
-  def self.event_kind(message, request, initial_event_id = nil)
-    case message.request_transition_status
-    when nil then nil
+  # What a transition event means. Most are just the status they moved to ("accepted"), but a
+  # few statuses can be reached in more than one way, and the thread words those differently.
+  # A plain chat message has no event (nil).
+  def self.event_kind(message, request)
+    status = message.request_transition_status
+    case status
     when ItemRequest::PENDING_STATUS
-      return "moved" if message.user_id != request.requester_id
-      initial_event_id ||= initial_event_id_for(request)
-      message.id == initial_event_id ? "requested" : "reopened"
+      if message.user_id != request.requester_id
+        "moved"
+      elsif message.id == request.initial_message&.id
+        "requested"
+      else
+        "reopened"
+      end
     when ItemRequest::IN_REVIEW_STATUS
       # On a wish, the donor is the one who moves a request into review (by fulfilling it, or by
       # opening a later wisher's request), so it reads as a donor having been found.
       request.item.wishlist_item? ? "donor_found" : "viewed"
     when ItemRequest::DECLINED_STATUS
       message.content == CLOSE_OUT_DECLINED_NOTE ? "closed_out" : "declined"
-    when ItemRequest::ACCEPTED_STATUS then "accepted"
-    when ItemRequest::COMPLETED_STATUS then "completed"
-    when ItemRequest::CANCELLED_STATUS then "cancelled"
+    when ItemRequest::ACCEPTED_STATUS, ItemRequest::COMPLETED_STATUS, ItemRequest::CANCELLED_STATUS
+      ItemRequest.status_label(status).downcase
+    else
+      nil
     end
-  end
-
-  def self.initial_event_id_for(request)
-    request.messages.transitions.where(request_transition_status: ItemRequest::PENDING_STATUS).order(:created_at, :id).pick(:id)
   end
 
   def initialize(item_request = nil)
@@ -251,17 +254,30 @@ class ItemRequestService
     item_requests
   end
 
-  # initial_message: pass it when listing many requests, to save a query each.
-  def request_json(request, initial_message: :load)
+  # JSON for a list of requests. Loads every request's initial message in one query, rather than
+  # one query per request.
+  def requests_json(requests)
+    requests = requests.to_a
+    initial_messages = Message.transitions
+      .where(item_request_id: requests.map(&:id), request_transition_status: ItemRequest::PENDING_STATUS)
+      .order(:created_at, :id)
+      .group_by(&:item_request_id)
+    requests.map do |request|
+      request_json(request, initial_message: initial_messages[request.id]&.first)
+    end
+  end
+
+  # initial_message: the request's first PENDING event, when the caller already has it.
+  def request_json(request, initial_message: request.initial_message)
     {
       id: request.id,
       status: request.status,
       status_display: display_status(request.status),
-      message: initial_message == :load ? request.initial_message : initial_message,
+      message: initial_message&.content,
       created_at: request.created_at,
       updated_at: request.updated_at,
       can_update_status: request.can_update_status?,
-      thread_writable: request.thread_writable?,
+      message_thread_writable: request.message_thread_writable?,
       **requester_actions(request),
       requester: {
         id: request.requester.id,

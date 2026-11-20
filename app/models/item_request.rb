@@ -123,14 +123,21 @@ class ItemRequest < ApplicationRecord
     accepted? || !other_requests.accepted.exists?
   end
 
-  # The message the requester sent with the request: the note on its first PENDING event.
+  # The request's first PENDING event, whose content is the message the requester sent with it.
+  # Memoized: the first event never changes once written.
   def initial_message
-    messages.transitions.where(request_transition_status: PENDING_STATUS).order(:created_at, :id).first&.content
+    return @initial_message if defined?(@initial_message)
+    @initial_message = messages.transitions.where(request_transition_status: PENDING_STATUS).order(:created_at, :id).first
+  end
+
+  def reload(*)
+    remove_instance_variable(:@initial_message) if defined?(@initial_message)
+    super
   end
 
   # Whether either party can still add messages. A finished or cancelled request is read-only, and
   # so is a request with no owner yet (an open wish), since there's nobody to message.
-  def thread_writable?
+  def message_thread_writable?
     owner_id.present? && !(cancelled? || declined? || completed?)
   end
 
