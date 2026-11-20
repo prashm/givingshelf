@@ -20,6 +20,7 @@ const TOY_CONFIG = {
   emptyStateText: 'No Image Available',
   requestModalTitle: 'Request this toy',
   requestModalDescription: "Add a short message to the donor explaining why you'd like this toy or how you plan to pick it up.",
+  joinWishModalDescription: "No one has offered this toy yet. You'll be added to the members waiting for it, and the donor will see your note when someone offers a copy.",
   DetailIcon: GiftIcon
 };
 

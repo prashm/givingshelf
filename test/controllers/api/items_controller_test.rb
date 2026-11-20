@@ -98,6 +98,30 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Original Wish", wish.reload.title
   end
 
+  test "create_wishlist joins the existing wish and says so" do
+    group = community_groups(:one)
+    CommunityGroupMembership.find_or_create_by!(user: users(:one), community_group: group)
+    body = ->(note) {
+      { type: "Book", item: { title: "Joined Wish", author: "Author", published_year: 2020,
+        summary: "Summary text long enough for validations on the book model here.",
+        community_group_id: group.id, message: note } }
+    }
+
+    sign_in_as(users(:two))
+    post wishlist_api_items_url, params: body.call("I would love this book please")
+    assert_response :created
+    first = response.parsed_body
+    assert_equal false, first["joined_existing"]
+
+    sign_in_as(users(:one))
+    assert_no_difference -> { Item.count } do
+      post wishlist_api_items_url, params: body.call("Me too, for my book club")
+    end
+    assert_response :created
+    assert_equal true, response.parsed_body["joined_existing"]
+    assert_equal first["item_id"], response.parsed_body["item_id"]
+  end
+
   test "item detail exposes wishlist_item for a fulfilled wish" do
     wish = Book.create!(
       user_id: nil, title: "Shown Wish", author: "Author", genre: "Fiction", published_year: 2020,

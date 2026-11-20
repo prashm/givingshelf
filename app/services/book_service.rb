@@ -24,6 +24,17 @@ class BookService < ItemService
 
   private
 
+  # A book also matches a wish with the same ISBN, whatever its title.
+  def wish_identity_scope(scope, attrs)
+    by_title = super
+    isbn13 = Book.to_isbn13(attrs[:isbn])
+    isbn13.present? ? by_title.or(scope.where(isbn: isbn13)) : by_title
+  end
+
+  def wish_creator_attribute
+    "author"
+  end
+
   def type_fields(book, detail:)
     fields = { author: book.author, genre: book.genre, published_year: book.published_year }
     detail ? fields.merge(isbn: book.isbn) : fields

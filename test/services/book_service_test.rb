@@ -1124,6 +1124,99 @@ class BookServiceTest < ActiveSupport::TestCase
     end
   end
 
+  # The create flow when a wish matches. The matching rules themselves are unit-tested in
+  # item_service_test.rb ("#find_matching_wish").
+  describe "joining an existing wish" do
+    def wish_params(overrides = {})
+      {
+        title: "Shared Wish",
+        author: "Jane Writer",
+        summary: "A summary that is more than long enough to validate successfully.",
+        published_year: 2020,
+        community_group_id: @other_group.id
+      }.merge(overrides)
+    end
+
+    def create_wish(user, overrides = {})
+      service = BookService.new
+      wish = service.create_wishlist_item(user, wish_params(overrides))
+      assert wish, service.errors.to_sentence
+      wish
+    end
+
+    # Validations want a full profile on create; fill it in afterwards, like the GS-14 tests.
+    def create_user(name)
+      user = User.create!(email_address: "#{name}_#{SecureRandom.hex(4)}@example.com", verified: true,
+        password_digest: BCrypt::Password.create("password123!"))
+      user.update_columns(first_name: name.capitalize, last_name: "Tester", zip_code: "12345")
+      user
+    end
+
+    it "adds a request to the wish with the same ISBN instead of creating an item" do
+      wish = create_wish(users(:two), isbn: "9780306406157", title: "Shared Wish (Paperback)")
+      service = BookService.new
+
+      assert_no_difference -> { Item.count } do
+        assert_equal wish, service.create_wishlist_item(@user, wish_params(isbn: "0-306-40615-2"))
+      end
+      assert service.joined_existing
+      assert_equal wish, service.item_request.item
+      assert_equal [ users(:two).id, @user.id ].sort, wish.item_requests.pending.pluck(:requester_id).sort
+    end
+
+    it "refuses a second request from someone already on the wish" do
+      wish = create_wish(users(:two))
+      service = BookService.new
+
+      assert_no_difference [ "Item.count", "ItemRequest.count" ] do
+        assert_nil service.create_wishlist_item(users(:two), wish_params)
+      end
+      assert_includes service.errors.join(" "), "You already requested this item"
+      assert_equal 1, wish.item_requests.count
+    end
+
+    it "joins a fulfilled wish that hasn't been donated, as a request to the donor" do
+      wish = create_wish(users(:two))
+      donor = create_user("donor")
+      assert ItemService.new(wish).fulfill_wishlist_item(donor, { condition: "good" })
+      service = BookService.new
+
+      assert_equal wish, service.create_wishlist_item(@user, wish_params)
+      request = service.item_request
+      assert_equal ItemRequest::PENDING_STATUS, request.status
+      assert_equal donor, request.owner
+    end
+
+    it "joins a fulfilled wish whose donor has accepted someone else" do
+      wish = create_wish(users(:two))
+      donor = create_user("donor")
+      assert ItemService.new(wish).fulfill_wishlist_item(donor, { condition: "good" })
+      assert ItemRequestService.new(wish.item_requests.first).update_request(donor, "accept")
+      assert wish.reload.requested?
+      service = BookService.new
+
+      assert_equal wish, service.create_wishlist_item(@user, wish_params), service.errors.to_sentence
+      assert_equal ItemRequest::PENDING_STATUS, service.item_request.status
+      assert_not service.item_request.can_update_status?
+    end
+  end
+
+  describe "wishlist sub-group visibility" do
+    it "shows a wish in a sub-group someone waiting on it belongs to" do
+      wish = Book.create!(title: "Seen Wish", author: "A", summary: "A summary that is more than long enough to validate.", published_year: 2020, status: ShareableItemStatus::WISHLIST)
+      GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
+      CommunityGroupMembership.find_by!(user: users(:two), community_group: @other_group).update!(sub_group: sub_groups(:two))
+      request = ItemRequest.create!(item: wish, requester: users(:two), message: "I would love this book please")
+      service = BookService.new
+
+      assert_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:two).id).pluck(:id), wish.id
+      assert_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:one).id).pluck(:id), wish.id
+
+      request.update_columns(status: ItemRequest::CANCELLED_STATUS)
+      assert_not_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:two).id).pluck(:id), wish.id
+    end
+  end
+
   describe "#create_wishlist_item" do
     it "creates wishlist book, pending item request, and group availability" do
       service = BookService.new

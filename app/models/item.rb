@@ -87,6 +87,12 @@ class Item < ApplicationRecord
     status == ShareableItemStatus::DONATED
   end
 
+  # Whether a new request can be made. A fulfilled wish takes more wishers while its donor has
+  # accepted someone, so they wait their turn; the owner can't act on them meanwhile (GS-7).
+  def open_to_requests?
+    available? || wishlist? || (requested? && wishlist_item?)
+  end
+
   def owner?(current_user)
     current_user.present? && user == current_user
   end
