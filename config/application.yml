@@ -1,6 +1,6 @@
 shared:
   # Login sessions idle longer than this are rejected (see Session::IDLE_TIMEOUT).
-  session_idle_timeout_minutes: 120
+  session_idle_timeout_minutes: <%= ENV["SESSION_IDLE_TIMEOUT_MINUTES"].presence || 120 %>
 
 development:
   domain: lvh.me
@@ -14,5 +14,3 @@ test:
 production:
   domain: givingshelf.net
   protocol: https
-  # Override on the server (.env) without a code change.
-  session_idle_timeout_minutes: <%= ENV["SESSION_IDLE_TIMEOUT_MINUTES"].presence || 120 %>
