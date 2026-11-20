@@ -401,4 +401,140 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_equal [ "#{@user.zip_code} Community" ], ItemService.new.item_detail_map(@item)[:community_group_names]
     end
   end
+
+  # Unit tests for the matching query behind joining a wish (GS-13). The create flow that uses it
+  # is tested in book_service_test.rb ("joining an existing wish").
+  describe "#find_matching_wish" do
+    # An ownerless wish shared in group (and sub_group), with users(:two) waiting on it.
+    def wish(title: "Matched Wish", author: "Jane Writer", isbn: nil, group: @group_one, sub_group: nil, waiting: users(:two))
+      book = Book.create!(
+        user_id: nil, title: title, author: author, isbn: isbn, genre: "Fiction", published_year: 2020,
+        summary: "Summary text long enough for validations on the book model here.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: book, community_group: group, sub_group: sub_group)
+      ItemRequest.create!(item: book, requester: waiting, message: "I would love this book please") if waiting
+      book
+    end
+
+    def find(attrs = {}, group: @group_one, sub_group: nil, requester: @user, service: BookService.new)
+      service.find_matching_wish(requester, { title: "Matched Wish", author: "Jane Writer" }.merge(attrs), group.id, sub_group&.id)
+    end
+
+    def create_user(name, zip_code: "12345")
+      user = User.create!(email_address: "#{name}_#{SecureRandom.hex(4)}@example.com", verified: true,
+        password_digest: BCrypt::Password.create("password123!"))
+      user.update_columns(first_name: name.capitalize, last_name: "Tester", zip_code: zip_code)
+      user
+    end
+
+    describe "identity" do
+      it "matches the title and author whatever the case and spacing" do
+        match = wish
+        assert_equal match, find({ title: "  matched   WISH ", author: "jane writer" })
+      end
+
+      it "needs the same author too" do
+        wish
+        assert_nil find({ author: "Someone Else" })
+      end
+
+      it "matches a book with the same ISBN-13 under another title, from ISBN-10 input" do
+        match = wish(title: "Matched Wish (Paperback)", isbn: "9780306406157")
+        assert_equal match, find({ title: "Something else", isbn: "0-306-40615-2" })
+      end
+
+      it "matches a toy on its title and brand, and never a book" do
+        toy = Toy.create!(user_id: nil, title: "Matched Wish", brand: "Lego", age_range: "5-7",
+          summary: "A long enough summary for wishlist toy matching assertions here.",
+          status: ShareableItemStatus::WISHLIST)
+        GroupItemAvailability.create!(item: toy, community_group: @group_one)
+        ItemRequest.create!(item: toy, requester: users(:two), message: "I would love this toy please")
+
+        assert_equal toy, find({ brand: "LEGO" }, service: ToyService.new)
+        assert_nil find({ brand: "Mattel" }, service: ToyService.new)
+        assert_nil find, "a book search doesn't return the toy"
+      end
+
+      it "returns the oldest match" do
+        older = wish
+        wish(waiting: create_user("later"))
+        assert_equal older, find
+      end
+    end
+
+    describe "candidates" do
+      it "needs someone still waiting" do
+        match = wish
+        match.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+        assert_nil find
+        match.item_requests.update_all(status: ItemRequest::DECLINED_STATUS)
+        assert_nil find
+      end
+
+      it "includes a fulfilled wish until it's donated" do
+        match = wish
+        donor = create_user("donor")
+        match.update_columns(user_id: donor.id, status: ShareableItemStatus::AVAILABLE)
+        assert_equal match, find
+        match.update_columns(status: ShareableItemStatus::REQUESTED)
+        match.item_requests.update_all(status: ItemRequest::ACCEPTED_STATUS)
+        assert_equal match, find, "an accepted request still counts as waiting"
+        match.update_columns(status: ShareableItemStatus::DONATED)
+        assert_nil find
+      end
+
+      it "skips an item the requester is giving away themselves" do
+        match = wish
+        match.update_columns(user_id: @user.id, status: ShareableItemStatus::AVAILABLE)
+        assert_nil find
+      end
+
+      it "skips an item that didn't start as a wish" do
+        @item.update!(title: "Matched Wish", author: "Jane Writer")
+        GroupItemAvailability.create!(item: @item, community_group: @group_one)
+        ItemRequest.create!(item: @item, requester: users(:two), message: "I would love this book please")
+        assert_nil find
+      end
+    end
+
+    describe "location" do
+      it "needs the same group" do
+        wish(group: @group_two)
+        assert_nil find
+      end
+
+      it "without a sub-group, matches only a wish with no sub-group" do
+        wish(sub_group: @sub_group_one)
+        assert_nil find
+        match = wish(waiting: create_user("nosub"))
+        assert_equal match, find
+      end
+
+      it "matches a wish in the requester's sub-group, but not another sub-group" do
+        match = wish(sub_group: @sub_group_one)
+        assert_equal match, find(sub_group: @sub_group_one)
+        assert_nil find(sub_group: @sub_group_two)
+      end
+
+      it "matches a wish someone waiting on belongs to the requester's sub-group" do
+        match = wish(sub_group: @sub_group_one)
+        neighbour = create_user("neighbour")
+        CommunityGroupMembership.create!(user: neighbour, community_group: @group_one, sub_group: @sub_group_two)
+        ItemRequest.create!(item: match, requester: neighbour, message: "I would love this book please")
+        assert_equal match, find(sub_group: @sub_group_two)
+
+        match.item_requests.where(requester: neighbour).update_all(status: ItemRequest::CANCELLED_STATUS)
+        assert_nil find(sub_group: @sub_group_two), "only people still waiting count"
+      end
+
+      it "in the ZIP Code Community, needs someone waiting with the requester's ZIP code" do
+        zip_group = CommunityGroup.find_or_create_zipcode_group!
+        match = wish(group: zip_group, waiting: create_user("near", zip_code: "94110"))
+
+        assert_nil find(group: zip_group, requester: create_user("far", zip_code: "10001"))
+        assert_equal match, find(group: zip_group, requester: create_user("close", zip_code: "94110"))
+      end
+    end
+  end
 end

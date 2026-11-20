@@ -143,21 +143,12 @@ class ItemService
         # Serialize wishes for the same title in the group, so two wishers can't both miss the match.
         lock_wish_key!(cg_id, item_params[:title])
         sub_group_id = requester.group_memberships[cg_id.to_i]
-        if (match = find_matching_wish(requester, item_params, cg_id, sub_group_id))
+        match = find_matching_wish(requester, item_params, cg_id, sub_group_id)
+        if match
           join_wish!(requester, match, message)
-          next
+        else
+          create_wish!(requester, item_params, community_group_ids, cover_image_url, message)
         end
-
-        @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
-        sync_group_item_availabilities!(requester, community_group_ids)
-        handle_api_cover_image(cover_image_url)
-        @item_request = ItemRequest.create!(
-          item: @item,
-          requester: requester,
-          owner: nil,
-          message: message,
-          status: ItemRequest::PENDING_STATUS
-        )
       end
     end
     @item
@@ -172,10 +163,14 @@ class ItemService
   def find_matching_wish(requester, attrs, community_group_id, sub_group_id)
     attrs = attrs.to_h.with_indifferent_access
     candidates = type_class
+      # Started as a wish, and is still open or fulfilled but not donated.
       .where(wishlist_item: true, status: JOINABLE_WISH_STATUSES)
-      .where("items.user_id IS DISTINCT FROM ?", requester.id)
+      # Not something the requester is giving away themselves (they'd donated a fulfilled wish).
+      .where("items.user_id IS NULL OR items.user_id <> ?", requester.id)
+      # Shared in the requested group.
       .joins(:group_item_availabilities)
       .where(group_item_availabilities: { community_group_id: community_group_id })
+      # Someone is still waiting on it.
       .where("EXISTS (SELECT 1 FROM item_requests waiting WHERE waiting.item_id = items.id AND waiting.status IN (?))", WAITING_REQUEST_STATUSES)
     candidates = wish_identity_scope(candidates, attrs)
     candidates = wish_location_scope(candidates, requester, community_group_id, sub_group_id)
@@ -468,6 +463,20 @@ class ItemService
     zips = item.wishlist? ? item.requesters.pluck("users.zip_code") : [ item.user&.zip_code ]
     zips = zips.compact_blank.uniq.sort
     zips.any? ? "#{zips.join(', ')} Community" : "ZIP Code Community"
+  end
+
+  # A new ownerless wish in the requester's group, with their pending request.
+  def create_wish!(requester, item_params, community_group_ids, cover_image_url, message)
+    @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
+    sync_group_item_availabilities!(requester, community_group_ids)
+    handle_api_cover_image(cover_image_url)
+    @item_request = ItemRequest.create!(
+      item: @item,
+      requester: requester,
+      owner: nil,
+      message: message,
+      status: ItemRequest::PENDING_STATUS
+    )
   end
 
   # Adds the requester to an existing wish. Raises (rolling back) if they can't request it,

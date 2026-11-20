@@ -1124,6 +1124,8 @@ class BookServiceTest < ActiveSupport::TestCase
     end
   end
 
+  # The create flow when a wish matches. The matching rules themselves are unit-tested in
+  # item_service_test.rb ("#find_matching_wish").
   describe "joining an existing wish" do
     def wish_params(overrides = {})
       {
@@ -1150,10 +1152,6 @@ class BookServiceTest < ActiveSupport::TestCase
       user
     end
 
-    def set_sub_group(user, group, sub_group)
-      CommunityGroupMembership.find_by!(user: user, community_group: group).update!(sub_group: sub_group)
-    end
-
     it "adds a request to the wish with the same ISBN instead of creating an item" do
       wish = create_wish(users(:two), isbn: "9780306406157", title: "Shared Wish (Paperback)")
       service = BookService.new
@@ -1164,25 +1162,6 @@ class BookServiceTest < ActiveSupport::TestCase
       assert service.joined_existing
       assert_equal wish, service.item_request.item
       assert_equal [ users(:two).id, @user.id ].sort, wish.item_requests.pending.pluck(:requester_id).sort
-    end
-
-    it "matches the title and author whatever the case and spacing" do
-      wish = create_wish(users(:two))
-      service = BookService.new
-
-      assert_equal wish, service.create_wishlist_item(@user, wish_params(title: "  shared   WISH ", author: "jane  writer"))
-      assert service.joined_existing
-    end
-
-    it "creates a separate wish for a different author or a different group" do
-      wish = create_wish(users(:two))
-
-      other_author = create_wish(@user, author: "Someone Else")
-      assert_not_equal wish, other_author
-
-      group_two = community_groups(:two)
-      other_group = create_wish(@user, title: "Shared Wish", author: "Jane Writer", community_group_id: group_two.id)
-      assert_not_equal wish, other_group
     end
 
     it "refuses a second request from someone already on the wish" do
@@ -1219,43 +1198,6 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_equal wish, service.create_wishlist_item(@user, wish_params), service.errors.to_sentence
       assert_equal ItemRequest::PENDING_STATUS, service.item_request.status
       assert_not service.item_request.can_update_status?
-    end
-
-    it "doesn't join a donated wish or one nobody is waiting on" do
-      donated = create_wish(users(:two))
-      donated.update_columns(status: ShareableItemStatus::DONATED)
-      assert_not_equal donated, create_wish(@user)
-
-      Item.where(title: "Shared Wish").find_each { |item| item.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS) }
-      abandoned = Item.where(title: "Shared Wish", status: ShareableItemStatus::WISHLIST).first
-      fresh = create_wish(users(:two))
-      assert_not_equal abandoned, fresh
-    end
-
-    it "matches only in the requester's sub-group, or one a waiting requester belongs to" do
-      set_sub_group(users(:two), @other_group, sub_groups(:one))
-      set_sub_group(@user, @other_group, sub_groups(:two))
-      wish = create_wish(users(:two))
-      assert_not_equal wish, create_wish(@user), "a different sub-group gets its own wish"
-
-      # Once someone in sub-group two is waiting on the first wish, it matches there too.
-      third = create_user("third")
-      CommunityGroupMembership.create!(user: third, community_group: @other_group, sub_group: sub_groups(:two))
-      assert ItemRequestService.new.create_request(third, wish.id, "I would love this book please")
-      Item.where(title: "Shared Wish").where.not(id: wish.id).find_each { |item| item.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS) }
-
-      service = BookService.new
-      assert_equal wish, service.create_wishlist_item(@user, wish_params), service.errors.to_sentence
-    end
-
-    it "in the ZIP Code Community, matches only a wish someone with the same ZIP code is waiting on" do
-      wish = create_wish(users(:two), community_group_id: @zip_group.id)
-      assert_not_equal wish, create_wish(@user, community_group_id: @zip_group.id), "different ZIP codes"
-
-      Item.where(title: "Shared Wish").where.not(id: wish.id).destroy_all
-      @user.update_columns(zip_code: users(:two).zip_code)
-      service = BookService.new
-      assert_equal wish, service.create_wishlist_item(@user.reload, wish_params(community_group_id: @zip_group.id))
     end
   end
 
