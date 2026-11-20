@@ -319,6 +319,7 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                         Edit
                       </button>
 
+                      {item.can_delete && (
                       <button
                         onClick={() => handleDeleteItem(item)}
                         disabled={deletingItemId === item.id}
@@ -331,6 +332,7 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                           <TrashIcon className="h-4 w-4" />
                         )}
                       </button>
+                      )}
                     </div>
                   </div>
                 </div>

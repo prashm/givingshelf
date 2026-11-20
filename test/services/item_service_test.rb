@@ -640,17 +640,16 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_not_includes ItemRequest.for_item_owner(@user), waiter, "the donor no longer sees the moved request"
     end
 
-    it "keeps a donated item's handoff in the stats" do
+    it "refuses a donated item, which stays as the record of the handoff" do
       winner = request_on(@item, "winner")
       ItemRequestService.new(winner).accept!
       ItemRequestService.new(winner.reload).complete!
-      before = BookService.new.community_stats(community_group_id: @group_one.id)
 
-      assert remove(item: @item.reload).first
-      after = BookService.new.community_stats(community_group_id: @group_one.id)
-
+      ok, errors = remove(item: @item.reload)
+      assert_not ok
+      assert_equal [ ItemService::DONATED_ITEM_CANT_BE_REMOVED ], errors
+      assert_nil @item.reload.deleted_at
       assert_equal ItemRequest::COMPLETED_STATUS, winner.reload.status
-      assert_equal before.slice(:items_donated, :happy_users, :items_requested), after.slice(:items_donated, :happy_users, :items_requested)
     end
 
     it "rolls everything back when a step fails part-way" do
@@ -707,21 +706,6 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_includes ItemRequest.joins(:item).where(items: { id: @item.id }), request
     end
 
-    it "still count toward donations when the stats filter by ZIP code" do
-      zip_group = CommunityGroup.find_or_create_zipcode_group!
-      GroupItemAvailability.create!(item: @item, community_group: zip_group)
-      @user.update_columns(zip_code: "80027")
-      @item.update_columns(deleted_at: nil, status: ShareableItemStatus::DONATED)
-      ItemRequest.new(item: @item, requester: users(:two), owner: @user, status: ItemRequest::COMPLETED_STATUS).save!(validate: false)
-      before = BookService.new.community_stats(zip_code: "80027")
-
-      @item.update_columns(deleted_at: Time.current)
-      after = BookService.new.community_stats(zip_code: "80027")
-
-      assert_equal before.slice(:items_donated, :happy_users, :items_requested), after.slice(:items_donated, :happy_users, :items_requested)
-      assert_operator before[:items_donated], :>=, 1
-    end
-
     it "can't be requested" do
       requester = users(:two)
       CommunityGroupMembership.find_or_create_by!(user: requester, community_group: @group_one)
@@ -746,7 +730,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_nil BookService.new.find_matching_wish(wisher, attrs, @group_one.id, nil)
     end
 
-    it "tell the delete dialog how many requests are open, and whether one is accepted" do
+    it "tell My Items whether they can be deleted, how many requests are open, and whether one is accepted" do
       @item.update_columns(deleted_at: nil)
       users = Array.new(3) do |i|
         u = User.create!(email_address: "c#{i}_#{SecureRandom.hex(4)}@example.com", verified: true, password_digest: BCrypt::Password.create("password123!"))
@@ -757,11 +741,14 @@ class ItemServiceTest < ActiveSupport::TestCase
       ItemRequest.create!(item: @item, requester: users[2], status: ItemRequest::CANCELLED_STATUS)
 
       json = ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))
-      assert_equal [ 2, false ], json.values_at(:open_request_count, :has_accepted_request)
+      assert_equal [ true, 2, false ], json.values_at(:can_delete, :open_request_count, :has_accepted_request)
 
       ItemRequest.where(item: @item, requester: users[0]).update_all(status: ItemRequest::ACCEPTED_STATUS)
       json = ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))
       assert_equal [ 1, true ], json.values_at(:open_request_count, :has_accepted_request)
+
+      @item.update_columns(status: ShareableItemStatus::DONATED)
+      assert_equal false, ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))[:can_delete]
     end
   end
 end

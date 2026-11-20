@@ -68,8 +68,9 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
   const handleStatusUpdate = async (actionType) => {
     if (updatingStatus) return;
-    if (actionType === 'decline') {
-      openDialog('decline');
+    // Decline and complete end the conversation, so they go through a dialog that takes a last note.
+    if (actionType === 'decline' || actionType === 'complete') {
+      openDialog(actionType);
       return;
     }
 
@@ -367,6 +368,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           currentUser={currentUser}
           otherUser={currentUser.id === request.requester.id ? item?.owner : request.requester}
           writable={Boolean(request.message_thread_writable)}
+          historyVersion={request.status}
           closedNotice={closedNotice}
           onEvent={refreshRequest}
         />

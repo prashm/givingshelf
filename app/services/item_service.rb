@@ -11,6 +11,7 @@ class ItemService
   # The owner's note when deleting an item follows a fixed text in one message (max 1000 characters).
   REMOVAL_NOTE_MAX = 900
   ACCEPTED_REQUEST_BLOCKS_REMOVAL = "You have an accepted request for this item. Decline or complete it first.".freeze
+  DONATED_ITEM_CANT_BE_REMOVED = "A donated item can't be deleted. It stays in your items as a record of the handoff.".freeze
   # Lower-cased, trimmed, with runs of whitespace collapsed; see #normalize_wish_text.
   NORMALIZED_WISH_SQL = {
     "title" => "regexp_replace(lower(btrim(coalesce(items.title, ''))), '\\s+', ' ', 'g')",
@@ -115,10 +116,11 @@ class ItemService
     false
   end
 
-  # Deletes the item for its owner (GS-12). Refused while a request is accepted. Otherwise the open
-  # requests get a final result first (declined, or for a fulfilled wish, moved to a new wish), with
-  # the owner's optional note. An item that ever had a request is then only marked deleted, so the
-  # requests, their threads and past handoffs survive; one that never had a request is destroyed.
+  # Deletes the item for its owner (GS-12). Refused for a donated item (it's the record of a handoff)
+  # and while a request is accepted. Otherwise the open requests get a final result first (declined,
+  # or for a fulfilled wish, moved to a new wish), with the owner's optional note. An item that ever
+  # had a request is then only marked deleted, so the requests and their threads survive; one that
+  # never had a request is destroyed.
   def remove_item(current_user, note: nil)
     raise "Not authorized" unless item.owner?(current_user)
     raise "This item was already removed" if item.deleted?
@@ -128,10 +130,12 @@ class ItemService
     ActiveRecord::Base.transaction do
       # Lock the item so no request can be accepted or added while it's being removed.
       item.lock!
-      raise ACCEPTED_REQUEST_BLOCKS_REMOVAL if item.item_requests.accepted.exists?
+      raise DONATED_ITEM_CANT_BE_REMOVED if item.donated?
+      requests = item.item_requests.order(:created_at, :id).to_a
+      raise ACCEPTED_REQUEST_BLOCKS_REMOVAL if requests.any?(&:accepted?)
 
-      if item.item_requests.exists?
-        open_requests = item.item_requests.awaiting_decision.order(:created_at, :id).to_a
+      if requests.any?
+        open_requests = requests.select { |request| ItemRequest::OPEN_STATUSES.include?(request.status) }
         ItemRequestService.new.close_out_requests!(item, open_requests, current_user,
           declined_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_NOTE, note),
           moved_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_MOVED_NOTE, note))
@@ -313,7 +317,7 @@ class ItemService
       items = apply_user_join(items, user_join_type)
     end
 
-    items = items.merge(Item.unscoped.overlapping_age_bucket(age_range)) if age_range.present?
+    items = items.merge(Item.overlapping_age_bucket(age_range)) if age_range.present?
 
     items.distinct
   end
@@ -331,15 +335,13 @@ class ItemService
     )
   end
 
-  # Deleted items still count toward donations, requests and happy users (that history happened),
-  # but not toward items shared.
   def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    base_items = search_items(base_scope: type_class.with_deleted, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
+    base_items = search_items(base_scope: type_class, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     wishlisted_items = wishlist_items(zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
-      items_shared: base_items.where(deleted_at: nil).where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
+      items_shared: base_items.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
       items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
       happy_users: base_requests.completed.distinct.count(:requester_id),
@@ -445,12 +447,13 @@ class ItemService
     result
   end
 
-  # List JSON for one of the owner's items (My Items), with what the delete dialog needs: how many
-  # requests are still waiting on it, and whether one is accepted (which blocks deleting it).
-  # Expects item_requests preloaded.
+  # List JSON for one of the owner's items (My Items), with what deleting needs: whether it can be
+  # deleted at all (not once donated), how many requests are still waiting on it, and whether one is
+  # accepted (which blocks deleting it for now). Expects item_requests preloaded.
   def my_item_map(item)
     requests = item.item_requests.to_a
     item_map(item).merge(
+      can_delete: !item.donated?,
       open_request_count: requests.count { |request| ItemRequest::OPEN_STATUSES.include?(request.status) },
       has_accepted_request: requests.any?(&:accepted?)
     )
@@ -659,8 +662,6 @@ class ItemService
     end
   end
 
-  # A filter merged into a search. Built on Item.unscoped so merging it doesn't bring Item's default
-  # scope (hide deleted items) back into a search that asked to include them (community_stats).
   def zip_code_scope(zip_code, radius, user_join_type = :owner)
     user_table = user_join_type == :requester ? "requesters" : "users"
     
@@ -672,7 +673,7 @@ class ItemService
         lat = search_coords[:latitude]
         lng = search_coords[:longitude]
 
-        scope = Item.unscoped.where(
+        scope = Item.where(
           "(6371 * acos(GREATEST(-1.0, LEAST(1.0, cos(radians(?)) * cos(radians(#{user_table}.latitude)) * cos(radians(#{user_table}.longitude) - radians(?)) + sin(radians(?)) * sin(radians(#{user_table}.latitude)))))) * 0.621371 <= ? AND #{user_table}.latitude IS NOT NULL AND #{user_table}.longitude IS NOT NULL",
           lat, lng, lat, radius_miles
         )
@@ -682,7 +683,7 @@ class ItemService
       end
     end
     unless radius_scope
-      scope = Item.unscoped.where("#{user_table}.zip_code" => zip_code)
+      scope = Item.where("#{user_table}.zip_code" => zip_code)
     end
     scope
   end

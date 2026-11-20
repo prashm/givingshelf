@@ -27,10 +27,10 @@ class Item < ApplicationRecord
   scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
-  # An item its owner deleted while it had requests is kept, hidden, so those requests, their
-  # threads and past handoffs survive (GS-12). Hidden is the default: Item queries never return a
-  # deleted item unless they ask for it with .with_deleted. A request's own item is always loaded
-  # (see ItemRequest#item), and history stats count deleted items (ItemService#community_stats).
+  # An item its owner deleted while it had requests is kept, hidden, so those requests and their
+  # threads survive (GS-12). Hidden is the default: Item queries never return a deleted item unless
+  # they ask for it with .with_deleted. A request's own item is always loaded (see ItemRequest#item).
+  # Donated items can't be deleted, so deleted items carry no handoff history and stats skip them.
   default_scope { where(deleted_at: nil) }
   scope :with_deleted, -> { unscope(where: :deleted_at) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
