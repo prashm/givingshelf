@@ -48,7 +48,8 @@ class ItemRequest < ApplicationRecord
   ACTIVE_WISH_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
 
   belongs_to :requester, class_name: "User"
-  belongs_to :item
+  # Loads the item even when its owner deleted it, so the request and its thread still work.
+  belongs_to :item, -> { with_deleted }
   belongs_to :owner, class_name: "User", optional: true
   has_many :messages, dependent: :destroy
 

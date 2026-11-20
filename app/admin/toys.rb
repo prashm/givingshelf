@@ -3,6 +3,13 @@ ActiveAdmin.register Toy do
                 :status, :view_count, :personal_note, :pickup_method, :pickup_address,
                 :user_id
 
+  # Admins see items their owners deleted too (GS-12 hides them everywhere else).
+  controller do
+    def scoped_collection
+      super.with_deleted
+    end
+  end
+
   index do
     selectable_column
     id_column
@@ -17,6 +24,7 @@ ActiveAdmin.register Toy do
       link_to toy.user.email_address, admin_user_path(toy.user)
     end
     column :view_count
+    column :deleted_at
     column :created_at
     actions
   end
@@ -28,6 +36,7 @@ ActiveAdmin.register Toy do
   filter :status, as: :select, collection: ShareableItemStatus.collection
   filter :user
   filter :created_at
+  filter :deleted_at
 
   show do
     attributes_table do

@@ -1,5 +1,5 @@
 class ToyService < ItemService
-  def search_items(base_scope: Toy.kept.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil, user_join_type: :owner)
+  def search_items(base_scope: Toy.available, query_string: nil, zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, age_range: nil, user_join_type: :owner)
     super(
       base_scope: base_scope,
       query_string: query_string,

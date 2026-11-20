@@ -5,7 +5,7 @@ class WishlistDigestJob < ApplicationJob
 
   def perform
     run_at = Time.current
-    wishlist_items = Item.kept.wishlist.includes(
+    wishlist_items = Item.wishlist.includes(
       :group_item_availabilities,
       available_community_groups: [],
       item_requests: :requester

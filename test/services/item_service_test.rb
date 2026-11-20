@@ -696,6 +696,32 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_equal shared_before - 1, BookService.new.community_stats(community_group_id: @group_one.id)[:items_shared]
     end
 
+    it "are hidden from Item queries by default, but load from their requests" do
+      # Saved without validations: a deleted item can't take new requests, but old ones remain.
+      request = ItemRequest.new(item: @item, requester: users(:two), status: ItemRequest::DECLINED_STATUS)
+      request.save!(validate: false)
+
+      assert_nil Item.find_by(id: @item.id)
+      assert_equal @item, Item.with_deleted.find(@item.id)
+      assert_equal @item, ItemRequest.find(request.id).item
+      assert_includes ItemRequest.joins(:item).where(items: { id: @item.id }), request
+    end
+
+    it "still count toward donations when the stats filter by ZIP code" do
+      zip_group = CommunityGroup.find_or_create_zipcode_group!
+      GroupItemAvailability.create!(item: @item, community_group: zip_group)
+      @user.update_columns(zip_code: "80027")
+      @item.update_columns(deleted_at: nil, status: ShareableItemStatus::DONATED)
+      ItemRequest.new(item: @item, requester: users(:two), owner: @user, status: ItemRequest::COMPLETED_STATUS).save!(validate: false)
+      before = BookService.new.community_stats(zip_code: "80027")
+
+      @item.update_columns(deleted_at: Time.current)
+      after = BookService.new.community_stats(zip_code: "80027")
+
+      assert_equal before.slice(:items_donated, :happy_users, :items_requested), after.slice(:items_donated, :happy_users, :items_requested)
+      assert_operator before[:items_donated], :>=, 1
+    end
+
     it "can't be requested" do
       requester = users(:two)
       CommunityGroupMembership.find_or_create_by!(user: requester, community_group: @group_one)

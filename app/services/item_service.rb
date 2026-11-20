@@ -189,7 +189,6 @@ class ItemService
     attrs = attrs.to_h.with_indifferent_access
     candidates = type_class
       # Started as a wish, and is still open or fulfilled but not donated.
-      .kept
       .where(wishlist_item: true, status: JOINABLE_WISH_STATUSES)
       # Not something the requester is giving away themselves (they'd donated a fulfilled wish).
       .where("items.user_id IS NULL OR items.user_id <> ?", requester.id)
@@ -260,7 +259,7 @@ class ItemService
   end
 
   def available_items
-    type_class.kept.available.includes(:user).recent
+    type_class.available.includes(:user).recent
   end
 
   # Override in subclasses (e.g. BookService) for type-specific query matching.
@@ -314,14 +313,14 @@ class ItemService
       items = apply_user_join(items, user_join_type)
     end
 
-    items = items.merge(Item.overlapping_age_bucket(age_range)) if age_range.present?
+    items = items.merge(Item.unscoped.overlapping_age_bucket(age_range)) if age_range.present?
 
     items.distinct
   end
 
   def wishlist_items(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil, query_string: nil, age_range: nil)
     search_items(
-      base_scope: type_class.kept.wishlist,
+      base_scope: type_class.wishlist,
       query_string: query_string,
       zip_code: zip_code,
       radius: radius,
@@ -335,12 +334,12 @@ class ItemService
   # Deleted items still count toward donations, requests and happy users (that history happened),
   # but not toward items shared.
   def community_stats(zip_code: nil, radius: nil, community_group_id: nil, sub_group_id: nil)
-    base_items = search_items(base_scope: type_class, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
+    base_items = search_items(base_scope: type_class.with_deleted, zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     wishlisted_items = wishlist_items(zip_code: zip_code, radius: radius, community_group_id: community_group_id, sub_group_id: sub_group_id)
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
-      items_shared: base_items.kept.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
+      items_shared: base_items.where(deleted_at: nil).where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
       items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
       happy_users: base_requests.completed.distinct.count(:requester_id),
@@ -660,6 +659,8 @@ class ItemService
     end
   end
 
+  # A filter merged into a search. Built on Item.unscoped so merging it doesn't bring Item's default
+  # scope (hide deleted items) back into a search that asked to include them (community_stats).
   def zip_code_scope(zip_code, radius, user_join_type = :owner)
     user_table = user_join_type == :requester ? "requesters" : "users"
     
@@ -671,7 +672,7 @@ class ItemService
         lat = search_coords[:latitude]
         lng = search_coords[:longitude]
 
-        scope = Item.where(
+        scope = Item.unscoped.where(
           "(6371 * acos(GREATEST(-1.0, LEAST(1.0, cos(radians(?)) * cos(radians(#{user_table}.latitude)) * cos(radians(#{user_table}.longitude) - radians(?)) + sin(radians(?)) * sin(radians(#{user_table}.latitude)))))) * 0.621371 <= ? AND #{user_table}.latitude IS NOT NULL AND #{user_table}.longitude IS NOT NULL",
           lat, lng, lat, radius_miles
         )
@@ -681,7 +682,7 @@ class ItemService
       end
     end
     unless radius_scope
-      scope = Item.where("#{user_table}.zip_code" => zip_code)
+      scope = Item.unscoped.where("#{user_table}.zip_code" => zip_code)
     end
     scope
   end

@@ -27,9 +27,12 @@ class Item < ApplicationRecord
   scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
-  # Items not deleted by their owner (GS-12). A deleted item that had requests is kept, hidden, so
-  # those requests and their threads survive; use this scope wherever items are listed or matched.
-  scope :kept, -> { where(deleted_at: nil) }
+  # An item its owner deleted while it had requests is kept, hidden, so those requests, their
+  # threads and past handoffs survive (GS-12). Hidden is the default: Item queries never return a
+  # deleted item unless they ask for it with .with_deleted. A request's own item is always loaded
+  # (see ItemRequest#item), and history stats count deleted items (ItemService#community_stats).
+  default_scope { where(deleted_at: nil) }
+  scope :with_deleted, -> { unscope(where: :deleted_at) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
   # Items whose age bounds overlap the given canonical browse bucket. Items
   # without a parsed minimum age are excluded when an age filter is supplied.
@@ -51,7 +54,7 @@ class Item < ApplicationRecord
     %w[
       id id_value title condition summary status view_count
       personal_note pickup_method pickup_address
-      user_id created_at updated_at type
+      user_id created_at updated_at type deleted_at
     ]
   end
 

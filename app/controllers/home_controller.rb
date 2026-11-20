@@ -42,6 +42,6 @@ class HomeController < ApplicationController
     return nil unless match
 
     item_id = match[1].to_i
-    Item.kept.available.find_by(id: item_id)
+    Item.available.find_by(id: item_id)
   end
 end
