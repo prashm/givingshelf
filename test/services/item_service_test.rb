@@ -2,6 +2,7 @@ require "test_helper"
 require "minitest/spec"
 
 class ItemServiceTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
   extend Minitest::Spec::DSL
 
   def setup
@@ -118,7 +119,9 @@ class ItemServiceTest < ActiveSupport::TestCase
       service = ItemService.new(wishlist_book)
 
       assert_difference -> { UserNotification.where(kind: UserNotification::KIND_WISHLIST_AVAILABLE).count }, 1 do
-        assert service.fulfill_wishlist_item(@user, { condition: "good" })
+        perform_enqueued_jobs(only: RequestEventNotificationJob) do
+          assert service.fulfill_wishlist_item(@user, { condition: "good" })
+        end
       end
 
       wishlist_book.reload

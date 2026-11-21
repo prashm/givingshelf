@@ -4,6 +4,7 @@ require "minitest/spec"
 class ItemRequestServiceTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
   include ActionCable::TestHelper
+  include ActionMailer::TestHelper
   extend Minitest::Spec::DSL
 
   def service
@@ -77,13 +78,18 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert service.errors.empty?
     end
 
-    it "notifies book owner when request is created" do
+    it "emails the book owner, from the request's first event, when a request is created" do
       book = setup_book_for_request(items(:one))
       message = "I would love to read this book!"
 
-      assert_enqueued_jobs(1, only: ItemRequestNotificationJob) do
-        service.create_request(@requester, book.id, message)
+      request = nil
+      assert_enqueued_jobs(1, only: RequestEventNotificationJob) do
+        request = service.create_request(@requester, book.id, message)
       end
+      assert_emails(1) { perform_enqueued_jobs(only: RequestEventNotificationJob) }
+      mail = ActionMailer::Base.deliveries.last
+      assert_equal [ book.user.email_address ], mail.to
+      assert_includes mail.body.to_s, request.initial_message.content
     end
 
     it "returns nil and sets error when user profile is incomplete" do
