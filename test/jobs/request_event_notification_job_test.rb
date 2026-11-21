@@ -1,5 +1,6 @@
 require "test_helper"
 require "minitest/spec"
+require "minitest/mock"
 
 # GS-11: who each status change emails, and that nobody is emailed twice.
 class RequestEventNotificationJobTest < ActiveJob::TestCase
@@ -25,11 +26,17 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
     user
   end
 
-  # Runs every notification job queued by the block, and returns the emails they sent.
+  # Runs every notification job queued by the block, and returns the emails they sent as
+  # [to, body] pairs.
   def emails_from
     ActionMailer::Base.deliveries.clear
     perform_enqueued_jobs { yield }
-    ActionMailer::Base.deliveries.map { |mail| [ mail.to.first, mail.subject ] }
+    ActionMailer::Base.deliveries.map { |mail| [ mail.to.first, mail.body.to_s ] }
+  end
+
+  # Whether `sent` has an email to `user` that says `phrase`.
+  def sent_to?(sent, user, phrase)
+    sent.any? { |to, body| to == user.email_address && body.include?(phrase) }
   end
 
   def request_from(user, item = @book)
@@ -41,21 +48,28 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       requester = member("reader")
       request = nil
 
-      assert_equal [ [ @owner.email_address, "New Book Request: #{@book.title}" ] ], emails_from { request = request_from(requester) }
-      assert_equal [ [ requester.email_address, "Good news: #{@book.title} is yours" ] ],
-        emails_from { ItemRequestService.new(request).update_request(@owner, "accept", note: "Saturday?") }
-      assert_equal [ [ requester.email_address, "Enjoy #{@book.title}!" ] ],
-        emails_from { ItemRequestService.new(request.reload).update_request(@owner, "complete") }
+      assert_equal [ @owner.email_address ], (emails_from { request = request_from(requester) }).map(&:first)
+
+      sent = emails_from { ItemRequestService.new(request).update_request(@owner, "accept", note: "Saturday?") }
+      assert_equal [ requester.email_address ], sent.map(&:first)
+      assert sent_to?(sent, requester, "accepted your request")
+
+      sent = emails_from { ItemRequestService.new(request.reload).update_request(@owner, "complete") }
+      assert_equal [ requester.email_address ], sent.map(&:first)
+      assert sent_to?(sent, requester, "as complete")
     end
 
     it "emails the owner when the requester cancels or reopens, never the requester" do
       requester = member("changer")
       request = request_from(requester)
 
-      assert_equal [ [ @owner.email_address, "Changer Tester cancelled their request for #{@book.title}" ] ],
-        emails_from { ItemRequestService.new(request).cancel_request(requester, note: "Found one") }
-      assert_equal [ [ @owner.email_address, "Changer Tester reopened their request for #{@book.title}" ] ],
-        emails_from { ItemRequestService.new(request.reload).update_request(requester, "uncancel") }
+      sent = emails_from { ItemRequestService.new(request).cancel_request(requester, note: "Found one") }
+      assert_equal [ @owner.email_address ], sent.map(&:first)
+      assert sent_to?(sent, @owner, "Changer Tester cancelled their request")
+
+      sent = emails_from { ItemRequestService.new(request.reload).update_request(requester, "uncancel") }
+      assert_equal [ @owner.email_address ], sent.map(&:first)
+      assert sent_to?(sent, @owner, "Changer Tester reopened their request")
     end
 
     it "sends nothing when the owner opens a request" do
@@ -70,7 +84,7 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       ItemRequestService.new(winner).accept!
 
       sent = emails_from { ItemRequestService.new(winner.reload).complete! }
-      assert_includes sent, [ other.email_address, "#{@book.title} went to another requester" ]
+      assert sent_to?(sent, other, "was given to another requester")
     end
 
     it "emails each waiting requester when the owner deletes the item" do
@@ -78,7 +92,8 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       request_from(waiting)
 
       sent = emails_from { ItemService.new(@book).remove_item(@owner, note: "Water damage") }
-      assert_equal [ [ waiting.email_address, "#{@book.title} was removed by its owner" ] ], sent
+      assert_equal [ waiting.email_address ], sent.map(&:first)
+      assert sent_to?(sent, waiting, "so your request is closed")
     end
 
     it "sends nothing for a change that rolls back" do
@@ -125,10 +140,9 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       waiting = member("waiter")
       request_from(waiting)
 
-      assert_includes emails_from { ItemRequestService.new(chosen).accept! },
-        [ waiting.email_address, "Someone else was chosen for #{@book.title}" ]
+      assert sent_to?(emails_from { ItemRequestService.new(chosen).accept! }, waiting, "The owner accepted another request")
       sent = emails_from { ItemRequestService.new(chosen.reload).update_request(@owner, "decline") }
-      assert_includes sent, [ waiting.email_address, "#{@book.title} is available again" ]
+      assert sent_to?(sent, waiting, "available again")
     end
 
     it "hear the item is available again when the accepted requester cancels" do
@@ -139,8 +153,8 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       ItemRequestService.new(chosen).accept!
 
       sent = emails_from { ItemRequestService.new(chosen.reload).cancel_request(chosen_user) }
-      assert_includes sent, [ waiting.email_address, "#{@book.title} is available again" ]
-      assert_includes sent, [ @owner.email_address, "Quitter Tester cancelled their request for #{@book.title}" ]
+      assert sent_to?(sent, waiting, "available again")
+      assert sent_to?(sent, @owner, "Quitter Tester cancelled their request")
     end
 
     it "skip a requester whose own request closed before the notice went out" do
@@ -153,7 +167,7 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       ItemRequestService.new(chosen).accept!
       # The waiting requester gives up before the "someone else was chosen" notice is sent.
       assert ItemRequestService.new(waiting.reload).cancel_request(waiting_user)
-      2.times { perform_enqueued_jobs } # the notification jobs, then the mail deliveries they queue
+      perform_enqueued_jobs
 
       assert_not ActionMailer::Base.deliveries.any? { |mail| mail.to == [ waiting_user.email_address ] }
     end
@@ -180,6 +194,39 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
       perform_enqueued_jobs { RequestEventNotificationJob.perform_later(event.id) }
       assert_empty ActionMailer::Base.deliveries
       assert_equal 1, UserNotification.where(notifiable: event, kind: UserNotification::KIND_REQUEST_EVENT).count
+    end
+
+    it "records nothing when sending fails, so a retry still sends the email" do
+      requester = member("retry")
+      request = request_from(requester)
+      ItemRequestService.new(request).accept!
+      event = request.messages.transitions.order(:id).last
+      ActionMailer::Base.deliveries.clear
+      failing = Object.new
+      def failing.deliver_now = raise(Net::ReadTimeout)
+
+      RequestEventMailer.stub(:event_update, failing) do
+        assert_raises(Net::ReadTimeout) { RequestEventNotificationJob.new.perform(event.id) }
+      end
+      assert_not UserNotification.exists?(notifiable: event, kind: UserNotification::KIND_REQUEST_EVENT)
+
+      RequestEventNotificationJob.new.perform(event.id)
+      assert_equal [ [ requester.email_address ] ], ActionMailer::Base.deliveries.map(&:to)
+      assert UserNotification.exists?(notifiable: event, kind: UserNotification::KIND_REQUEST_EVENT)
+    end
+
+    it "retries when the mail server can't be reached" do
+      request = request_from(member("busy"))
+      ItemRequestService.new(request).accept!
+      event = request.messages.transitions.order(:id).last
+      failing = Object.new
+      def failing.deliver_now = raise(Net::OpenTimeout)
+
+      RequestEventMailer.stub(:event_update, failing) do
+        assert_enqueued_with(job: RequestEventNotificationJob, args: [ event.id ]) do
+          RequestEventNotificationJob.perform_now(event.id)
+        end
+      end
     end
 
     it "never sends the same notice twice" do

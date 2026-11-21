@@ -1,14 +1,21 @@
+require "net/smtp"
+
 # Emails the person a request's status change affects (GS-11). ItemRequestService queues it after
 # the change commits, once per transition event.
 #
 # - The recipient is the other party on the request, never the event's author. An ownerless wish
 #   has no owner, so a requester's event on it emails nobody.
-# - Each email is recorded in UserNotification first, so a retry or a repeated move never sends a
-#   second one.
+# - Each email is sent from this job and recorded in UserNotification in the same transaction
+#   (see send_once), so a record means the email really went out, and a retry never sends a second one.
 # - With a notice kind (KIND_OTHER_CHOSEN or KIND_AVAILABLE_AGAIN) it instead emails the requesters
 #   of `request_ids`, the item's other open requests, about what the event did to their chances.
 class RequestEventNotificationJob < ApplicationJob
   queue_as :default
+
+  # The mail server being briefly unreachable. Retrying is safe: emails already sent are recorded
+  # and skipped.
+  retry_on Net::OpenTimeout, Net::ReadTimeout, Net::SMTPServerBusy, Errno::ECONNREFUSED, Errno::ECONNRESET,
+    wait: :polynomially_longer, attempts: 5
 
   def perform(event_id, notice_kind = nil, request_ids = [])
     event = Message.find_by(id: event_id)
@@ -32,12 +39,14 @@ class RequestEventNotificationJob < ApplicationJob
     when "viewed"
       nil # Too minor to email.
     when "donor_found"
-      # Keeps its own once-per-wish dedup (KIND_WISHLIST_AVAILABLE on the item).
-      UserService.new.notify_wishlist_available_to_requester(item: request.item, item_request: request)
+      # Once per wish, not per event: recorded on the item.
+      send_once(recipient, request.item, UserNotification::KIND_WISHLIST_AVAILABLE) do
+        WishlistMailer.wishlist_available(recipient, request.item, request)
+      end
     when "requested"
-      ItemRequestMailer.new_request_notification(request).deliver_later if first_notification?(recipient, event, UserNotification::KIND_REQUEST_EVENT)
+      send_once(recipient, event, UserNotification::KIND_REQUEST_EVENT) { ItemRequestMailer.new_request_notification(request) }
     else
-      RequestEventMailer.event_update(event, recipient).deliver_later if first_notification?(recipient, event, UserNotification::KIND_REQUEST_EVENT)
+      send_once(recipient, event, UserNotification::KIND_REQUEST_EVENT) { RequestEventMailer.event_update(event, recipient) }
     end
   end
 
@@ -45,16 +54,19 @@ class RequestEventNotificationJob < ApplicationJob
     # Only requests still waiting: one declined or cancelled since then needs no notice.
     ItemRequest.where(id: request_ids).awaiting_decision.includes(:requester).find_each do |request|
       next if request.requester_id == event.user_id
-      next unless first_notification?(request.requester, event, kind)
-      RequestEventMailer.item_notice(kind, request, event).deliver_later
+      send_once(request.requester, event, kind) { RequestEventMailer.item_notice(kind, request, event) }
     end
   end
 
-  # Records that `user` was told about `event`; false if they already were.
-  def first_notification?(user, event, kind)
-    UserNotification.create!(user: user, notifiable: event, kind: kind, sent_at: Time.current)
-    true
+  # Sends the mail the block builds, unless `user` was already sent this one. The record and the
+  # send share a transaction: if sending fails, the record rolls back and the job fails, so a retry
+  # sends it. The unique index on the record stops a second or parallel run from sending it again.
+  def send_once(user, notifiable, kind)
+    UserNotification.transaction do
+      UserNotification.create!(user: user, notifiable: notifiable, kind: kind, sent_at: Time.current)
+      yield.deliver_now
+    end
   rescue ActiveRecord::RecordNotUnique
-    false
+    nil
   end
 end

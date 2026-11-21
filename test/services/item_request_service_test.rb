@@ -86,9 +86,10 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       assert_enqueued_jobs(1, only: RequestEventNotificationJob) do
         request = service.create_request(@requester, book.id, message)
       end
-      assert_enqueued_email_with ItemRequestMailer, :new_request_notification, args: [ request ] do
-        perform_enqueued_jobs(only: RequestEventNotificationJob)
-      end
+      assert_emails(1) { perform_enqueued_jobs(only: RequestEventNotificationJob) }
+      mail = ActionMailer::Base.deliveries.last
+      assert_equal [ book.user.email_address ], mail.to
+      assert_includes mail.body.to_s, request.initial_message.content
     end
 
     it "returns nil and sets error when user profile is incomplete" do
