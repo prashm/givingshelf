@@ -1,0 +1,31 @@
+<p>Hi <%= @recipient.display_name %>,</p>
+<p><%= @lead %></p>
+<% if @note %>
+  <p style="color:#374151;font-style:italic;border-left:3px solid #d1d5db;padding-left:10px;white-space:pre-wrap"><%= @note_author %>: &ldquo;<%= @note %>&rdquo;</p>
+<% end %>
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:Arial,sans-serif;margin:12px 0">
+  <tr>
+    <td style="border:1px solid #e5e7eb;border-radius:8px;padding:12px">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="80" valign="top">
+            <% if @item.cover_image.attached? %>
+              <img src="<%= @item.cover_image.attachment.url %>" width="72" style="display:block;border-radius:4px" alt="" />
+            <% end %>
+          </td>
+          <td valign="top" style="padding-left:8px">
+            <div style="font-weight:bold"><%= @item.title %></div>
+            <% if @item.respond_to?(:author) && @item.author.present? %>
+              <div style="color:#6b7280;font-size:14px">by <%= @item.author %></div>
+            <% elsif @item.respond_to?(:brand) && @item.brand.present? %>
+              <div style="color:#6b7280;font-size:14px"><%= @item.brand %></div>
+            <% end %>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<p>
+  <a href="<%= @action_url %>" style="background:#059669;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Open your request</a>
+</p>

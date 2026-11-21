@@ -88,8 +88,6 @@ class ItemRequest < ApplicationRecord
   before_validation :set_default_status, on: :create
   before_validation :set_owner, on: :create
 
-  after_update :notify_status_change
-
   def pending?
     status == PENDING_STATUS
   end
@@ -179,10 +177,5 @@ class ItemRequest < ApplicationRecord
 
   def item_must_be_available
     errors.add(:base, "This item is not available for request") unless item.open_to_requests?
-  end
-
-  def notify_status_change
-    # In a real app, you'd send an email notification here
-    Rails.logger.info "Status change notification sent to #{requester.email_address}"
   end
 end

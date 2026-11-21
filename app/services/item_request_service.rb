@@ -106,7 +106,6 @@ class ItemRequestService
     raise message_error if message_error
 
     ActiveRecord::Base.transaction { start_request!(requester, item, message) }
-    notify_item_owner
     @item_request
   rescue ActiveRecord::RecordInvalid => e
     @errors += e.record.errors.full_messages
@@ -175,8 +174,11 @@ class ItemRequestService
       item_request.guard_transition!(ItemRequest::ACCEPTED_STATUS)
       raise "This item has already been donated" if item.donated?
       raise "Another request for this item has already been accepted" if item_request.other_requests.accepted.exists?
+      waiting_ids = item_request.other_requests.awaiting_decision.pluck(:id)
       item_request.update!(status: ItemRequest::ACCEPTED_STATUS)
-      record_event!(item_request, ItemRequest::ACCEPTED_STATUS, actor || item.user, note)
+      event = record_event!(item_request, ItemRequest::ACCEPTED_STATUS, actor || item.user, note)
+      # The other open requesters hear that someone else was chosen (GS-11).
+      queue_item_notice!(event, UserNotification::KIND_OTHER_CHOSEN, waiting_ids)
       item.update!(status: ShareableItemStatus::REQUESTED)
       # Mark other pending requests for this item as In Review; leave declined/cancelled/completed ones alone
       item_request.other_requests.pending.update_all(status: ItemRequest::IN_REVIEW_STATUS)
@@ -188,9 +190,11 @@ class ItemRequestService
     with_locked_item do |item|
       item_request.guard_transition!(ItemRequest::DECLINED_STATUS)
       # Declining the accepted request frees the item for the other requesters, as cancel! does.
-      item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
+      was_accepted = item_request.accepted?
+      item.update!(status: ShareableItemStatus::AVAILABLE) if was_accepted
       item_request.update!(status: ItemRequest::DECLINED_STATUS)
-      record_event!(item_request, ItemRequest::DECLINED_STATUS, actor || item.user, note)
+      event = record_event!(item_request, ItemRequest::DECLINED_STATUS, actor || item.user, note)
+      queue_available_again!(event) if was_accepted
     end
   end
 
@@ -212,9 +216,11 @@ class ItemRequestService
     require_item_request!
     with_locked_item do |item|
       item_request.guard_transition!(ItemRequest::CANCELLED_STATUS)
-      item.update!(status: ShareableItemStatus::AVAILABLE) if item_request.accepted?
+      was_accepted = item_request.accepted?
+      item.update!(status: ShareableItemStatus::AVAILABLE) if was_accepted
       item_request.update!(status: ItemRequest::CANCELLED_STATUS)
-      record_event!(item_request, ItemRequest::CANCELLED_STATUS, item_request.requester, note)
+      event = record_event!(item_request, ItemRequest::CANCELLED_STATUS, item_request.requester, note)
+      queue_available_again!(event) if was_accepted
     end
   end
 
@@ -383,11 +389,27 @@ class ItemRequestService
   end
 
   # Writes a transition event: request moved to `to_status`, caused by `author`, with an optional
-  # note. Once everything commits, it's pushed to anyone viewing the thread; a rollback drops both.
+  # note. Once everything commits, it's pushed to anyone viewing the thread and queued for email to
+  # the other party (GS-11); a rollback drops all of it.
   def record_event!(request, to_status, author, note = nil)
     event = request.messages.create!(user: author, request_transition_status: to_status, content: note.to_s.strip.presence)
-    ActiveRecord.after_all_transactions_commit { broadcast_event(event) }
+    ActiveRecord.after_all_transactions_commit do
+      broadcast_event(event)
+      RequestEventNotificationJob.perform_later(event.id)
+    end
     event
+  end
+
+  # Queues, after commit, a notice to the requesters of `request_ids` about something that happened
+  # to another request on their item (`kind` is a UserNotification kind; `event` caused it).
+  def queue_item_notice!(event, kind, request_ids)
+    return if request_ids.empty?
+    ActiveRecord.after_all_transactions_commit { RequestEventNotificationJob.perform_later(event.id, kind, request_ids) }
+  end
+
+  # The accepted request fell through: tell the other open requesters the item is available again.
+  def queue_available_again!(event)
+    queue_item_notice!(event, UserNotification::KIND_AVAILABLE_AGAIN, item_request.other_requests.awaiting_decision.pluck(:id))
   end
 
   def broadcast_event(event)
@@ -412,9 +434,5 @@ class ItemRequestService
 
   def require_item_request!
     raise ArgumentError, "item_request is required" if item_request.nil?
-  end
-
-  def notify_item_owner
-    ItemRequestNotificationJob.perform_later(self.item_request)
   end
 end
