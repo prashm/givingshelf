@@ -456,7 +456,7 @@ const ItemDetail = ({
                 </div>
               )}
 
-              {onEditItem && isOwner && (
+              {onEditItem && isOwner && item.can_edit !== false && (
                 <button onClick={() => onEditItem(item.id)} className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition-colors mb-3">
                   {editLabel}
                 </button>

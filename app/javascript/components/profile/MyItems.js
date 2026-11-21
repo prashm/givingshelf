@@ -311,6 +311,7 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                         View
                       </button>
 
+                      {item.can_edit && (
                       <button
                         onClick={() => handleEditItem(item)}
                         className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
@@ -318,6 +319,7 @@ const MyItems = ({ currentUser, setCurrentPage, onEditBook, onEditToy, onViewBoo
                         <PencilIcon className="h-4 w-4" />
                         Edit
                       </button>
+                      )}
 
                       {item.can_delete && (
                       <button

@@ -12,6 +12,7 @@ class ItemService
   REMOVAL_NOTE_MAX = 900
   ACCEPTED_REQUEST_BLOCKS_REMOVAL = "You have an accepted request for this item. Decline or complete it first.".freeze
   DONATED_ITEM_CANT_BE_REMOVED = "A donated item can't be deleted. It stays in your items as a record of the handoff.".freeze
+  DONATED_ITEM_CANT_BE_EDITED = "A donated item can't be edited. It stays as it was when it was handed off.".freeze
   # Lower-cased, trimmed, with runs of whitespace collapsed; see #normalize_wish_text.
   NORMALIZED_WISH_SQL = {
     "title" => "regexp_replace(lower(btrim(coalesce(items.title, ''))), '\\s+', ' ', 'g')",
@@ -75,6 +76,8 @@ class ItemService
 
   def update_item(owner, item_params)
     raise "Item can't be blank" unless self.item
+    # A donated item is the record of a handoff, so it stays as it was given.
+    raise DONATED_ITEM_CANT_BE_EDITED if item.donated?
 
     # Exclude any image attributes if present. They're handled separately after saving the item.
     api_cover_image = item_params.delete(:cover_image)
@@ -412,6 +415,8 @@ class ItemService
       status_display: ShareableItemStatus.display_status(item.status),
       wishlist_item: item.wishlist_item,
       deleted: item.deleted?,
+      # Whether its owner may still edit it: not once it's donated (see #update_item).
+      can_edit: !item.donated?,
       cover_image_url: cover_image_url_for(item),
       user_images_urls: item.user_images.attached? ? item.user_images.map(&:url) : [],
       view_count: item.view_count || 0,
@@ -447,12 +452,13 @@ class ItemService
     result
   end
 
-  # List JSON for one of the owner's items (My Items), with what deleting needs: whether it can be
-  # deleted at all (not once donated), how many requests are still waiting on it, and whether one is
-  # accepted (which blocks deleting it for now). Expects item_requests preloaded.
+  # List JSON for one of the owner's items (My Items): whether it can still be edited or deleted
+  # (neither once donated), how many requests are still waiting on it, and whether one is accepted
+  # (which blocks deleting it for now). Expects item_requests preloaded.
   def my_item_map(item)
     requests = item.item_requests.to_a
     item_map(item).merge(
+      can_edit: !item.donated?,
       can_delete: !item.donated?,
       open_request_count: requests.count { |request| ItemRequest::OPEN_STATUSES.include?(request.status) },
       has_accepted_request: requests.any?(&:accepted?)

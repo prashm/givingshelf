@@ -745,4 +745,15 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal true, JSON.parse(response.body)["deleted"]
   end
+
+  test "the owner can't edit a donated item" do
+    items(:one).update_columns(status: ShareableItemStatus::DONATED)
+    sign_in_as(users(:one))
+
+    patch api_item_url(items(:one)), params: { item: { title: "Renamed" } }
+
+    assert_response :unprocessable_entity
+    assert_equal [ ItemService::DONATED_ITEM_CANT_BE_EDITED ], JSON.parse(response.body)["errors"]
+    assert_not_equal "Renamed", items(:one).reload.title
+  end
 end

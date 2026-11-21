@@ -348,7 +348,7 @@ class ItemServiceTest < ActiveSupport::TestCase
   describe "item JSON" do
     COMMON_LIST_KEYS = %i[id type title summary condition status status_display wishlist_item cover_image_url created_at].freeze
     COMMON_DETAIL_KEYS = %i[
-      id type title condition summary status status_display wishlist_item deleted cover_image_url user_images_urls
+      id type title condition summary status status_display wishlist_item deleted can_edit cover_image_url user_images_urls
       view_count personal_note pickup_method pickup_address community_group_ids community_group_names owner
       request_count created_at updated_at can_request
     ].freeze
@@ -677,6 +677,17 @@ class ItemServiceTest < ActiveSupport::TestCase
     end
   end
 
+  describe "#update_item on a donated item" do
+    it "is refused, and the item stays as it was" do
+      @item.update_columns(status: ShareableItemStatus::DONATED)
+
+      assert_not @service.update_item(@user, { title: "Renamed after handoff" })
+      assert_equal [ ItemService::DONATED_ITEM_CANT_BE_EDITED ], @service.errors
+      assert_equal "Sync Target", @item.reload.title
+      assert_equal false, ItemService.new.item_detail_map(@item)[:can_edit]
+    end
+  end
+
   describe "deleted items" do
     before do
       GroupItemAvailability.create!(item: @item, community_group: @group_one)
@@ -748,7 +759,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       assert_equal [ 1, true ], json.values_at(:open_request_count, :has_accepted_request)
 
       @item.update_columns(status: ShareableItemStatus::DONATED)
-      assert_equal false, ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))[:can_delete]
+      assert_equal [ false, false ], ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id)).values_at(:can_edit, :can_delete)
     end
   end
 end
