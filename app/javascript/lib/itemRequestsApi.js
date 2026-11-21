@@ -37,15 +37,25 @@ export const describeRequestEvent = (message, currentUserId) => {
     case 'declined': return `${who} declined ${yours} request`;
     case 'completed': return `${who} marked the handoff as complete`;
     case 'cancelled': return `${who} cancelled the request`;
+    case 'item_removed':
     case 'closed_out':
-    case 'moved': return message.content;
+    case 'moved': return fixedEventText(message);
     default: return 'The request was updated';
   }
 };
 
-// Whether the event's note is shown under its wording (the close-out events' wording is the note).
-export const eventShowsNote = (message) =>
-  Boolean(message.content) && !['closed_out', 'moved'].includes(message.event);
+// Close-out events carry a fixed text as their wording, and the person's own note, if any, as a
+// second paragraph after it.
+const FIXED_TEXT_EVENTS = ['item_removed', 'closed_out', 'moved'];
+const fixedEventText = (message) => (message.content || '').split('\n\n')[0];
+
+// The note shown under an event's wording, or null: whatever the person typed with the change.
+export const eventNote = (message) => {
+  if (!message.content) return null;
+  if (!FIXED_TEXT_EVENTS.includes(message.event)) return message.content;
+  const rest = message.content.split('\n\n').slice(1).join('\n\n');
+  return rest || null;
+};
 
 // note: optional text shown under the status change in the request's thread.
 export const updateItemRequestStatus = async (itemRequestId, actionType, note = null) => {

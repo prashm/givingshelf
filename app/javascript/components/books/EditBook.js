@@ -244,6 +244,17 @@ const EditBook = ({ setCurrentPage, bookId, previousPage, returnSelectedBook, re
     );
   }
 
+  // A donated book stays as it was handed off; the server refuses edits to it too.
+  if (book && book.can_edit === false) {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-2xl">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <p className="text-gray-700">This book was donated, so it can't be edited. It stays as it was when it was handed off.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!book) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-2xl">

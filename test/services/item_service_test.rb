@@ -348,7 +348,7 @@ class ItemServiceTest < ActiveSupport::TestCase
   describe "item JSON" do
     COMMON_LIST_KEYS = %i[id type title summary condition status status_display wishlist_item cover_image_url created_at].freeze
     COMMON_DETAIL_KEYS = %i[
-      id type title condition summary status status_display wishlist_item cover_image_url user_images_urls
+      id type title condition summary status status_display wishlist_item deleted can_edit cover_image_url user_images_urls
       view_count personal_note pickup_method pickup_address community_group_ids community_group_names owner
       request_count created_at updated_at can_request
     ].freeze
@@ -533,6 +533,233 @@ class ItemServiceTest < ActiveSupport::TestCase
         assert_nil find(group: zip_group, requester: create_user("far", zip_code: "10001"))
         assert_equal match, find(group: zip_group, requester: create_user("close", zip_code: "94110"))
       end
+    end
+  end
+
+  describe "#remove_item" do
+    before do
+      GroupItemAvailability.create!(item: @item, community_group: @group_one)
+      CommunityGroupMembership.find_or_create_by!(user: @user, community_group: @group_one)
+    end
+
+    def requester(name)
+      user = User.create!(email_address: "#{name}_#{SecureRandom.hex(4)}@example.com", verified: true,
+        password_digest: BCrypt::Password.create("password123!"))
+      user.update_columns(first_name: name.capitalize, last_name: "Tester", zip_code: "12345")
+      CommunityGroupMembership.create!(user: user, community_group: @group_one)
+      user
+    end
+
+    def request_on(item, name)
+      ItemRequestService.new.start_request!(requester(name), item, "Could I have this one, please?")
+    end
+
+    def last_event(request)
+      request.messages.transitions.order(:created_at, :id).last
+    end
+
+    def remove(note: nil, item: @item, user: @user)
+      service = ItemService.new(item)
+      [ service.remove_item(user, note: note), service.errors ]
+    end
+
+    it "destroys an item that never had a request" do
+      ok, errors = remove
+      assert ok, errors.to_sentence
+      assert_not Item.exists?(@item.id)
+    end
+
+    it "refuses while a request is accepted, and changes nothing" do
+      accepted = request_on(@item, "accepted")
+      waiting = request_on(@item, "waiting")
+      ItemRequestService.new(accepted).accept!
+
+      assert_no_difference -> { Message.count } do
+        ok, errors = remove(note: "Sorry")
+        assert_not ok
+        assert_equal [ ItemService::ACCEPTED_REQUEST_BLOCKS_REMOVAL ], errors
+      end
+      assert_nil @item.reload.deleted_at
+      assert_equal [ ItemRequest::ACCEPTED_STATUS, ItemRequest::IN_REVIEW_STATUS ], [ accepted, waiting ].map { |r| r.reload.status }
+    end
+
+    it "declines the open requests with the removal text and note, and keeps the item hidden" do
+      first = request_on(@item, "first")
+      second = request_on(@item, "second")
+      cancelled = request_on(@item, "cancelled")
+      ItemRequestService.new(cancelled).cancel!
+
+      ok, errors = remove(note: "  It got water damaged, sorry.  ")
+      assert ok, errors.to_sentence
+
+      [ first, second ].each do |request|
+        request.reload
+        assert_equal ItemRequest::DECLINED_STATUS, request.status
+        event = last_event(request)
+        assert_equal [ ItemRequest::DECLINED_STATUS, @user.id ], [ event.request_transition_status, event.user_id ]
+        assert_equal "The owner removed this item.\n\nIt got water damaged, sorry.", event.content
+        assert_equal "item_removed", ItemRequestService.message_json(event)[:event]
+      end
+      assert_equal ItemRequest::CANCELLED_STATUS, cancelled.reload.status, "a cancelled request is left alone"
+      assert @item.reload.deleted?
+      assert_equal 3, @item.item_requests.count, "requests and their threads are kept"
+    end
+
+    it "writes just the removal text when there's no note" do
+      request = request_on(@item, "plain")
+      assert remove.first
+      assert_equal ItemRequestService::ITEM_REMOVED_NOTE, last_event(request.reload).content
+    end
+
+    it "moves the people waiting on a fulfilled wish to a new wish, keeping their thread" do
+      wish = Book.create!(
+        user_id: nil, title: "Removed Copy Wish", author: "Author", genre: "Fiction", published_year: 2020,
+        summary: "Summary text long enough for validations on the book model here.",
+        status: ShareableItemStatus::WISHLIST
+      )
+      GroupItemAvailability.create!(item: wish, community_group: @group_one)
+      waiter = request_on(wish, "waiter")
+      assert ItemService.new(wish).fulfill_wishlist_item(@user, { condition: "good" })
+      waiter.reload.messages.create!(user: @user, content: "I'll bring it Saturday")
+
+      ok, errors = remove(item: wish.reload, note: "Lost it, sorry")
+      assert ok, errors.to_sentence
+
+      waiter.reload
+      new_wish = waiter.item
+      assert_not_equal wish.id, new_wish.id
+      assert_equal [ ShareableItemStatus::WISHLIST, nil ], [ new_wish.status, new_wish.user_id ]
+      assert_equal [ @group_one.id ], new_wish.group_item_availabilities.pluck(:community_group_id)
+      assert_equal [ ItemRequest::PENDING_STATUS, nil ], [ waiter.status, waiter.owner_id ]
+      event = last_event(waiter)
+      assert_equal "#{ItemRequestService::ITEM_REMOVED_MOVED_NOTE}\n\nLost it, sorry", event.content
+      assert_equal "moved", ItemRequestService.message_json(event)[:event]
+      assert_includes waiter.messages.pluck(:content), "I'll bring it Saturday"
+      assert wish.reload.deleted?
+      assert_includes BookService.new.wishlist_items(community_group_id: @group_one.id), new_wish
+      assert_not_includes ItemRequest.for_item_owner(@user), waiter, "the donor no longer sees the moved request"
+    end
+
+    it "refuses a donated item, which stays as the record of the handoff" do
+      winner = request_on(@item, "winner")
+      ItemRequestService.new(winner).accept!
+      ItemRequestService.new(winner.reload).complete!
+
+      ok, errors = remove(item: @item.reload)
+      assert_not ok
+      assert_equal [ ItemService::DONATED_ITEM_CANT_BE_REMOVED ], errors
+      assert_nil @item.reload.deleted_at
+      assert_equal ItemRequest::COMPLETED_STATUS, winner.reload.status
+    end
+
+    it "rolls everything back when a step fails part-way" do
+      first = request_on(@item, "first")
+      second = request_on(@item, "second")
+      # Fail the deletion itself, after both requests were declined and their events written.
+      @item.stub(:update!, ->(*) { raise ActiveRecord::RecordNotSaved, "nope" }) do
+        assert_no_difference -> { Message.count } do
+          ok, errors = remove
+          assert_not ok
+          assert_equal [ "nope" ], errors
+        end
+      end
+      assert_equal [ ItemRequest::PENDING_STATUS ] * 2, [ first, second ].map { |r| r.reload.status }
+      assert_nil @item.reload.deleted_at
+    end
+
+    it "refuses someone else, an item already removed, and a note that's too long" do
+      request_on(@item, "someone")
+      assert_equal [ false, [ "Not authorized" ] ], remove(user: users(:two))
+      assert_equal [ false, [ "Note is too long (maximum is #{ItemService::REMOVAL_NOTE_MAX} characters)" ] ],
+        remove(note: "x" * (ItemService::REMOVAL_NOTE_MAX + 1))
+      assert remove.first
+      assert_equal [ false, [ "This item was already removed" ] ], remove(item: @item.reload)
+    end
+  end
+
+  describe "#update_item on a donated item" do
+    it "is refused, and the item stays as it was" do
+      @item.update_columns(status: ShareableItemStatus::DONATED)
+
+      assert_not @service.update_item(@user, { title: "Renamed after handoff" })
+      assert_equal [ ItemService::DONATED_ITEM_CANT_BE_EDITED ], @service.errors
+      assert_equal "Sync Target", @item.reload.title
+      assert_equal false, ItemService.new.item_detail_map(@item)[:can_edit]
+    end
+  end
+
+  describe "deleted items" do
+    before do
+      GroupItemAvailability.create!(item: @item, community_group: @group_one)
+      CommunityGroupMembership.find_or_create_by!(user: @user, community_group: @group_one)
+      @item.update_columns(deleted_at: Time.current)
+    end
+
+    it "leave browse, search and the items-shared stat" do
+      @item.update_columns(deleted_at: nil)
+      shared_before = BookService.new.community_stats(community_group_id: @group_one.id)[:items_shared]
+      @item.update_columns(deleted_at: Time.current)
+
+      assert_not_includes BookService.new.available_items, @item
+      assert_not_includes BookService.new.search_items(community_group_id: @group_one.id), @item
+      assert_not_includes BookService.new.search_items(query_string: "Sync Target", community_group_id: @group_one.id), @item
+      assert_equal shared_before - 1, BookService.new.community_stats(community_group_id: @group_one.id)[:items_shared]
+    end
+
+    it "are hidden from Item queries by default, but load from their requests" do
+      # Saved without validations: a deleted item can't take new requests, but old ones remain.
+      request = ItemRequest.new(item: @item, requester: users(:two), status: ItemRequest::DECLINED_STATUS)
+      request.save!(validate: false)
+
+      assert_nil Item.find_by(id: @item.id)
+      assert_equal @item, Item.with_deleted.find(@item.id)
+      assert_equal @item, ItemRequest.find(request.id).item
+      assert_includes ItemRequest.joins(:item).where(items: { id: @item.id }), request
+    end
+
+    it "can't be requested" do
+      requester = users(:two)
+      CommunityGroupMembership.find_or_create_by!(user: requester, community_group: @group_one)
+      assert_not ItemService.new(@item).item_can_be_requested_by?(requester)
+    end
+
+    it "aren't matched as an existing wish" do
+      wish = Book.create!(
+        user: @user, title: "Deleted Wish Copy", author: "Author", genre: "Fiction", published_year: 2020,
+        summary: "Summary text long enough for validations on the book model here.", wishlist_item: true, condition: "good",
+        status: ShareableItemStatus::AVAILABLE
+      )
+      GroupItemAvailability.create!(item: wish, community_group: @group_one)
+      ItemRequest.create!(item: wish, requester: users(:two), owner: @user, status: ItemRequest::IN_REVIEW_STATUS)
+      attrs = { title: "Deleted Wish Copy", author: "Author" }
+      wisher = User.create!(email_address: "wisher_#{SecureRandom.hex(4)}@example.com", verified: true,
+        password_digest: BCrypt::Password.create("password123!"))
+      wisher.update_columns(zip_code: users(:two).zip_code)
+
+      assert_equal wish, BookService.new.find_matching_wish(wisher, attrs, @group_one.id, nil)
+      wish.update_columns(deleted_at: Time.current)
+      assert_nil BookService.new.find_matching_wish(wisher, attrs, @group_one.id, nil)
+    end
+
+    it "tell My Items whether they can be deleted, how many requests are open, and whether one is accepted" do
+      @item.update_columns(deleted_at: nil)
+      users = Array.new(3) do |i|
+        u = User.create!(email_address: "c#{i}_#{SecureRandom.hex(4)}@example.com", verified: true, password_digest: BCrypt::Password.create("password123!"))
+        u
+      end
+      ItemRequest.create!(item: @item, requester: users[0], status: ItemRequest::PENDING_STATUS)
+      ItemRequest.create!(item: @item, requester: users[1], status: ItemRequest::IN_REVIEW_STATUS)
+      ItemRequest.create!(item: @item, requester: users[2], status: ItemRequest::CANCELLED_STATUS)
+
+      json = ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))
+      assert_equal [ true, 2, false ], json.values_at(:can_delete, :open_request_count, :has_accepted_request)
+
+      ItemRequest.where(item: @item, requester: users[0]).update_all(status: ItemRequest::ACCEPTED_STATUS)
+      json = ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))
+      assert_equal [ 1, true ], json.values_at(:open_request_count, :has_accepted_request)
+
+      @item.update_columns(status: ShareableItemStatus::DONATED)
+      assert_equal [ false, false ], ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id)).values_at(:can_edit, :can_delete)
     end
   end
 end

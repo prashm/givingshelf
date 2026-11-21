@@ -27,6 +27,12 @@ class Item < ApplicationRecord
   scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
+  # An item its owner deleted while it had requests is kept, hidden, so those requests and their
+  # threads survive (GS-12). Hidden is the default: Item queries never return a deleted item unless
+  # they ask for it with .with_deleted. A request's own item is always loaded (see ItemRequest#item).
+  # Donated items can't be deleted, so deleted items carry no handoff history and stats skip them.
+  default_scope { where(deleted_at: nil) }
+  scope :with_deleted, -> { unscope(where: :deleted_at) }
   scope :nearby, ->(zip_code) { joins(:user).where(users: { zip_code: zip_code }) }
   # Items whose age bounds overlap the given canonical browse bucket. Items
   # without a parsed minimum age are excluded when an age filter is supplied.
@@ -48,7 +54,7 @@ class Item < ApplicationRecord
     %w[
       id id_value title condition summary status view_count
       personal_note pickup_method pickup_address
-      user_id created_at updated_at type
+      user_id created_at updated_at type deleted_at
     ]
   end
 
@@ -90,7 +96,12 @@ class Item < ApplicationRecord
   # Whether a new request can be made. A fulfilled wish takes more wishers while its donor has
   # accepted someone, so they wait their turn; the owner can't act on them meanwhile (GS-7).
   def open_to_requests?
+    return false if deleted?
     available? || wishlist? || (requested? && wishlist_item?)
+  end
+
+  def deleted?
+    deleted_at.present?
   end
 
   def owner?(current_user)

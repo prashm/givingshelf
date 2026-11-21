@@ -8,6 +8,11 @@ class ItemService
   JOINABLE_WISH_STATUSES = [ ShareableItemStatus::WISHLIST, ShareableItemStatus::AVAILABLE, ShareableItemStatus::REQUESTED ].freeze
   # Requests whose requester is still waiting on a wish, open or fulfilled.
   WAITING_REQUEST_STATUSES = [ ItemRequest::PENDING_STATUS, ItemRequest::IN_REVIEW_STATUS, ItemRequest::ACCEPTED_STATUS ].freeze
+  # The owner's note when deleting an item follows a fixed text in one message (max 1000 characters).
+  REMOVAL_NOTE_MAX = 900
+  ACCEPTED_REQUEST_BLOCKS_REMOVAL = "You have an accepted request for this item. Decline or complete it first.".freeze
+  DONATED_ITEM_CANT_BE_REMOVED = "A donated item can't be deleted. It stays in your items as a record of the handoff.".freeze
+  DONATED_ITEM_CANT_BE_EDITED = "A donated item can't be edited. It stays as it was when it was handed off.".freeze
   # Lower-cased, trimmed, with runs of whitespace collapsed; see #normalize_wish_text.
   NORMALIZED_WISH_SQL = {
     "title" => "regexp_replace(lower(btrim(coalesce(items.title, ''))), '\\s+', ' ', 'g')",
@@ -71,6 +76,8 @@ class ItemService
 
   def update_item(owner, item_params)
     raise "Item can't be blank" unless self.item
+    # A donated item is the record of a handoff, so it stays as it was given.
+    raise DONATED_ITEM_CANT_BE_EDITED if item.donated?
 
     # Exclude any image attributes if present. They're handled separately after saving the item.
     api_cover_image = item_params.delete(:cover_image)
@@ -112,11 +119,34 @@ class ItemService
     false
   end
 
-  def remove_item(current_user)
-    # Only the owner can delete their item
-    raise "Not authorized" unless self.item.owner?(current_user)
+  # Deletes the item for its owner (GS-12). Refused for a donated item (it's the record of a handoff)
+  # and while a request is accepted. Otherwise the open requests get a final result first (declined,
+  # or for a fulfilled wish, moved to a new wish), with the owner's optional note. An item that ever
+  # had a request is then only marked deleted, so the requests and their threads survive; one that
+  # never had a request is destroyed.
+  def remove_item(current_user, note: nil)
+    raise "Not authorized" unless item.owner?(current_user)
+    raise "This item was already removed" if item.deleted?
+    note = note.to_s.strip
+    raise "Note is too long (maximum is #{REMOVAL_NOTE_MAX} characters)" if note.length > REMOVAL_NOTE_MAX
 
-    self.item.destroy
+    ActiveRecord::Base.transaction do
+      # Lock the item so no request can be accepted or added while it's being removed.
+      item.lock!
+      raise DONATED_ITEM_CANT_BE_REMOVED if item.donated?
+      requests = item.item_requests.order(:created_at, :id).to_a
+      raise ACCEPTED_REQUEST_BLOCKS_REMOVAL if requests.any?(&:accepted?)
+
+      if requests.any?
+        open_requests = requests.select { |request| ItemRequest::OPEN_STATUSES.include?(request.status) }
+        ItemRequestService.new.close_out_requests!(item, open_requests, current_user,
+          declined_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_NOTE, note),
+          moved_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_MOVED_NOTE, note))
+        item.update!(deleted_at: Time.current)
+      else
+        item.destroy!
+      end
+    end
     true
   rescue => e
     @errors << e.message
@@ -384,6 +414,9 @@ class ItemService
       status: item.status,
       status_display: ShareableItemStatus.display_status(item.status),
       wishlist_item: item.wishlist_item,
+      deleted: item.deleted?,
+      # Whether its owner may still edit it: not once it's donated (see #update_item).
+      can_edit: !item.donated?,
       cover_image_url: cover_image_url_for(item),
       user_images_urls: item.user_images.attached? ? item.user_images.map(&:url) : [],
       view_count: item.view_count || 0,
@@ -417,6 +450,19 @@ class ItemService
       result[:cannot_request_reason] = @item_cannot_be_requested_by_reason
     end
     result
+  end
+
+  # List JSON for one of the owner's items (My Items): whether it can still be edited or deleted
+  # (neither once donated), how many requests are still waiting on it, and whether one is accepted
+  # (which blocks deleting it for now). Expects item_requests preloaded.
+  def my_item_map(item)
+    requests = item.item_requests.to_a
+    item_map(item).merge(
+      can_edit: !item.donated?,
+      can_delete: !item.donated?,
+      open_request_count: requests.count { |request| ItemRequest::OPEN_STATUSES.include?(request.status) },
+      has_accepted_request: requests.any?(&:accepted?)
+    )
   end
 
   # List JSON for one item, built the same way as #item_detail_map.

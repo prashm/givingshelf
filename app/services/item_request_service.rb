@@ -7,6 +7,15 @@ class ItemRequestService
   # tell a close-out from the owner declining.
   CLOSE_OUT_DECLINED_NOTE = "This item went to another requester.".freeze
   CLOSE_OUT_MOVED_NOTE = "This copy went to another requester. You've been moved to a new wish for the same item.".freeze
+  # Fixed notes on the events written when the owner deletes the item (GS-12). The owner's own note,
+  # if any, follows as a second paragraph (see .note_after).
+  ITEM_REMOVED_NOTE = "The owner removed this item.".freeze
+  ITEM_REMOVED_MOVED_NOTE = "The donor removed this copy. You've been moved to a new wish for the same item.".freeze
+
+  # A fixed event text followed by someone's own note as a second paragraph, if they wrote one.
+  def self.note_after(fixed_text, note)
+    [ fixed_text, note.to_s.strip.presence ].compact.join("\n\n")
+  end
 
   # Why a request message can't be used, or nil if it's fine.
   def self.initial_message_error(message)
@@ -59,7 +68,13 @@ class ItemRequestService
       # opening a later wisher's request), so it reads as a donor having been found.
       request.item.wishlist_item? ? "donor_found" : "viewed"
     when ItemRequest::DECLINED_STATUS
-      message.content == CLOSE_OUT_DECLINED_NOTE ? "closed_out" : "declined"
+      if message.content == CLOSE_OUT_DECLINED_NOTE
+        "closed_out"
+      elsif message.content.to_s.start_with?(ITEM_REMOVED_NOTE)
+        "item_removed"
+      else
+        "declined"
+      end
     when ItemRequest::ACCEPTED_STATUS, ItemRequest::COMPLETED_STATUS, ItemRequest::CANCELLED_STATUS
       ItemRequest.status_label(status).downcase
     else
@@ -237,6 +252,30 @@ class ItemRequestService
     record_event!(item_request, ItemRequest::IN_REVIEW_STATUS, donor_user)
   end
 
+  # Gives each of `requests` (the item's open ones) a final result: wishers move to a new wish for the
+  # same item, with a PENDING event carrying `moved_note`; requesters of a regular item are declined,
+  # with a DECLINED event carrying `declined_note`. Every event is authored by `actor`. Runs in the
+  # caller's transaction, with the item locked. Returns the new wish, or nil.
+  # Used when an item is donated (GS-8) and when its owner deletes it (GS-12).
+  def close_out_requests!(item, requests, actor, declined_note:, moved_note:)
+    return nil if requests.empty?
+
+    if item.wishlist_item?
+      new_wish = ItemService.new(item).relist_as_wish!
+      requests.each do |request|
+        request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS)
+        record_event!(request, ItemRequest::PENDING_STATUS, actor, moved_note)
+      end
+      new_wish
+    else
+      requests.each do |request|
+        request.update!(status: ItemRequest::DECLINED_STATUS)
+        record_event!(request, ItemRequest::DECLINED_STATUS, actor, declined_note)
+      end
+      nil
+    end
+  end
+
   def requests_for_user(user, type)
     item_requests = []
     case type
@@ -335,27 +374,12 @@ class ItemRequestService
     end
   end
 
-  # After a handoff, give every other request still awaiting a decision a final result: wishers move
-  # to a new wish for the same item; requesters of a regular item are declined. Each gets an event
-  # authored by the owner who completed the handoff, with a fixed note saying why.
+  # After a handoff, give every other request still awaiting a decision a final result.
   def close_out_other_requests!(item, actor)
     open_requests = item_request.other_requests.awaiting_decision.order(:created_at, :id).to_a
-    @close_out = { item: item, requests: open_requests, new_wish: nil }
-    return if open_requests.empty?
-
-    if item.wishlist_item?
-      new_wish = ItemService.new(item).relist_as_wish!
-      open_requests.each do |request|
-        request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS)
-        record_event!(request, ItemRequest::PENDING_STATUS, actor, CLOSE_OUT_MOVED_NOTE)
-      end
-      @close_out[:new_wish] = new_wish
-    else
-      open_requests.each do |request|
-        request.update!(status: ItemRequest::DECLINED_STATUS)
-        record_event!(request, ItemRequest::DECLINED_STATUS, actor, CLOSE_OUT_DECLINED_NOTE)
-      end
-    end
+    new_wish = close_out_requests!(item, open_requests, actor,
+      declined_note: CLOSE_OUT_DECLINED_NOTE, moved_note: CLOSE_OUT_MOVED_NOTE)
+    @close_out = { item: item, requests: open_requests, new_wish: new_wish }
   end
 
   # Writes a transition event: request moved to `to_status`, caused by `author`, with an optional

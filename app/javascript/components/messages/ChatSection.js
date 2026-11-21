@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchChatMessages, describeRequestEvent, eventShowsNote } from '../../lib/itemRequestsApi';
+import { fetchChatMessages, describeRequestEvent, eventNote } from '../../lib/itemRequestsApi';
 import { createSubscription } from '../../lib/actionCable';
 import { linkifyText } from '../../lib/textUtils';
 
@@ -14,7 +14,9 @@ const formatEventTime = (iso) => new Date(iso).toLocaleString([], {
  * as bubbles, each named with its author's role. When `writable` is false the input is off and
  * `closedNotice` explains why. `onEvent` runs when a status change arrives live.
  */
-const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, closedNotice = null, onEvent }) => {
+// historyVersion: changes whenever the request's status does, to reload the thread so the event for
+// that change shows even if its live broadcast was missed.
+const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, closedNotice = null, onEvent, historyVersion }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -32,6 +34,20 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, c
   const typingIndicatorTimeoutRef = useRef(null);
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
+
+  // Reload the thread when the request's status changes (not on the first render: the effect below
+  // loads it then), keeping any message that arrived live meanwhile.
+  const loadedVersionRef = useRef(historyVersion);
+  useEffect(() => {
+    if (!itemRequestId || loadedVersionRef.current === historyVersion) return;
+    loadedVersionRef.current = historyVersion;
+    fetchChatMessages(itemRequestId)
+      .then((history) => setMessages((prev) => {
+        const ids = new Set(history.map((m) => m.id));
+        return [...history, ...prev.filter((m) => !ids.has(m.id))];
+      }))
+      .catch((err) => console.error('Failed to reload messages:', err));
+  }, [itemRequestId, historyVersion]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -152,7 +168,9 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, c
         clearTimeout(typingIndicatorTimeoutRef.current);
       }
     };
-  }, [itemRequestId, currentUser, otherUser]);
+    // Keyed on ids, not the user objects: the parent rebuilds those on every request reload, which
+    // would resubscribe (and could drop a broadcast) each time the status changes.
+  }, [itemRequestId, currentUser?.id, otherUser?.id]);
 
   // Backup heartbeat mechanism - only runs if ActionCable subscription fails
   const startBackupHeartbeat = () => {
@@ -320,9 +338,9 @@ const ChatSection = ({ itemRequestId, currentUser, otherUser, writable = true, c
                       <span className="text-gray-400">{formatEventTime(message.created_at)} · </span>
                       {describeRequestEvent(message, currentUser?.id)}
                     </p>
-                    {eventShowsNote(message) && (
+                    {eventNote(message) && (
                       <p className="mt-1 text-sm italic text-gray-500 whitespace-pre-wrap break-words">
-                        &ldquo;{linkifyText(message.content)}&rdquo;
+                        &ldquo;{linkifyText(eventNote(message))}&rdquo;
                       </p>
                     )}
                   </div>

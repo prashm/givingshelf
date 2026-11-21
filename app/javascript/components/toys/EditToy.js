@@ -190,6 +190,17 @@ const EditToy = ({ setCurrentPage, toyId, previousPage, returnSelectedBook, retu
     );
   }
 
+  // A donated toy stays as it was handed off; the server refuses edits to it too.
+  if (toy && toy.can_edit === false) {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-2xl">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <p className="text-gray-700">This toy was donated, so it can't be edited. It stays as it was when it was handed off.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!toy) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-2xl">

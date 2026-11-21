@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -142,6 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_120100) do
     t.string "brand"
     t.string "condition"
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.string "genre"
     t.string "isbn"
     t.integer "max_age"
@@ -158,6 +159,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_120100) do
     t.bigint "user_id"
     t.integer "view_count", default: 0, null: false
     t.boolean "wishlist_item", default: false, null: false
+    t.index ["deleted_at"], name: "index_items_on_deleted_at"
     t.index ["isbn"], name: "index_items_on_isbn", where: "(isbn IS NOT NULL)"
     t.index ["min_age", "max_age"], name: "index_items_on_min_age_and_max_age"
     t.index ["status"], name: "index_items_on_status"

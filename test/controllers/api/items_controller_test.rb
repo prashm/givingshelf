@@ -697,4 +697,63 @@ class Api::ItemsControllerTest < ActionDispatch::IntegrationTest
     end
     zip_group
   end
+
+  # GS-12: deleting an item with requests.
+  test "deleting an item with an accepted request is refused" do
+    request = item_requests(:one)
+    request.update_columns(status: ItemRequest::ACCEPTED_STATUS)
+    sign_in_as(users(:one))
+
+    delete api_item_url(items(:one)), params: { note: "Sorry" }
+
+    assert_response :unprocessable_entity
+    assert_equal [ ItemService::ACCEPTED_REQUEST_BLOCKS_REMOVAL ], JSON.parse(response.body)["errors"]
+    assert_nil items(:one).reload.deleted_at
+  end
+
+  test "deleting an item declines its open requests with the owner's note and hides it" do
+    request = item_requests(:one)
+    sign_in_as(users(:one))
+
+    get my_items_api_items_url
+    mine = JSON.parse(response.body)["items"].find { |item| item["id"] == items(:one).id }
+    assert_equal [ 1, false ], mine.values_at("open_request_count", "has_accepted_request")
+
+    delete api_item_url(items(:one)), params: { note: "Gave it to my sister" }
+    assert_response :success
+
+    assert_equal ItemRequest::DECLINED_STATUS, request.reload.status
+    assert_equal "The owner removed this item.\n\nGave it to my sister", request.messages.transitions.order(:id).last.content
+    get my_items_api_items_url
+    assert_not_includes JSON.parse(response.body)["items"].map { |item| item["id"] }, items(:one).id
+  end
+
+  test "a deleted item's page is gone, except to someone who requested it" do
+    items(:one).update_columns(deleted_at: Time.current)
+
+    get api_item_url(items(:one))
+    assert_response :not_found
+
+    sign_in_as(users(:one))
+    get api_item_url(items(:one))
+    assert_response :not_found, "not even for its owner"
+    patch api_item_url(items(:one)), params: { item: { title: "Renamed" } }
+    assert_response :not_found
+
+    sign_in_as(users(:two))
+    get api_item_url(items(:one))
+    assert_response :success
+    assert_equal true, JSON.parse(response.body)["deleted"]
+  end
+
+  test "the owner can't edit a donated item" do
+    items(:one).update_columns(status: ShareableItemStatus::DONATED)
+    sign_in_as(users(:one))
+
+    patch api_item_url(items(:one)), params: { item: { title: "Renamed" } }
+
+    assert_response :unprocessable_entity
+    assert_equal [ ItemService::DONATED_ITEM_CANT_BE_EDITED ], JSON.parse(response.body)["errors"]
+    assert_not_equal "Renamed", items(:one).reload.title
+  end
 end

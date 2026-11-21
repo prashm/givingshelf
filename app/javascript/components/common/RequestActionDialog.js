@@ -18,6 +18,14 @@ const COPY = {
       confirmLabel: 'Decline request',
       tone: 'danger'
     },
+    complete: {
+      buttonLabel: 'Complete',
+      title: 'Mark the handoff as complete?',
+      description: "The item will be marked donated, and this conversation will close. You can leave a final note for the requester.",
+      noteLabel: 'Final note (optional)',
+      confirmLabel: 'Mark as complete',
+      tone: 'primary'
+    },
     cancel: {
       buttonLabel: 'Cancel request',
       title: 'Cancel your request?',
@@ -55,7 +63,7 @@ const COPY = {
   }
 };
 
-// The wording for `action` ('decline', 'cancel' or 'uncancel'), or null for any other action.
+// The wording for `action` ('decline', 'complete', 'cancel' or 'uncancel'), or null for any other action.
 export const requestActionCopy = (action, { isWish = false } = {}) =>
   (isWish && COPY.wish[action]) || COPY.request[action] || null;
 
