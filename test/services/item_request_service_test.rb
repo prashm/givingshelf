@@ -30,7 +30,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_book_for_request(book, groups: [ @other_group ], status: "available")
+  def setup_book_for_request(book, groups: [ @other_group ], status: :available)
     ItemRequest.where(item: book).destroy_all
     GroupItemAvailability.where(item: book).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: book, community_group: group) }
@@ -38,7 +38,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     book
   end
 
-  def create_item_request(book, requester: @requester, status: "pending")
+  def create_item_request(book, requester: @requester, status: :pending)
     ItemRequest.create!(
       item: book,
       requester: requester,
@@ -116,7 +116,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns nil and sets error when book cannot be requested - book not available" do
-      book = setup_book_for_request(items(:one), status: "donated")
+      book = setup_book_for_request(items(:one), status: :donated)
       message = "I would love to read this book!"
 
 
@@ -147,7 +147,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
 
 
@@ -194,7 +194,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
   end
 
   describe "#update_request" do
-    def setup_item_request(status: "pending")
+    def setup_item_request(status: :pending)
       book = setup_book_for_request(items(:one))
       ItemRequest.create!(
         item: book,
@@ -230,8 +230,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "completes an accepted request successfully" do
-      item_request = setup_item_request(status: "accepted")
-      item_request.item.update!(status: "requested")
+      item_request = setup_item_request(status: :accepted)
+      item_request.item.requested!
       service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
@@ -277,7 +277,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when trying to complete a non-accepted request" do
-      item_request = setup_item_request(status: "pending")
+      item_request = setup_item_request(status: :pending)
       service = ItemRequestService.new(item_request)
 
       result = service.update_request(@owner, "complete")
@@ -292,7 +292,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
 
       service = ItemRequestService.new(request1)
@@ -311,7 +311,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       service = ItemRequestService.new(item_request)
 
@@ -330,7 +330,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       ItemRequestService.new(item_request).accept!
       service = ItemRequestService.new(item_request.reload)
@@ -350,7 +350,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       # Use a different user (owner) trying to cancel requester's request
       service = ItemRequestService.new(item_request)
@@ -370,7 +370,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       ItemRequestService.new(item_request).cancel!
       service = ItemRequestService.new(item_request.reload)
@@ -389,7 +389,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       ItemRequestService.new(item_request).cancel!
       service = ItemRequestService.new(item_request.reload)
@@ -410,7 +410,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       service = ItemRequestService.new(item_request)
       service.cancel!
@@ -431,13 +431,13 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       request2 = ItemRequest.create!(
         item: book,
         requester: other_requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
 
       ItemRequestService.new(request1).accept!
@@ -453,7 +453,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       service = ItemRequestService.new(item_request)
       service.cancel!
@@ -470,7 +470,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       service = ItemRequestService.new(item_request)
       service.cancel!
@@ -487,7 +487,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       service = ItemRequestService.new(item_request)
       service.accept!
@@ -505,7 +505,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       service = ItemRequestService.new(item_request)
 
@@ -521,7 +521,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "accepted"
+        status: :accepted
       )
       service = ItemRequestService.new(item_request)
 
@@ -540,13 +540,13 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         summary: "Summary text long enough for validations on the book model here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       item_request = ItemRequest.create!(
         item: wishlist_book,
         requester: @requester,
         owner: nil,
-        status: "pending"
+        status: :pending
       )
       donor = @owner
       service = ItemRequestService.new(item_request)
@@ -564,7 +564,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book,
         requester: @requester,
         owner: @owner,
-        status: "declined"
+        status: :declined
       )
       service = ItemRequestService.new(item_request)
 
@@ -589,9 +589,9 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
     it "does not change declined, cancelled or completed sibling requests" do
       book = setup_book_for_request(items(:one))
       request = create_item_request(book)
-      declined = create_item_request(book, requester: create_other_requester, status: "declined")
-      cancelled = create_item_request(book, requester: create_other_requester, status: "cancelled")
-      completed = create_item_request(book, requester: create_other_requester, status: "completed")
+      declined = create_item_request(book, requester: create_other_requester, status: :declined)
+      cancelled = create_item_request(book, requester: create_other_requester, status: :cancelled)
+      completed = create_item_request(book, requester: create_other_requester, status: :completed)
       pending = create_item_request(book, requester: create_other_requester)
 
       ItemRequestService.new(request).accept!
@@ -679,7 +679,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "uncancel! moves a cancelled request back to pending" do
       book = setup_book_for_request(items(:one))
-      request = create_item_request(book, status: "cancelled")
+      request = create_item_request(book, status: :cancelled)
 
       ItemRequestService.new(request).uncancel!
 
@@ -715,7 +715,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "accepts an in-review request" do
       book = setup_book_for_request(items(:one))
-      request = create_item_request(book, status: "in_review")
+      request = create_item_request(book, status: :in_review)
 
       ItemRequestService.new(request).accept!
 
@@ -725,7 +725,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "cancels an in-review request" do
       book = setup_book_for_request(items(:one))
-      request = create_item_request(book, status: "in_review")
+      request = create_item_request(book, status: :in_review)
 
       ItemRequestService.new(request).cancel!
 
@@ -734,7 +734,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "refuses to cancel a declined request" do
       book = setup_book_for_request(items(:one))
-      request = create_item_request(book, status: "declined")
+      request = create_item_request(book, status: :declined)
 
       error = assert_raises(RuntimeError) { ItemRequestService.new(request).cancel! }
       assert_equal "Cannot cancel a declined request", error.message
@@ -753,7 +753,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "frees the item when the owner declines the accepted request, so another can be accepted" do
       book = setup_book_for_request(items(:one))
-      other = create_item_request(book, requester: create_other_requester, status: "in_review")
+      other = create_item_request(book, requester: create_other_requester, status: :in_review)
       request = accepted_request(book)
 
       ItemRequestService.new(request).decline!
@@ -782,7 +782,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "refuses to accept or complete a declined request" do
       book = setup_book_for_request(items(:one))
-      request = create_item_request(book, status: "declined")
+      request = create_item_request(book, status: :declined)
 
       assert_equal "Cannot accept a declined request",
         assert_raises(RuntimeError) { ItemRequestService.new(request).accept! }.message
@@ -793,7 +793,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "refuses to uncancel when the item has been donated" do
       book = setup_book_for_request(items(:one))
-      cancelled = create_item_request(book, requester: create_other_requester, status: "cancelled")
+      cancelled = create_item_request(book, requester: create_other_requester, status: :cancelled)
       winner = accepted_request(book)
       ItemRequestService.new(winner).complete!
 
@@ -804,7 +804,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "refuses to uncancel while another request is accepted" do
       book = setup_book_for_request(items(:one))
-      cancelled = create_item_request(book, requester: create_other_requester, status: "cancelled")
+      cancelled = create_item_request(book, requester: create_other_requester, status: :cancelled)
       accepted_request(book)
 
       error = assert_raises(RuntimeError) { ItemRequestService.new(cancelled).uncancel! }
@@ -831,10 +831,10 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         summary: "Summary text long enough for validations on the book model here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
-      waiting = ItemRequest.create!(item: wish, requester: @requester, status: "pending")
-      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, status: "cancelled")
+      waiting = ItemRequest.create!(item: wish, requester: @requester, status: :pending)
+      cancelled = ItemRequest.create!(item: wish, requester: create_other_requester, status: :cancelled)
       assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
       assert_nil cancelled.reload.owner_id
 
@@ -849,7 +849,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "locks the owner's status buttons on finished requests" do
       book = setup_book_for_request(items(:one))
-      [ "declined", "completed", "cancelled" ].each do |status|
+      %i[declined completed cancelled].each do |status|
         assert_equal false, create_item_request(book, requester: create_other_requester, status: status).can_update_status?
       end
       assert create_item_request(book).can_update_status?
@@ -859,14 +859,14 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request(items(:one))
       json_for = ->(status) { service.request_json(create_item_request(book, requester: create_other_requester, status: status)) }
 
-      pending = json_for.call("pending")
+      pending = json_for.call(:pending)
       assert_equal [ true, false ], [ pending[:can_cancel], pending[:can_uncancel] ]
-      declined = json_for.call("declined")
+      declined = json_for.call(:declined)
       assert_equal [ false, false ], [ declined[:can_cancel], declined[:can_uncancel] ]
-      cancelled = json_for.call("cancelled")
+      cancelled = json_for.call(:cancelled)
       assert_equal [ false, true ], [ cancelled[:can_cancel], cancelled[:can_uncancel] ]
 
-      book.update!(status: "donated")
+      book.donated!
       assert_equal false, service.request_json(ItemRequest.find(cancelled[:id]))[:can_uncancel]
     end
   end
@@ -876,7 +876,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "Shared Wish", author: "Wish Author", isbn: "9780000000001", genre: "Fiction",
         published_year: 2020, summary: "Summary text long enough for validations on the book model here.",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
       requests = requesters.each_with_index.map do |(user, status), i|
@@ -890,8 +890,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request(items(:one))
       winner = create_item_request(book)
       in_review = create_item_request(book, requester: create_other_requester)
-      declined = create_item_request(book, requester: create_other_requester, status: "declined")
-      cancelled = create_item_request(book, requester: create_other_requester, status: "cancelled")
+      declined = create_item_request(book, requester: create_other_requester, status: :declined)
+      cancelled = create_item_request(book, requester: create_other_requester, status: :cancelled)
       ItemRequestService.new(winner).accept!
 
       assert_no_difference -> { Item.count } do
@@ -913,10 +913,10 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       c_user = create_other_requester
       d_user = create_other_requester
       wish, (a, b, c, d) = build_wish([
-        [ @requester, "pending" ],
-        [ b_user, "pending" ],
-        [ c_user, "pending" ],
-        [ d_user, "cancelled" ]
+        [ @requester, :pending ],
+        [ b_user, :pending ],
+        [ c_user, :pending ],
+        [ d_user, :cancelled ]
       ])
       wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
       # The donor's form sends the wish's group; its sub-group must survive to the relisted wish.
@@ -950,8 +950,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "creates no new wish when nobody else is still waiting" do
       wish, (a, _b) = build_wish([
-        [ @requester, "pending" ],
-        [ create_other_requester, "cancelled" ]
+        [ @requester, :pending ],
+        [ create_other_requester, :cancelled ]
       ])
       assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
       ItemRequestService.new(a.reload).accept!
@@ -964,8 +964,8 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
 
     it "rolls back the whole handoff when relisting the wish fails" do
       wish, (a, b) = build_wish([
-        [ @requester, "pending" ],
-        [ create_other_requester, "pending" ]
+        [ @requester, :pending ],
+        [ create_other_requester, :pending ]
       ])
       assert ItemService.new(wish).fulfill_wishlist_item(@owner, { condition: "good" })
       ItemRequestService.new(a.reload).accept!
@@ -998,7 +998,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         condition: "good",
         summary: "This is a test book summary that is long enough.",
         published_year: 2020,
-        status: "available"
+        status: :available
       )
       setup_book_for_request(book2)
 
@@ -1006,13 +1006,13 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book1,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
 
       requests = service.requests_for_user(@owner, "received")
@@ -1038,7 +1038,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         condition: "good",
         summary: "This is a test book summary that is long enough.",
         published_year: 2020,
-        status: "available"
+        status: :available
       )
       setup_book_for_request(book2)
 
@@ -1046,13 +1046,13 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         item: book1,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
       request2 = ItemRequest.create!(
         item: book2,
         requester: @requester,
         owner: @owner,
-        status: "pending"
+        status: :pending
       )
 
 
@@ -1121,7 +1121,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
       first = ItemRequestService.new.start_request!(@requester, book, "First requester's message here")
       second = ItemRequestService.new.start_request!(create_other_requester, book, "Second requester's message")
       # A later PENDING event (a reopen) must not replace the initial message.
-      first.messages.create!(user: @requester, request_transition_status: "pending", content: "Reopening")
+      first.messages.create!(user: @requester, request_transition_status: :pending, content: "Reopening")
       requests = ItemRequest.where(id: [ first.id, second.id ]).order(:id).to_a
 
       message_queries = 0
@@ -1293,7 +1293,7 @@ class ItemRequestServiceTest < ActiveSupport::TestCase
         wish = Book.create!(
           user_id: nil, title: "Thread Wish", author: "Author", genre: "Fiction", published_year: 2020,
           summary: "Summary text long enough for validations on the book model here.",
-          status: "wishlist"
+          status: :wishlist
         )
         GroupItemAvailability.create!(item: wish, community_group: @other_group)
         requests = requesters.map { |user| ItemRequestService.new.start_request!(user, wish, "Please may I have this one?") }

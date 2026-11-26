@@ -654,7 +654,7 @@ class CommunityGroupServiceTest < ActiveSupport::TestCase
         summary: "Long enough summary for preferred group selection testing here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: book, community_group: named)
       GroupItemAvailability.create!(item: book, community_group: other)

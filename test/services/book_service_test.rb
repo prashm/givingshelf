@@ -30,7 +30,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_book_for_request_test(book, groups: [], status: "available")
+  def setup_book_for_request_test(book, groups: [], status: :available)
     ItemRequest.where(item: book).destroy_all
     GroupItemAvailability.where(item: book).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: book, community_group: group) }
@@ -49,7 +49,7 @@ class BookServiceTest < ActiveSupport::TestCase
     CommunityGroupMembership.where(user: user, community_group: group).delete_all
   end
 
-  def create_item_request(book, requester, status: "pending")
+  def create_item_request(book, requester, status: :pending)
     ItemRequest.create!(
       item: book,
       requester: requester,
@@ -67,14 +67,14 @@ class BookServiceTest < ActiveSupport::TestCase
       summary: "A long enough summary for wishlist zipcode filtering test assertions.",
       published_year: 2020,
       genre: "Fiction",
-      status: "wishlist"
+      status: :wishlist
     )
     GroupItemAvailability.create!(item: book, community_group: group, sub_group: sub_group)
     ItemRequest.create!(
       item: book,
       requester: requester,
       owner: nil,
-      status: "pending"
+      status: :pending
     )
     book
   end
@@ -89,7 +89,7 @@ class BookServiceTest < ActiveSupport::TestCase
       summary: "A long enough summary for available book zipcode filtering test assertions.",
       published_year: 2020,
       genre: "Fiction",
-      status: "available"
+      status: :available
     )
     GroupItemAvailability.create!(item: book, community_group: group)
     book
@@ -445,7 +445,7 @@ class BookServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when book is not available" do
-      book = setup_book_for_request_test(items(:one), status: "donated")
+      book = setup_book_for_request_test(items(:one), status: :donated)
       requester = users(:two)
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
@@ -465,7 +465,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(book, requester, status: "pending")
+      create_item_request(book, requester, status: :pending)
 
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
@@ -477,7 +477,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(book, requester, status: "accepted")
+      create_item_request(book, requester, status: :accepted)
 
       service = BookService.new(book)
       result = service.item_can_be_requested_by?(requester)
@@ -532,7 +532,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(book, requester, status: "pending")
+      create_item_request(book, requester, status: :pending)
       remove_user_from_group(requester, @other_group)
 
       service = BookService.new(book)
@@ -550,14 +550,14 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "Long enough summary for a wishlist item request eligibility test here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: book, community_group: @other_group)
       ItemRequest.create!(
         item: book,
         requester: @user,
         owner: nil,
-        status: "pending"
+        status: :pending
       )
       other = users(:two)
       add_user_to_group(other, @other_group)
@@ -637,7 +637,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(book, requester, status: "cancelled")
+      create_item_request(book, requester, status: :cancelled)
 
       json = BookService.new(book).item_detail_map(book, requester)
 
@@ -649,7 +649,7 @@ class BookServiceTest < ActiveSupport::TestCase
       book = setup_book_for_request_test(items(:one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      request = create_item_request(book, requester, status: "pending")
+      request = create_item_request(book, requester, status: :pending)
 
       service = BookService.new(book)
       json = service.item_detail_map(book, requester)
@@ -705,7 +705,7 @@ class BookServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.find_or_create_by!(item: items(:two), community_group: group)
 
       # Mark one book as donated
-      items(:two).update!(status: "donated")
+      items(:two).update!(status: :donated)
 
       service = BookService.new
       stats = service.community_group_stats(community_group_id: group.id)
@@ -730,7 +730,7 @@ class BookServiceTest < ActiveSupport::TestCase
       CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
 
       # Mark user2's book as donated
-      items(:two).update!(status: "donated")
+      items(:two).update!(status: :donated)
 
       service = BookService.new
       stats_sg1 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg1.id)
@@ -777,7 +777,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary to validate wishlist counting in group stats.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: wishlist_book, community_group: group)
       create_item_request(wishlist_book, users(:two))
@@ -792,7 +792,7 @@ class BookServiceTest < ActiveSupport::TestCase
       group = community_groups(:one)
       create_wishlist_book(title: "Active Stats Wish", group: group, requester: users(:two))
       inactive_wish = create_wishlist_book(title: "Inactive Stats Wish", group: group, requester: users(:two))
-      inactive_wish.item_requests.update_all(status: "cancelled")
+      inactive_wish.item_requests.update_all(status: :cancelled)
 
       stats = BookService.new.community_group_stats(community_group_id: group.id)
 
@@ -811,7 +811,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary for group wishlist filtering assertions here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       non_wishlist_book = Book.create!(
         user: users(:one),
@@ -822,7 +822,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary for non-wishlist filtering assertions here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "available"
+        status: :available
       )
       GroupItemAvailability.create!(item: wishlist_book, community_group: group)
       GroupItemAvailability.create!(item: non_wishlist_book, community_group: group)
@@ -849,7 +849,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary for subgroup wishlist filtering assertions one.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       out_scope = Book.create!(
         user_id: nil,
@@ -859,7 +859,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary for subgroup wishlist filtering assertions two.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: in_scope, community_group: group, sub_group: sg1)
       GroupItemAvailability.create!(item: out_scope, community_group: group, sub_group: sg2)
@@ -883,7 +883,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary for wishlist query filtering assertions here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       non_matching = Book.create!(
         user_id: nil,
@@ -893,7 +893,7 @@ class BookServiceTest < ActiveSupport::TestCase
         summary: "A long enough summary for wishlist query filtering assertions two.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: matching, community_group: group)
       GroupItemAvailability.create!(item: non_matching, community_group: group)
@@ -922,7 +922,7 @@ class BookServiceTest < ActiveSupport::TestCase
         age_range: "5-7 years",
         min_age: 5,
         max_age: 7,
-        status: "wishlist"
+        status: :wishlist
       )
       non_matching = Book.create!(
         user_id: nil,
@@ -935,7 +935,7 @@ class BookServiceTest < ActiveSupport::TestCase
         age_range: "3-4 years",
         min_age: 3,
         max_age: 4,
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: matching, community_group: group)
       GroupItemAvailability.create!(item: non_matching, community_group: group)
@@ -1064,7 +1064,7 @@ class BookServiceTest < ActiveSupport::TestCase
     it "hides wishes whose requests are all cancelled on both the zip and community group paths" do
       zip_wish = create_wishlist_book(title: "Cancelled Zip Wish", group: @zip_group, requester: @user)
       group_wish = create_wishlist_book(title: "Cancelled Group Wish", group: @other_group, requester: @user)
-      ItemRequest.where(item: [ zip_wish, group_wish ]).update_all(status: "cancelled")
+      ItemRequest.where(item: [ zip_wish, group_wish ]).update_all(status: :cancelled)
 
       service = BookService.new
       assert_not_includes service.wishlist_items.pluck(:id), zip_wish.id
@@ -1086,7 +1086,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
     it "keeps a wish with at least one active request even if others cancelled" do
       wish = create_wishlist_book(title: "Partly Cancelled Wish", group: @other_group, requester: @user)
-      wish.item_requests.update_all(status: "cancelled")
+      wish.item_requests.update_all(status: :cancelled)
       create_item_request(wish, users(:two))
 
       ids = BookService.new.wishlist_items(community_group_id: @other_group.id).pluck(:id)
@@ -1097,7 +1097,7 @@ class BookServiceTest < ActiveSupport::TestCase
     it "does not match a wish on a cancelled requester's zipcode" do
       # users(:one) is in 12345 and cancels; users(:two) in 54321 is still waiting.
       wish = create_wishlist_book(title: "Moved Away Wish", group: @zip_group, requester: @user)
-      wish.item_requests.update_all(status: "cancelled")
+      wish.item_requests.update_all(status: :cancelled)
       create_item_request(wish, users(:two))
 
       service = BookService.new
@@ -1200,7 +1200,7 @@ class BookServiceTest < ActiveSupport::TestCase
 
   describe "wishlist sub-group visibility" do
     it "shows a wish in a sub-group someone waiting on it belongs to" do
-      wish = Book.create!(title: "Seen Wish", author: "A", summary: "A summary that is more than long enough to validate.", published_year: 2020, status: "wishlist")
+      wish = Book.create!(title: "Seen Wish", author: "A", summary: "A summary that is more than long enough to validate.", published_year: 2020, status: :wishlist)
       GroupItemAvailability.create!(item: wish, community_group: @other_group, sub_group: sub_groups(:one))
       CommunityGroupMembership.find_by!(user: users(:two), community_group: @other_group).update!(sub_group: sub_groups(:two))
       request = ItemRequest.create!(item: wish, requester: users(:two))
@@ -1209,7 +1209,7 @@ class BookServiceTest < ActiveSupport::TestCase
       assert_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:two).id).pluck(:id), wish.id
       assert_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:one).id).pluck(:id), wish.id
 
-      request.update_columns(status: "cancelled")
+      request.update_columns(status: :cancelled)
       assert_not_includes service.wishlist_items(community_group_id: @other_group.id, sub_group_id: sub_groups(:two).id).pluck(:id), wish.id
     end
   end

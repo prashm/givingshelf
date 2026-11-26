@@ -133,7 +133,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: user,
       requester_type: "User",
-      status: "requested"
+      status: :requested
     )
 
     get "/api/community_groups/#{group.id}"
@@ -151,7 +151,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: user.email_address
     )
 
@@ -224,7 +224,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: user,
       requester_type: "User",
-      status: "requested"
+      status: :requested
     )
 
     CommunityGroupMailer.stub(:join_request, ->(*) { flunk("should not email for already_requested") }) do
@@ -259,20 +259,20 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: user,
       requester_type: "User",
-      status: "requested",
+      status: :requested,
       message: "please"
     )
     GroupMembershipRequest.create!(
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "User",
-      status: "requested"
+      status: :requested
     )
     GroupMembershipRequest.create!(
       community_group: community_groups(:one),
       requester: user,
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: user.email_address
     )
 
@@ -292,7 +292,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: user.email_address,
       message: "join us"
     )
@@ -300,7 +300,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: "someone_else@example.com"
     )
 
@@ -333,7 +333,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: invitee.email_address
     )
 
@@ -350,7 +350,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: user.email_address
     )
 
@@ -369,7 +369,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: invitee.email_address
     )
 
@@ -484,7 +484,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: other,
       requester_type: "User",
-      status: "requested"
+      status: :requested
     )
 
     sign_in_as(user)
@@ -498,7 +498,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: user,
       requester_type: "User",
-      status: "requested"
+      status: :requested
     )
 
     sign_in_as(user)

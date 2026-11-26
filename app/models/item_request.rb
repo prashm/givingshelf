@@ -14,30 +14,30 @@ class ItemRequest < ApplicationRecord
   }, validate: true
 
   # Requests still waiting for the owner's decision.
-  OPEN_STATUSES = %w[pending in_review].freeze
+  OPEN_STATUSES = %i[pending in_review].freeze
 
   # Allowed status moves. DECLINED and COMPLETED are final; a CANCELLED request can only be
   # reopened (uncancel), and ItemRequestService also checks the item can still be given to it.
   TRANSITIONS = {
-    "pending" => %w[in_review accepted declined cancelled],
-    "in_review" => %w[accepted declined cancelled],
-    "accepted" => %w[completed declined cancelled],
-    "cancelled" => %w[pending],
-    "declined" => [],
-    "completed" => []
+    pending: %i[in_review accepted declined cancelled],
+    in_review: %i[accepted declined cancelled],
+    accepted: %i[completed declined cancelled],
+    cancelled: %i[pending],
+    declined: [],
+    completed: []
   }.freeze
 
   TRANSITION_VERBS = {
-    "in_review" => "review",
-    "accepted" => "accept",
-    "declined" => "decline",
-    "completed" => "complete",
-    "cancelled" => "cancel",
-    "pending" => "uncancel"
+    in_review: "review",
+    accepted: "accept",
+    declined: "decline",
+    completed: "complete",
+    cancelled: "cancel",
+    pending: "uncancel"
   }.freeze
 
   # Statuses where the requester is still waiting on a wishlist item.
-  ACTIVE_WISH_STATUSES = %w[pending in_review].freeze
+  ACTIVE_WISH_STATUSES = %i[pending in_review].freeze
 
   belongs_to :requester, class_name: "User"
   # Loads the item even when its owner deleted it, so the request and its thread still work.
@@ -124,7 +124,7 @@ class ItemRequest < ApplicationRecord
   end
 
   def can_transition_to?(new_status)
-    TRANSITIONS.fetch(status, []).include?(new_status.to_s)
+    TRANSITIONS.fetch(status&.to_sym, []).include?(new_status.to_sym)
   end
 
   # Raises unless the move from the current status to new_status is allowed.
@@ -132,7 +132,7 @@ class ItemRequest < ApplicationRecord
     return if can_transition_to?(new_status)
     label = status_label.downcase
     article = label.match?(/\A[aeiou]/) ? "an" : "a"
-    raise "Cannot #{TRANSITION_VERBS.fetch(new_status.to_s)} #{article} #{label} request"
+    raise "Cannot #{TRANSITION_VERBS.fetch(new_status.to_sym)} #{article} #{label} request"
   end
 
   private

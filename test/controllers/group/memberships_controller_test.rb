@@ -62,7 +62,7 @@ module Group
         community_group: @group,
         requester: new_user,
         requester_type: "User",
-        status: "requested"
+        status: :requested
       )
 
       delivery = Minitest::Mock.new
@@ -87,7 +87,7 @@ module Group
         community_group: @group,
         requester: user,
         requester_type: "User",
-        status: "requested"
+        status: :requested
       )
 
       post reject_group_admin_membership_request_path(@group, request_id: request.id)
@@ -120,7 +120,7 @@ module Group
         community_group: @group,
         requester: users(:one),
         requester_type: "Admin",
-        status: "invited",
+        status: :invited,
         email_address: "revoke_me_#{SecureRandom.hex(6)}@example.com"
       )
 
@@ -139,7 +139,7 @@ module Group
         community_group: @group,
         requester: @group_admin_user,
         requester_type: "Admin",
-        status: "invited",
+        status: :invited,
         email_address: pending_email
       )
 
@@ -154,7 +154,7 @@ module Group
         community_group: @group,
         requester: @group_admin_user,
         requester_type: "Admin",
-        status: "invited",
+        status: :invited,
         email_address: accepted_email
       )
 

@@ -20,7 +20,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       summary: "Long enough summary for sync_group_item_availabilities tests.",
       genre: "Fiction",
       published_year: 2020,
-      status: "available"
+      status: :available
     )
     @service = ItemService.new(@item)
   end
@@ -103,13 +103,13 @@ class ItemServiceTest < ActiveSupport::TestCase
         summary: "Summary text long enough for validations on the book model here.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       request = ItemRequest.create!(
         item: wishlist_book,
         requester: users(:two),
         owner: nil,
-        status: "pending"
+        status: :pending
       )
       [ wishlist_book, request ]
     end
@@ -153,7 +153,7 @@ class ItemServiceTest < ActiveSupport::TestCase
 
     it "refuses to fulfill a wish nobody is waiting for any more" do
       wishlist_book, request = create_wishlist_with_request
-      request.update!(status: "cancelled")
+      request.cancelled!
       service = ItemService.new(wishlist_book)
 
       assert_no_difference -> { UserNotification.count } do
@@ -172,7 +172,7 @@ class ItemServiceTest < ActiveSupport::TestCase
         item: wishlist_book,
         requester: @user,
         owner: nil,
-        status: "cancelled"
+        status: :cancelled
       )
       service = ItemService.new(wishlist_book)
 
@@ -213,13 +213,13 @@ class ItemServiceTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "Relist Me", author: "Wish Author", isbn: "9780000000002", genre: "Fiction",
         published_year: 2019, summary: "Summary text long enough for validations on the book model here.",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: wish, community_group: @group_one, sub_group: @sub_group_one)
       GroupItemAvailability.create!(item: wish, community_group: @group_two)
       request = ItemRequest.create!(item: wish, requester: users(:two))
       wish.cover_image.attach(io: StringIO.new("cover"), filename: "cover.jpg", content_type: "image/jpeg")
-      wish.update!(user: @user, status: "donated", condition: "good")
+      wish.update!(user: @user, status: :donated, condition: "good")
       [ wish, request ]
     end
 
@@ -281,7 +281,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "Locked Wish", author: "Wish Author", genre: "Fiction", published_year: 2021,
         summary: "Summary text long enough for validations on the book model here.",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: wish, community_group: @group_one, sub_group: @sub_group_one)
       ItemRequest.create!(item: wish, requester: users(:two))
@@ -378,7 +378,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "Zip Wish", author: "Author", genre: "Fiction", published_year: 2020,
         summary: "Summary text long enough for validations on the book model here.",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: wish, community_group: zip_group)
       cancelled_user = User.create!(email_address: "zip_#{SecureRandom.hex(4)}@example.com", verified: true,
@@ -387,7 +387,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       ItemRequest.create!(item: wish, requester: users(:two))
       ItemRequest.create!(item: wish, requester: users(:one))
       ItemRequest.create!(item: wish, requester: cancelled_user,
-        status: "cancelled")
+        status: :cancelled)
 
       assert_equal [ "12345, 54321 Community" ], ItemService.new.item_detail_map(wish)[:community_group_names]
 
@@ -411,7 +411,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       book = Book.create!(
         user_id: nil, title: title, author: author, isbn: isbn, genre: "Fiction", published_year: 2020,
         summary: "Summary text long enough for validations on the book model here.",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: book, community_group: group, sub_group: sub_group)
       ItemRequest.create!(item: book, requester: waiting) if waiting
@@ -448,7 +448,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       it "matches a toy on its title and brand, and never a book" do
         toy = Toy.create!(user_id: nil, title: "Matched Wish", brand: "Lego", age_range: "5-7",
           summary: "A long enough summary for wishlist toy matching assertions here.",
-          status: "wishlist")
+          status: :wishlist)
         GroupItemAvailability.create!(item: toy, community_group: @group_one)
         ItemRequest.create!(item: toy, requester: users(:two))
 
@@ -467,27 +467,27 @@ class ItemServiceTest < ActiveSupport::TestCase
     describe "candidates" do
       it "needs someone still waiting" do
         match = wish
-        match.item_requests.update_all(status: "cancelled")
+        match.item_requests.update_all(status: :cancelled)
         assert_nil find
-        match.item_requests.update_all(status: "declined")
+        match.item_requests.update_all(status: :declined)
         assert_nil find
       end
 
       it "includes a fulfilled wish until it's donated" do
         match = wish
         donor = create_user("donor")
-        match.update_columns(user_id: donor.id, status: "available")
+        match.update_columns(user_id: donor.id, status: :available)
         assert_equal match, find
-        match.update_columns(status: "requested")
-        match.item_requests.update_all(status: "accepted")
+        match.update_columns(status: :requested)
+        match.item_requests.update_all(status: :accepted)
         assert_equal match, find, "an accepted request still counts as waiting"
-        match.update_columns(status: "donated")
+        match.update_columns(status: :donated)
         assert_nil find
       end
 
       it "skips an item the requester is giving away themselves" do
         match = wish
-        match.update_columns(user_id: @user.id, status: "available")
+        match.update_columns(user_id: @user.id, status: :available)
         assert_nil find
       end
 
@@ -525,7 +525,7 @@ class ItemServiceTest < ActiveSupport::TestCase
         ItemRequest.create!(item: match, requester: neighbour)
         assert_equal match, find(sub_group: @sub_group_two)
 
-        match.item_requests.where(requester: neighbour).update_all(status: "cancelled")
+        match.item_requests.where(requester: neighbour).update_all(status: :cancelled)
         assert_nil find(sub_group: @sub_group_two), "only people still waiting count"
       end
 
@@ -618,7 +618,7 @@ class ItemServiceTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "Removed Copy Wish", author: "Author", genre: "Fiction", published_year: 2020,
         summary: "Summary text long enough for validations on the book model here.",
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: wish, community_group: @group_one)
       waiter = request_on(wish, "waiter")
@@ -682,7 +682,7 @@ class ItemServiceTest < ActiveSupport::TestCase
 
   describe "#update_item on a donated item" do
     it "is refused, and the item stays as it was" do
-      @item.update_columns(status: "donated")
+      @item.update_columns(status: :donated)
 
       assert_not @service.update_item(@user, { title: "Renamed after handoff" })
       assert_equal [ ItemService::DONATED_ITEM_CANT_BE_EDITED ], @service.errors
@@ -711,7 +711,7 @@ class ItemServiceTest < ActiveSupport::TestCase
 
     it "are hidden from Item queries by default, but load from their requests" do
       # Saved without validations: a deleted item can't take new requests, but old ones remain.
-      request = ItemRequest.new(item: @item, requester: users(:two), status: "declined")
+      request = ItemRequest.new(item: @item, requester: users(:two), status: :declined)
       request.save!(validate: false)
 
       assert_nil Item.find_by(id: @item.id)
@@ -730,10 +730,10 @@ class ItemServiceTest < ActiveSupport::TestCase
       wish = Book.create!(
         user: @user, title: "Deleted Wish Copy", author: "Author", genre: "Fiction", published_year: 2020,
         summary: "Summary text long enough for validations on the book model here.", wishlist_item: true, condition: "good",
-        status: "available"
+        status: :available
       )
       GroupItemAvailability.create!(item: wish, community_group: @group_one)
-      ItemRequest.create!(item: wish, requester: users(:two), owner: @user, status: "in_review")
+      ItemRequest.create!(item: wish, requester: users(:two), owner: @user, status: :in_review)
       attrs = { title: "Deleted Wish Copy", author: "Author" }
       wisher = User.create!(email_address: "wisher_#{SecureRandom.hex(4)}@example.com", verified: true,
         password_digest: BCrypt::Password.create("password123!"))
@@ -750,18 +750,18 @@ class ItemServiceTest < ActiveSupport::TestCase
         u = User.create!(email_address: "c#{i}_#{SecureRandom.hex(4)}@example.com", verified: true, password_digest: BCrypt::Password.create("password123!"))
         u
       end
-      ItemRequest.create!(item: @item, requester: users[0], status: "pending")
-      ItemRequest.create!(item: @item, requester: users[1], status: "in_review")
-      ItemRequest.create!(item: @item, requester: users[2], status: "cancelled")
+      ItemRequest.create!(item: @item, requester: users[0], status: :pending)
+      ItemRequest.create!(item: @item, requester: users[1], status: :in_review)
+      ItemRequest.create!(item: @item, requester: users[2], status: :cancelled)
 
       json = ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))
       assert_equal [ true, 2, false ], json.values_at(:can_delete, :open_request_count, :has_accepted_request)
 
-      ItemRequest.where(item: @item, requester: users[0]).update_all(status: "accepted")
+      ItemRequest.where(item: @item, requester: users[0]).update_all(status: :accepted)
       json = ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id))
       assert_equal [ 1, true ], json.values_at(:open_request_count, :has_accepted_request)
 
-      @item.update_columns(status: "donated")
+      @item.update_columns(status: :donated)
       assert_equal [ false, false ], ItemService.new.my_item_map(Item.includes(:item_requests).find(@item.id)).values_at(:can_edit, :can_delete)
     end
   end

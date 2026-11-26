@@ -30,7 +30,7 @@ class ToyServiceTest < ActiveSupport::TestCase
 
   private
 
-  def setup_toy_for_request_test(toy, groups: [], status: "available")
+  def setup_toy_for_request_test(toy, groups: [], status: :available)
     ItemRequest.where(item: toy).destroy_all
     GroupItemAvailability.where(item: toy).delete_all
     groups.each { |group| GroupItemAvailability.create!(item: toy, community_group: group) }
@@ -49,7 +49,7 @@ class ToyServiceTest < ActiveSupport::TestCase
     CommunityGroupMembership.where(user: user, community_group: group).delete_all
   end
 
-  def create_item_request(toy, requester, status: "pending")
+  def create_item_request(toy, requester, status: :pending)
     ItemRequest.create!(
       item: toy,
       requester: requester,
@@ -377,7 +377,7 @@ class ToyServiceTest < ActiveSupport::TestCase
         brand: brand,
         summary: "A long enough summary for wishlist toy filtering assertions here.",
         age_range: age_range,
-        status: "wishlist"
+        status: :wishlist
       )
       GroupItemAvailability.create!(item: toy, community_group: group)
       # Every real wish has at least one requester (see ItemService#create_wishlist_item).
@@ -385,7 +385,7 @@ class ToyServiceTest < ActiveSupport::TestCase
         item: toy,
         requester: requester,
         owner: nil,
-        status: "pending"
+        status: :pending
       )
       toy
     end
@@ -438,7 +438,7 @@ class ToyServiceTest < ActiveSupport::TestCase
     end
 
     it "returns false when toy is not available" do
-      toy = setup_toy_for_request_test(items(:toy_one), status: "donated")
+      toy = setup_toy_for_request_test(items(:toy_one), status: :donated)
       requester = users(:two)
       service = ToyService.new(toy)
       result = service.item_can_be_requested_by?(requester)
@@ -458,7 +458,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "pending")
+      create_item_request(toy, requester, status: :pending)
 
       service = ToyService.new(toy)
       result = service.item_can_be_requested_by?(requester)
@@ -470,7 +470,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "accepted")
+      create_item_request(toy, requester, status: :accepted)
 
       service = ToyService.new(toy)
       result = service.item_can_be_requested_by?(requester)
@@ -525,7 +525,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "pending")
+      create_item_request(toy, requester, status: :pending)
       remove_user_from_group(requester, @other_group)
 
       service = ToyService.new(toy)
@@ -604,7 +604,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      create_item_request(toy, requester, status: "cancelled")
+      create_item_request(toy, requester, status: :cancelled)
 
       json = ToyService.new(toy).item_detail_map(toy, requester)
 
@@ -616,7 +616,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       toy = setup_toy_for_request_test(items(:toy_one), groups: [ @other_group ])
       requester = users(:two)
       add_user_to_group(requester, @other_group)
-      request = create_item_request(toy, requester, status: "pending")
+      request = create_item_request(toy, requester, status: :pending)
 
       service = ToyService.new(toy)
       json = service.item_detail_map(toy, requester)
@@ -670,7 +670,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       GroupItemAvailability.find_or_create_by!(item: items(:toy_one), community_group: group)
       GroupItemAvailability.find_or_create_by!(item: items(:toy_two), community_group: group)
 
-      items(:toy_two).update!(status: "donated")
+      items(:toy_two).update!(status: :donated)
 
       service = ToyService.new
       stats = service.community_group_stats(community_group_id: group.id)
@@ -692,7 +692,7 @@ class ToyServiceTest < ActiveSupport::TestCase
       CommunityGroupMembership.find_by!(user: users(:one), community_group: group).update!(sub_group_id: sg1.id)
       CommunityGroupMembership.find_by!(user: users(:two), community_group: group).update!(sub_group_id: sg2.id)
 
-      items(:toy_two).update!(status: "donated")
+      items(:toy_two).update!(status: :donated)
 
       service = ToyService.new
       stats_sg1 = service.community_group_stats(community_group_id: group.id, sub_group_id: sg1.id)

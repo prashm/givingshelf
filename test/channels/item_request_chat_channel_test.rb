@@ -13,7 +13,7 @@ class ItemRequestChatChannelTest < ActionCable::Channel::TestCase
 
   test "refuses messages once the request is closed" do
     request = item_requests(:one)
-    request.update_columns(status: "cancelled")
+    request.update_columns(status: :cancelled)
     stub_connection current_user: users(:one)
     subscribe item_request_id: request.id
 
