@@ -229,7 +229,7 @@ class CommunityGroupService
     end
 
     membership = nil
-    current_status = membership_request.status
+    was_invited = membership_request.invited?
 
     ActiveRecord::Base.transaction do
       membership = CommunityGroupMembership.create!(
@@ -246,7 +246,7 @@ class CommunityGroupService
       )
     end
 
-    if current_status == "invited"
+    if was_invited
       CommunityGroupMailer.invite_accepted(group, user).deliver_later
     else
       CommunityGroupMailer.membership_accepted(group, user).deliver_later

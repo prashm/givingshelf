@@ -12,7 +12,7 @@ class BackfillInitialRequestEventsTest < ActiveSupport::TestCase
 
   test "gives each request one initial PENDING event with its message, author and created_at" do
     request = item_requests(:one)
-    request.update_columns(created_at: 3.days.ago.change(usec: 0), status: "declined")
+    request.update_columns(created_at: 3.days.ago.change(usec: 0), status: :declined)
     set_message(request, "  I would love to read this book!  ")
     blank = item_requests(:two)
     set_message(blank, "")
@@ -28,6 +28,6 @@ class BackfillInitialRequestEventsTest < ActiveSupport::TestCase
       [ event.request_transition_status, event.user_id, event.content, event.created_at ]
     assert_equal "I would love to read this book!", request.initial_message.content
     assert_nil blank.messages.transitions.sole.content
-    assert_equal ItemRequest.count, Message.transitions.where(request_transition_status: "pending").count
+    assert_equal ItemRequest.count, Message.transitions.where(request_transition_status: :pending).count
   end
 end

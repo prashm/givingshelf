@@ -60,10 +60,10 @@ class GroupMembershipRequest < ApplicationRecord
   private
 
   def request_shape
-    case status
-    when "requested"
+    case status&.to_sym
+    when :requested
       errors.add(:requester_type, "must be User for join requests") unless requester_type == "User"
-    when "invited"
+    when :invited
       errors.add(:requester_type, "must be Admin for invites") unless requester_type == "Admin"
       errors.add(:email_address, "can't be blank for invites") if email_address.blank?
     end

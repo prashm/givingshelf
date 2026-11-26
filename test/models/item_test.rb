@@ -27,7 +27,7 @@ class ItemTest < ActiveSupport::TestCase
         summary: "Summary is definitely long enough here for validation pass.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist"
+        status: :wishlist
       )
       assert b.valid?
     end
@@ -42,7 +42,7 @@ class ItemTest < ActiveSupport::TestCase
         summary: "Summary is long enough to satisfy item validation rules we use.",
         published_year: 2020,
         genre: "Fiction",
-        status: "available"
+        status: :available
       )
       assert_not b.valid?
       assert_includes b.errors[:condition], "can't be blank"
@@ -59,7 +59,7 @@ class ItemTest < ActiveSupport::TestCase
         summary: "Summary is definitely long enough for this validation test case.",
         published_year: 2020,
         genre: "Fiction",
-        status: "wishlist",
+        status: :wishlist,
         condition: "good"
       )
       assert_not b.valid?
@@ -75,7 +75,7 @@ class ItemTest < ActiveSupport::TestCase
         summary: "Summary is definitely long enough for this validation test case.",
         published_year: 2020,
         genre: "Fiction",
-        status: "available"
+        status: :available
       )
       assert_not b.valid?
       assert_includes b.errors[:user_id], "can't be blank"
@@ -87,11 +87,11 @@ class ItemTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "A wish", author: "Author", published_year: 2020, genre: "Fiction",
         summary: "Summary is definitely long enough for this validation test case.",
-        status: "wishlist"
+        status: :wishlist
       )
       assert wish.wishlist_item?
 
-      wish.update!(user: users(:one), status: "available", condition: "good")
+      wish.update!(user: users(:one), status: :available, condition: "good")
       assert wish.reload.wishlist_item?
       assert_raises(ActiveRecord::ReadonlyAttributeError) { wish.wishlist_item = false }
     end
@@ -106,16 +106,16 @@ class ItemTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "A wish", author: "Author", published_year: 2020, genre: "Fiction",
         summary: "Summary is definitely long enough for this validation test case.",
-        status: "wishlist"
+        status: :wishlist
       )
       assert wish.open_to_requests?
-      wish.update!(user: users(:one), status: "requested", condition: "good")
+      wish.update!(user: users(:one), status: :requested, condition: "good")
       assert wish.open_to_requests?
 
       listed = items(:one)
-      listed.update_columns(status: "requested")
+      listed.update_columns(status: :requested)
       assert_not listed.open_to_requests?
-      listed.update_columns(status: "donated")
+      listed.update_columns(status: :donated)
       assert_not listed.open_to_requests?
     end
   end
@@ -125,7 +125,7 @@ class ItemTest < ActiveSupport::TestCase
       wish = Book.create!(
         user_id: nil, title: "Requester Wish", author: "Author", published_year: 2020, genre: "Fiction",
         summary: "Summary is definitely long enough here for validation pass.",
-        status: "wishlist"
+        status: :wishlist
       )
       specs.each_with_index do |(user, status), i|
         ItemRequest.create!(item: wish, requester: user, status: status,
@@ -142,9 +142,9 @@ class ItemTest < ActiveSupport::TestCase
     it "lists non-cancelled requesters, oldest request first" do
       third = extra_user
       wish = wish_with_requests(
-        [ users(:two), "pending" ],
-        [ third, "cancelled" ],
-        [ users(:one), "in_review" ]
+        [ users(:two), :pending ],
+        [ third, :cancelled ],
+        [ users(:one), :in_review ]
       )
 
       assert_equal [ users(:two), users(:one) ], wish.requesters.to_a
@@ -152,8 +152,8 @@ class ItemTest < ActiveSupport::TestCase
 
     it "returns the earliest requester even after they cancel" do
       wish = wish_with_requests(
-        [ users(:two), "cancelled" ],
-        [ users(:one), "pending" ]
+        [ users(:two), :cancelled ],
+        [ users(:one), :pending ]
       )
 
       assert_equal users(:two), wish.original_requester

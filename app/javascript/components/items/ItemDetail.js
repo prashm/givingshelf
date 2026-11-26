@@ -294,7 +294,7 @@ const ItemDetail = ({
   const subtitle = getSubtitle(item);
   const detailFields = getDetailFields(item);
   // isWishlist: the wish is still open (no donor yet). Drives the open-wish actions.
-  const isWishlist = item?.status === 'wishlist';
+  const isWishlist = item?.status === Constants.ITEM_STATUS.WISHLIST;
   // isWishlistItem: the item started as a wish, whatever its status now. Drives the indicator.
   const isWishlistItem = Boolean(item?.wishlist_item) || isWishlist;
   // The wisher withdraws (cancel) or reopens (uncancel) their own request from the wish's page.
@@ -396,7 +396,7 @@ const ItemDetail = ({
                       onClick={() => setCurrentPage('itemRequestDetails', { itemRequestId: userRequest.id })}
                       className="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
                     >
-                      {userRequest.status === 'cancelled'
+                      {userRequest.status === Constants.REQUEST_STATUS.CANCELLED
                         ? `Canceled request on ${new Date(userRequest.updated_at || userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                         : `Requested on ${new Date(userRequest.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                     </button>

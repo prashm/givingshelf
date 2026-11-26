@@ -10,7 +10,7 @@ class WishFulfillRaceTest < ActiveSupport::TestCase
     @wish = Book.create!(
       title: "Raced Wish", author: "Author", genre: "Fiction", published_year: 2020,
       summary: "Summary text long enough for validations on the book model here.",
-      status: "wishlist"
+      status: :wishlist
     )
     ItemRequest.create!(item: @wish, requester: users(:two))
   end

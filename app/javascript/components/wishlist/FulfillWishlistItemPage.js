@@ -5,8 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import FulfillWishlistItemForm from './FulfillWishlistItemForm';
 import FormErrorBanner from '../common/FormErrorBanner';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-
-const WISHLIST_STATUS = 'wishlist';
+import * as Constants from '../../lib/constants';
 
 const FulfillWishlistItemPage = ({
   itemId,
@@ -39,7 +38,7 @@ const FulfillWishlistItemPage = ({
         setBook(null);
         return;
       }
-      if (data.type !== 'Book' || data.status !== WISHLIST_STATUS) {
+      if (data.type !== 'Book' || data.status !== Constants.ITEM_STATUS.WISHLIST) {
         setError('This listing is not an open wishlist request.');
         setBook(data);
         return;
@@ -187,7 +186,7 @@ const FulfillWishlistItemPage = ({
     );
   }
 
-  if (book && (book.type !== 'Book' || book.status !== WISHLIST_STATUS)) {
+  if (book && (book.type !== 'Book' || book.status !== Constants.ITEM_STATUS.WISHLIST)) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-2xl text-center">
         <p className="text-red-600 mb-4">{error || 'This book is not a wishlist request.'}</p>

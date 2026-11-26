@@ -10,7 +10,7 @@ class GroupMembershipRequestTest < ActiveSupport::TestCase
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "User",
-      status: "requested"
+      status: :requested
     )
     assert req.valid?
   end
@@ -20,7 +20,7 @@ class GroupMembershipRequestTest < ActiveSupport::TestCase
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited",
+      status: :invited,
       email_address: "invitee@example.com"
     )
     assert req.valid?
@@ -31,7 +31,7 @@ class GroupMembershipRequestTest < ActiveSupport::TestCase
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: "invited"
+      status: :invited
     )
     assert_not req.valid?
     assert_includes req.errors[:email_address].join(" "), "blank"

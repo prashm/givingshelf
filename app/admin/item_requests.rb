@@ -33,7 +33,7 @@ ActiveAdmin.register ItemRequest do
   filter :item
   filter :requester
   filter :owner
-  filter :status, as: :select, collection: ItemRequest.status_options.excluding([ "Cancelled", "cancelled" ])
+  filter :status, as: :select, collection: ItemRequest.status_options
   filter :created_at
 
   show do |item_request|
@@ -85,7 +85,7 @@ ActiveAdmin.register ItemRequest do
       f.input :item, collection: Item.all.map { |i| [ "#{i.type}: #{i.title}", i.id ] }
       f.input :requester, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :owner, collection: User.all.map { |u| [ u.email_address, u.id ] }
-      f.input :status, as: :select, collection: ItemRequest.status_options.excluding([ "Cancelled", "cancelled" ])
+      f.input :status, as: :select, collection: ItemRequest.status_options
     end
     f.actions
   end

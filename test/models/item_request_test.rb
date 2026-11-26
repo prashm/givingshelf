@@ -23,23 +23,23 @@ class ItemRequestTest < ActiveSupport::TestCase
 
   test "can_transition_to? follows the transition table" do
     request = item_requests(:one)
-    assert request.can_transition_to?("accepted")
-    assert_not request.can_transition_to?("completed")
+    assert request.can_transition_to?(:accepted)
+    assert_not request.can_transition_to?(:completed)
 
-    request.status = "declined"
-    assert_not request.can_transition_to?("cancelled")
+    request.status = :declined
+    assert_not request.can_transition_to?(:cancelled)
 
-    request.status = "cancelled"
-    assert request.can_transition_to?("pending")
-    assert_not request.can_transition_to?("accepted")
+    request.status = :cancelled
+    assert request.can_transition_to?(:pending)
+    assert_not request.can_transition_to?(:accepted)
   end
 
   test "guard_transition! names the move and the current status" do
     request = item_requests(:one)
-    request.status = "accepted"
+    request.status = :accepted
     assert_nil request.guard_transition!("completed")
 
-    request.status = "in_review"
+    request.status = :in_review
     error = assert_raises(RuntimeError) { request.guard_transition!("completed") }
     assert_equal "Cannot complete an in review request", error.message
   end
@@ -51,16 +51,16 @@ class ItemRequestTest < ActiveSupport::TestCase
 
   test "message_thread_writable? is open while the request is live with an owner" do
     request = item_requests(:one)
-    [ "pending", "in_review", "accepted" ].each do |status|
+    %i[pending in_review accepted].each do |status|
       request.status = status
       assert request.message_thread_writable?, ItemRequest.status_label(status)
     end
-    [ "cancelled", "declined", "completed" ].each do |status|
+    %i[cancelled declined completed].each do |status|
       request.status = status
       assert_not request.message_thread_writable?, ItemRequest.status_label(status)
     end
 
-    request.status = "pending"
+    request.status = :pending
     request.owner = nil
     assert_not request.message_thread_writable?, "an open wish has no one to message"
   end
@@ -68,9 +68,9 @@ class ItemRequestTest < ActiveSupport::TestCase
   test "initial_message is the first PENDING event, looked up once" do
     request = item_requests(:one)
     request.messages.delete_all
-    first = request.messages.create!(user: request.requester, request_transition_status: "pending", content: "Opening message")
-    request.messages.create!(user: request.requester, request_transition_status: "cancelled")
-    request.messages.create!(user: request.requester, request_transition_status: "pending", content: "Reopening")
+    first = request.messages.create!(user: request.requester, request_transition_status: :pending, content: "Opening message")
+    request.messages.create!(user: request.requester, request_transition_status: :cancelled)
+    request.messages.create!(user: request.requester, request_transition_status: :pending, content: "Reopening")
 
     assert_equal first, request.initial_message
     ActiveRecord::Base.uncached { assert_no_queries { request.initial_message } }
@@ -80,7 +80,7 @@ class ItemRequestTest < ActiveSupport::TestCase
     request = item_requests(:one)
     request.messages.delete_all
     assert_nil request.initial_message
-    request.messages.create!(user: request.requester, request_transition_status: "pending", content: "Backfilled later")
+    request.messages.create!(user: request.requester, request_transition_status: :pending, content: "Backfilled later")
 
     assert_nil request.initial_message, "memoized until reload"
     assert_equal "Backfilled later", request.reload.initial_message.content

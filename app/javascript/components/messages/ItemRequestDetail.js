@@ -46,7 +46,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
     const itemData = request.book || request.toy;
     const isOwner = currentUser.id === itemData?.owner?.id;
-    const isPending = request?.status === 'pending';
+    const isPending = request?.status === Constants.REQUEST_STATUS.PENDING;
 
     if (isOwner && isPending) {
       setHasMarkedAsViewed(true);
@@ -127,18 +127,18 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     {
       action: 'accept',
       label: 'Accept',
-      statusMatch: 'accepted',
+      statusMatch: Constants.REQUEST_STATUS.ACCEPTED,
       activeColor: 'bg-emerald-600',
       Icon: CheckIcon,
       IconSolid: CheckIconSolid,
       title: 'Accept Request',
-      additionalDisabled: currentStatus === 'accepted',
+      additionalDisabled: currentStatus === Constants.REQUEST_STATUS.ACCEPTED,
       description: 'Approve this request and mark the item as requested'
     },
     {
       action: 'decline',
       label: 'Decline',
-      statusMatch: 'declined',
+      statusMatch: Constants.REQUEST_STATUS.DECLINED,
       activeColor: 'bg-red-600',
       Icon: XMarkIcon,
       IconSolid: XMarkIconSolid,
@@ -149,12 +149,12 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     {
       action: 'complete',
       label: 'Complete',
-      statusMatch: 'completed',
+      statusMatch: Constants.REQUEST_STATUS.COMPLETED,
       activeColor: 'bg-blue-600',
       Icon: CheckCircleIcon,
       IconSolid: CheckCircleIconSolid,
       title: 'Mark as Completed',
-      additionalDisabled: currentStatus !== 'accepted',
+      additionalDisabled: currentStatus !== Constants.REQUEST_STATUS.ACCEPTED,
       description: 'This action will mark the item as "donated" (only available for accepted requests)'
     }
   ];
@@ -162,7 +162,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
   const renderStatusButton = (buttonConfig) => {
     const isActive = currentStatus === buttonConfig.statusMatch;
     const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
-    const isFinished = ['completed', 'declined', 'cancelled'].includes(currentStatus);
+    const isFinished = [Constants.REQUEST_STATUS.COMPLETED, Constants.REQUEST_STATUS.DECLINED, Constants.REQUEST_STATUS.CANCELLED].includes(currentStatus);
     const tooltip = !request.can_update_status
       ? (isFinished ? `This request is already ${currentStatusDisplay.toLowerCase()}` : 'Another request for this item is already accepted')
       : isActive && buttonConfig.action === 'accept'
@@ -225,7 +225,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     if (request.message_thread_writable) return null;
     // Cancelled comes first: a cancelled wish has no owner either, but its requester won't hear
     // about offers until they reopen it.
-    if (currentStatus === 'cancelled') {
+    if (currentStatus === Constants.REQUEST_STATUS.CANCELLED) {
       if (isOwner) return 'The requester cancelled this request, so the conversation is read-only.';
       return itemData?.owner
         ? 'You cancelled this request. Reopen it to send messages again.'
@@ -305,7 +305,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           <div>
             <p className="font-medium text-gray-500">Requested at</p>
             <p>{createdAt}</p>
-            {isOwner && currentStatus === 'cancelled' && request.updated_at && (
+            {isOwner && currentStatus === Constants.REQUEST_STATUS.CANCELLED && request.updated_at && (
               <p className="mt-2 text-gray-600 bold">
                 <strong>User canceled request at {updatedAt}</strong>
               </p>

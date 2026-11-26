@@ -7,7 +7,7 @@ class ItemService
   # A wish can be joined while it's open, or fulfilled and not yet donated.
   JOINABLE_WISH_STATUSES = %w[wishlist available requested].freeze
   # Requests whose requester is still waiting on a wish, open or fulfilled.
-  WAITING_REQUEST_STATUSES = %w[pending in_review accepted].freeze
+  WAITING_REQUEST_STATUSES = %i[pending in_review accepted].freeze
   # The owner's note when deleting an item follows a fixed text in one message (max 1000 characters).
   REMOVAL_NOTE_MAX = 900
   ACCEPTED_REQUEST_BLOCKS_REMOVAL = "You have an accepted request for this item. Decline or complete it first.".freeze
@@ -138,7 +138,7 @@ class ItemService
       raise ACCEPTED_REQUEST_BLOCKS_REMOVAL if requests.any?(&:accepted?)
 
       if requests.any?
-        open_requests = requests.select { |request| ItemRequest::OPEN_STATUSES.include?(request.status) }
+        open_requests = requests.select { |request| ItemRequest::OPEN_STATUSES.include?(request.status.to_sym) }
         ItemRequestService.new.close_out_requests!(item, open_requests, current_user,
           declined_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_NOTE, note),
           moved_note: ItemRequestService.note_after(ItemRequestService::ITEM_REMOVED_MOVED_NOTE, note))
@@ -454,7 +454,7 @@ class ItemService
     item_map(item).merge(
       can_edit: !item.donated?,
       can_delete: !item.donated?,
-      open_request_count: requests.count { |request| ItemRequest::OPEN_STATUSES.include?(request.status) },
+      open_request_count: requests.count { |request| ItemRequest::OPEN_STATUSES.include?(request.status.to_sym) },
       has_accepted_request: requests.any?(&:accepted?)
     )
   end
@@ -514,7 +514,7 @@ class ItemService
 
   # A new ownerless wish in the requester's group, with their pending request.
   def create_wish!(requester, item_params, community_group_ids, cover_image_url, message)
-    @item = Item.create!(item_params.merge(type: type_class.name, status: "wishlist"))
+    @item = Item.create!(item_params.merge(type: type_class.name, status: :wishlist))
     sync_group_item_availabilities!(requester, community_group_ids)
     handle_api_cover_image(cover_image_url)
     @item_request = ItemRequestService.new.start_request!(requester, @item, message)

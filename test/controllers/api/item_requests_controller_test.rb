@@ -52,7 +52,7 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "returns 422 when cancelling a declined request" do
-    item_requests(:one).update!(status: "declined")
+    item_requests(:one).update!(status: :declined)
     sign_in_as(users(:two))
     delete api_item_request_url(item_requests(:one))
     assert_response :unprocessable_entity
@@ -61,8 +61,8 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "returns 422 when uncancelling a request on a donated item" do
-    item_requests(:one).update!(status: "cancelled")
-    items(:one).update!(status: "donated")
+    item_requests(:one).update!(status: :cancelled)
+    items(:one).update!(status: :donated)
     sign_in_as(users(:two))
     patch api_item_request_url(item_requests(:one)), params: { action_type: "uncancel" }
     assert_response :unprocessable_entity
@@ -70,8 +70,8 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "returns 422 when accepting a completed request" do
-    item_requests(:one).update!(status: "completed")
-    items(:one).update!(status: "donated")
+    item_requests(:one).update!(status: :completed)
+    items(:one).update!(status: :donated)
     sign_in_as(users(:one))
     patch api_item_request_url(item_requests(:one)), params: { action_type: "accept" }
     assert_response :unprocessable_entity
@@ -88,10 +88,10 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
   test "messages lists events with their kind and author role, plus whether the thread is writable" do
     request = item_requests(:one)
     request.messages.delete_all
-    request.messages.create!(user: users(:two), request_transition_status: "pending", content: "Could I borrow it, please?")
+    request.messages.create!(user: users(:two), request_transition_status: :pending, content: "Could I borrow it, please?")
     request.messages.create!(user: users(:one), content: "Sure, when suits you?")
-    request.messages.create!(user: users(:one), request_transition_status: "declined", content: "Sorry, it went elsewhere")
-    request.update_columns(status: "declined")
+    request.messages.create!(user: users(:one), request_transition_status: :declined, content: "Sorry, it went elsewhere")
+    request.update_columns(status: :declined)
 
     sign_in_as(users(:one))
     get messages_api_item_request_url(request)
@@ -120,7 +120,7 @@ class Api::ItemRequestsControllerTest < ActionDispatch::IntegrationTest
 
   test "a donor whose wisher was moved to a new wish can no longer open that request" do
     wish = Book.create!(user_id: nil, title: "Moved Wish", author: "Author", genre: "Fiction", published_year: 2020,
-      summary: "Summary text long enough for validations on the book model here.", status: "wishlist")
+      summary: "Summary text long enough for validations on the book model here.", status: :wishlist)
     winner = ItemRequestService.new.start_request!(users(:two), wish, "Please may I have this one?")
     third = User.create!(email_address: "third_#{SecureRandom.hex(4)}@example.com", verified: true,
       password_digest: BCrypt::Password.create("password123!"))
