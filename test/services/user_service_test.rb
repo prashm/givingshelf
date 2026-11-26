@@ -157,20 +157,20 @@ class UserServiceTest < ActiveSupport::TestCase
         community_group: group,
         requester: user,
         requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE,
-        status: GroupMemberStatus::REQUESTED,
+        status: "requested",
         message: "please"
       )
       GroupMembershipRequest.create!(
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::USER_REQUESTER_TYPE,
-        status: GroupMemberStatus::REQUESTED
+        status: "requested"
       )
       GroupMembershipRequest.create!(
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
-        status: GroupMemberStatus::INVITED,
+        status: "invited",
         email_address: user.email_address
       )
 
@@ -191,7 +191,7 @@ class UserServiceTest < ActiveSupport::TestCase
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
-        status: GroupMemberStatus::INVITED,
+        status: "invited",
         email_address: user.email_address,
         message: "join us"
       )
@@ -199,7 +199,7 @@ class UserServiceTest < ActiveSupport::TestCase
         community_group: group,
         requester: users(:two),
         requester_type: GroupMembershipRequest::ADMIN_REQUESTER_TYPE,
-        status: GroupMemberStatus::INVITED,
+        status: "invited",
         email_address: "someone_else@example.com"
       )
 

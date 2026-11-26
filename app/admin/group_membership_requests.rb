@@ -23,9 +23,7 @@ ActiveAdmin.register GroupMembershipRequest do
   filter :requester
   filter :requester_type, as: :select, collection: %w[Admin User]
   filter :email_address
-  filter :status, as: :select, collection: -> {
-    GroupMemberStatus.all.map { |s| [s.label, s.value] }
-  }
+  filter :status, as: :select, collection: -> { GroupMembershipRequest.status_options }
   filter :created_at
 
   show do
@@ -57,7 +55,7 @@ ActiveAdmin.register GroupMembershipRequest do
       f.input :requester_type, as: :select, collection: %w[Admin User]
       f.input :email_address
       f.input :message
-      f.input :status, as: :select, collection: GroupMemberStatus.all.map { |s| [s.label, s.value] }
+      f.input :status, as: :select, collection: GroupMembershipRequest.status_options
     end
     f.actions
   end

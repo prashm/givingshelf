@@ -18,7 +18,7 @@ ActiveAdmin.register Toy do
     column :age_range
     column :condition
     column :status do |toy|
-      ShareableItemStatus.display_status(toy.status)
+      toy.status_label
     end
     column :user do |toy|
       link_to toy.user.email_address, admin_user_path(toy.user)
@@ -33,7 +33,7 @@ ActiveAdmin.register Toy do
   filter :brand
   filter :age_range
   filter :condition
-  filter :status, as: :select, collection: ShareableItemStatus.collection
+  filter :status, as: :select, collection: Item.status_options
   filter :user
   filter :created_at
   filter :deleted_at
@@ -49,7 +49,7 @@ ActiveAdmin.register Toy do
       row :summary
       row :condition
       row :status do |toy|
-        ShareableItemStatus.display_status(toy.status)
+        toy.status_label
       end
       row :user do |toy|
         link_to toy.user.email_address, admin_user_path(toy.user)
@@ -71,7 +71,7 @@ ActiveAdmin.register Toy do
       f.input :age_range, hint: "As shown on packaging, e.g. 8+, 3-6 years, 5-7 years. min/max age are derived automatically on save."
       f.input :summary
       f.input :condition, as: :select, collection: %w[excellent good fair poor]
-      f.input :status, as: :select, collection: ShareableItemStatus.collection
+      f.input :status, as: :select, collection: Item.status_options
       f.input :view_count
       f.input :personal_note
       f.input :pickup_method

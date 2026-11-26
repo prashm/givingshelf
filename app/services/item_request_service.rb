@@ -55,7 +55,7 @@ class ItemRequestService
   def self.event_kind(message, request)
     status = message.request_transition_status
     case status
-    when ItemRequest::PENDING_STATUS
+    when "pending"
       if message.user_id != request.requester_id
         "moved"
       elsif message.id == request.initial_message&.id
@@ -63,11 +63,11 @@ class ItemRequestService
       else
         "reopened"
       end
-    when ItemRequest::IN_REVIEW_STATUS
+    when "in_review"
       # On a wish, the donor is the one who moves a request into review (by fulfilling it, or by
       # opening a later wisher's request), so it reads as a donor having been found.
       request.item.wishlist_item? ? "donor_found" : "viewed"
-    when ItemRequest::DECLINED_STATUS
+    when "declined"
       if message.content == CLOSE_OUT_DECLINED_NOTE
         "closed_out"
       elsif message.content.to_s.start_with?(ITEM_REMOVED_NOTE)
@@ -75,8 +75,8 @@ class ItemRequestService
       else
         "declined"
       end
-    when ItemRequest::ACCEPTED_STATUS, ItemRequest::COMPLETED_STATUS, ItemRequest::CANCELLED_STATUS
-      ItemRequest.status_label(status).downcase
+    when "accepted", "completed", "cancelled"
+      status
     else
       nil
     end
@@ -119,7 +119,7 @@ class ItemRequestService
   # the caller's transaction; callers check the message first (see .initial_message_error).
   def start_request!(requester, item, message)
     @item_request = requester.item_requests.create!(item: item)
-    record_event!(@item_request, ItemRequest::PENDING_STATUS, requester, message)
+    record_event!(@item_request, :pending, requester, message)
     @item_request
   end
 
@@ -171,29 +171,29 @@ class ItemRequestService
   def accept!(actor: nil, note: nil)
     require_item_request!
     with_locked_item do |item|
-      item_request.guard_transition!(ItemRequest::ACCEPTED_STATUS)
+      item_request.guard_transition!(:accepted)
       raise "This item has already been donated" if item.donated?
       raise "Another request for this item has already been accepted" if item_request.other_requests.accepted.exists?
       waiting_ids = item_request.other_requests.awaiting_decision.pluck(:id)
-      item_request.update!(status: ItemRequest::ACCEPTED_STATUS)
-      event = record_event!(item_request, ItemRequest::ACCEPTED_STATUS, actor || item.user, note)
+      item_request.update!(status: :accepted)
+      event = record_event!(item_request, :accepted, actor || item.user, note)
       # The other open requesters hear that someone else was chosen (GS-11).
       queue_item_notice!(event, UserNotification::KIND_OTHER_CHOSEN, waiting_ids)
-      item.update!(status: ShareableItemStatus::REQUESTED)
+      item.update!(status: :requested)
       # Mark other pending requests for this item as In Review; leave declined/cancelled/completed ones alone
-      item_request.other_requests.pending.update_all(status: ItemRequest::IN_REVIEW_STATUS)
+      item_request.other_requests.pending.update_all(status: :in_review)
     end
   end
 
   def decline!(actor: nil, note: nil)
     require_item_request!
     with_locked_item do |item|
-      item_request.guard_transition!(ItemRequest::DECLINED_STATUS)
+      item_request.guard_transition!(:declined)
       # Declining the accepted request frees the item for the other requesters, as cancel! does.
       was_accepted = item_request.accepted?
-      item.update!(status: ShareableItemStatus::AVAILABLE) if was_accepted
-      item_request.update!(status: ItemRequest::DECLINED_STATUS)
-      event = record_event!(item_request, ItemRequest::DECLINED_STATUS, actor || item.user, note)
+      item.update!(status: :available) if was_accepted
+      item_request.update!(status: :declined)
+      event = record_event!(item_request, :declined, actor || item.user, note)
       queue_available_again!(event) if was_accepted
     end
   end
@@ -202,11 +202,11 @@ class ItemRequestService
     require_item_request!
     raise "Can only complete an accepted request" if item_request.pending? || item_request.in_review?
     with_locked_item do |item|
-      item_request.guard_transition!(ItemRequest::COMPLETED_STATUS)
+      item_request.guard_transition!(:completed)
       actor ||= item.user
-      item_request.update!(status: ItemRequest::COMPLETED_STATUS)
-      record_event!(item_request, ItemRequest::COMPLETED_STATUS, actor, note)
-      item.update!(status: ShareableItemStatus::DONATED)
+      item_request.update!(status: :completed)
+      record_event!(item_request, :completed, actor, note)
+      item.update!(status: :donated)
       close_out_other_requests!(item, actor)
     end
     log_close_out
@@ -215,11 +215,11 @@ class ItemRequestService
   def cancel!(note: nil)
     require_item_request!
     with_locked_item do |item|
-      item_request.guard_transition!(ItemRequest::CANCELLED_STATUS)
+      item_request.guard_transition!(:cancelled)
       was_accepted = item_request.accepted?
-      item.update!(status: ShareableItemStatus::AVAILABLE) if was_accepted
-      item_request.update!(status: ItemRequest::CANCELLED_STATUS)
-      event = record_event!(item_request, ItemRequest::CANCELLED_STATUS, item_request.requester, note)
+      item.update!(status: :available) if was_accepted
+      item_request.update!(status: :cancelled)
+      event = record_event!(item_request, :cancelled, item_request.requester, note)
       queue_available_again!(event) if was_accepted
     end
   end
@@ -228,14 +228,14 @@ class ItemRequestService
     require_item_request!
     raise "Can only uncancel a cancelled request" unless item_request.cancelled?
     with_locked_item do |item|
-      item_request.guard_transition!(ItemRequest::PENDING_STATUS)
+      item_request.guard_transition!(:pending)
       reason = uncancel_blocked_reason(item_request)
       raise reason if reason
       # A wish cancelled before a donor fulfilled it was never matched, so give it the current
       # owner; otherwise it would never show in their received requests.
       item_request.owner ||= item.user
-      item_request.update!(status: ItemRequest::PENDING_STATUS)
-      record_event!(item_request, ItemRequest::PENDING_STATUS, item_request.requester, note)
+      item_request.update!(status: :pending)
+      record_event!(item_request, :pending, item_request.requester, note)
     end
   end
 
@@ -245,8 +245,8 @@ class ItemRequestService
     require_item_request!
     return unless item_request.pending?
     ActiveRecord::Base.transaction do
-      item_request.update!(status: ItemRequest::IN_REVIEW_STATUS)
-      record_event!(item_request, ItemRequest::IN_REVIEW_STATUS, actor || item_request.owner || item_request.item.user)
+      item_request.update!(status: :in_review)
+      record_event!(item_request, :in_review, actor || item_request.owner || item_request.item.user)
     end
   end
 
@@ -254,8 +254,8 @@ class ItemRequestService
   def match_wishlist_donor!(donor_user)
     require_item_request!
     return unless item_request.pending?
-    item_request.update!(status: ItemRequest::IN_REVIEW_STATUS, owner: donor_user)
-    record_event!(item_request, ItemRequest::IN_REVIEW_STATUS, donor_user)
+    item_request.update!(status: :in_review, owner: donor_user)
+    record_event!(item_request, :in_review, donor_user)
   end
 
   # Gives each of `requests` (the item's open ones) a final result: wishers move to a new wish for the
@@ -269,14 +269,14 @@ class ItemRequestService
     if item.wishlist_item?
       new_wish = ItemService.new(item).relist_as_wish!
       requests.each do |request|
-        request.update!(item: new_wish, owner: nil, status: ItemRequest::PENDING_STATUS)
-        record_event!(request, ItemRequest::PENDING_STATUS, actor, moved_note)
+        request.update!(item: new_wish, owner: nil, status: :pending)
+        record_event!(request, :pending, actor, moved_note)
       end
       new_wish
     else
       requests.each do |request|
-        request.update!(status: ItemRequest::DECLINED_STATUS)
-        record_event!(request, ItemRequest::DECLINED_STATUS, actor, declined_note)
+        request.update!(status: :declined)
+        record_event!(request, :declined, actor, declined_note)
       end
       nil
     end
@@ -304,7 +304,7 @@ class ItemRequestService
   def requests_json(requests)
     requests = requests.to_a
     initial_messages = Message.transitions
-      .where(item_request_id: requests.map(&:id), request_transition_status: ItemRequest::PENDING_STATUS)
+      .where(item_request_id: requests.map(&:id), request_transition_status: :pending)
       .order(:created_at, :id)
       .group_by(&:item_request_id)
     requests.map do |request|
@@ -317,7 +317,7 @@ class ItemRequestService
     {
       id: request.id,
       status: request.status,
-      status_display: display_status(request.status),
+      status_display: request.status_label,
       message: initial_message&.content,
       created_at: request.created_at,
       updated_at: request.updated_at,
@@ -351,7 +351,7 @@ class ItemRequestService
   # What the requester may do with their own request right now.
   def requester_actions(request)
     {
-      can_cancel: request.can_transition_to?(ItemRequest::CANCELLED_STATUS),
+      can_cancel: request.can_transition_to?(:cancelled),
       can_uncancel: request.cancelled? && uncancel_blocked_reason(request).nil?
     }
   end

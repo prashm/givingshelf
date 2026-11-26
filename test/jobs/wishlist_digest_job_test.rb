@@ -21,7 +21,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       summary: "Long enough summary for the digest test book creation here and now.",
       published_year: 2020,
       genre: "Fiction",
-      status: ShareableItemStatus::WISHLIST
+      status: "wishlist"
     )
     GroupItemAvailability.create!(item: book, community_group: @group, sub_group_id: sub_group_id)
     CommunityGroupMembership.find_or_create_by!(user: @requester, community_group: @group) do |m|
@@ -38,7 +38,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
       item: book,
       requester: @requester,
       owner: nil,
-      status: ItemRequest::PENDING_STATUS
+      status: "pending"
     )
     book
   end
@@ -75,7 +75,7 @@ class WishlistDigestJobTest < ActiveJob::TestCase
 
   test "skips wishes whose only request is cancelled" do
     book = build_wishlist_book
-    book.item_requests.update_all(status: ItemRequest::CANCELLED_STATUS)
+    book.item_requests.update_all(status: "cancelled")
 
     WishlistDigestJob.perform_now
 

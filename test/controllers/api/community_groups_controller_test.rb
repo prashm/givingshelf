@@ -133,7 +133,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: user,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      status: "requested"
     )
 
     get "/api/community_groups/#{group.id}"
@@ -151,7 +151,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: user.email_address
     )
 
@@ -187,7 +187,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     assert_equal group.id, req.community_group_id
     assert_equal user.id, req.requester_id
     assert_equal "User", req.requester_type
-    assert_equal GroupMemberStatus::REQUESTED, req.status
+    assert_equal "requested", req.status
     assert_equal "Please add me", req.message
   end
 
@@ -224,7 +224,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: user,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      status: "requested"
     )
 
     CommunityGroupMailer.stub(:join_request, ->(*) { flunk("should not email for already_requested") }) do
@@ -259,20 +259,20 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: user,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED,
+      status: "requested",
       message: "please"
     )
     GroupMembershipRequest.create!(
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      status: "requested"
     )
     GroupMembershipRequest.create!(
       community_group: community_groups(:one),
       requester: user,
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: user.email_address
     )
 
@@ -292,7 +292,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: user.email_address,
       message: "join us"
     )
@@ -300,7 +300,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: "someone_else@example.com"
     )
 
@@ -333,7 +333,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: invitee.email_address
     )
 
@@ -350,7 +350,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: user.email_address
     )
 
@@ -358,7 +358,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     post "/api/my_groups/invites/#{req.id}/accept"
     assert_response :unprocessable_entity
     assert_equal "already a member", json["error"]
-    assert_equal GroupMemberStatus::ACCEPTED, req.reload.status
+    assert_equal "accepted", req.reload.status
   end
 
   test "accept_invite creates membership and marks request accepted" do
@@ -369,7 +369,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: group,
       requester: users(:one),
       requester_type: "Admin",
-      status: GroupMemberStatus::INVITED,
+      status: "invited",
       email_address: invitee.email_address
     )
 
@@ -384,7 +384,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_response :success
     assert_equal "accepted", json["status"]
-    assert_equal GroupMemberStatus::ACCEPTED, req.reload.status
+    assert_equal "accepted", req.reload.status
     assert req.accepted_at
     assert req.responded_at
   end
@@ -484,7 +484,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: other,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      status: "requested"
     )
 
     sign_in_as(user)
@@ -498,7 +498,7 @@ class Api::CommunityGroupsControllerTest < ActionDispatch::IntegrationTest
       community_group: community_groups(:one),
       requester: user,
       requester_type: "User",
-      status: GroupMemberStatus::REQUESTED
+      status: "requested"
     )
 
     sign_in_as(user)

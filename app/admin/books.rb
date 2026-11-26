@@ -18,7 +18,7 @@ ActiveAdmin.register Book do
     column :genre
     column :condition
     column :status do |book|
-      ShareableItemStatus.display_status(book.status)
+      book.status_label
     end
     column :user do |book|
       link_to book.user.email_address, admin_user_path(book.user)
@@ -33,7 +33,7 @@ ActiveAdmin.register Book do
   filter :author
   filter :genre
   filter :condition
-  filter :status, as: :select, collection: ShareableItemStatus.collection
+  filter :status, as: :select, collection: Item.status_options
   filter :user
   filter :created_at
   filter :deleted_at
@@ -49,7 +49,7 @@ ActiveAdmin.register Book do
       row :genre
       row :published_year
       row :status do |book|
-        ShareableItemStatus.display_status(book.status)
+        book.status_label
       end
       row :user do |book|
         link_to book.user.email_address, admin_user_path(book.user)
@@ -73,7 +73,7 @@ ActiveAdmin.register Book do
       f.input :isbn
       f.input :genre
       f.input :published_year
-      f.input :status, as: :select, collection: ShareableItemStatus.collection
+      f.input :status, as: :select, collection: Item.status_options
       f.input :view_count
       f.input :personal_note
       f.input :pickup_method

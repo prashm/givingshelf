@@ -46,7 +46,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
     const itemData = request.book || request.toy;
     const isOwner = currentUser.id === itemData?.owner?.id;
-    const isPending = request?.status_display === 'Pending';
+    const isPending = request?.status === 'pending';
 
     if (isOwner && isPending) {
       setHasMarkedAsViewed(true);
@@ -116,6 +116,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
 
   const itemData = request?.book || request?.toy;
   const isOwner = currentUser && itemData?.owner?.id === currentUser.id;
+  const currentStatus = request?.status;
   const currentStatusDisplay = request?.status_display;
   // A wish no one has offered yet: its actions use the wish wording, as on the wish's own page.
   const isOpenWish = Boolean(itemData?.wishlist_item) && !itemData?.owner;
@@ -126,18 +127,18 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     {
       action: 'accept',
       label: 'Accept',
-      statusMatch: 'Accepted',
+      statusMatch: 'accepted',
       activeColor: 'bg-emerald-600',
       Icon: CheckIcon,
       IconSolid: CheckIconSolid,
       title: 'Accept Request',
-      additionalDisabled: currentStatusDisplay === 'Accepted',
+      additionalDisabled: currentStatus === 'accepted',
       description: 'Approve this request and mark the item as requested'
     },
     {
       action: 'decline',
       label: 'Decline',
-      statusMatch: 'Declined',
+      statusMatch: 'declined',
       activeColor: 'bg-red-600',
       Icon: XMarkIcon,
       IconSolid: XMarkIconSolid,
@@ -148,20 +149,20 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     {
       action: 'complete',
       label: 'Complete',
-      statusMatch: 'Completed',
+      statusMatch: 'completed',
       activeColor: 'bg-blue-600',
       Icon: CheckCircleIcon,
       IconSolid: CheckCircleIconSolid,
       title: 'Mark as Completed',
-      additionalDisabled: currentStatusDisplay !== 'Accepted',
+      additionalDisabled: currentStatus !== 'accepted',
       description: 'This action will mark the item as "donated" (only available for accepted requests)'
     }
   ];
 
   const renderStatusButton = (buttonConfig) => {
-    const isActive = currentStatusDisplay === buttonConfig.statusMatch;
+    const isActive = currentStatus === buttonConfig.statusMatch;
     const isDisabled = updatingStatus || !request.can_update_status || buttonConfig.additionalDisabled;
-    const isFinished = ['Completed', 'Declined', 'Cancelled'].includes(currentStatusDisplay);
+    const isFinished = ['completed', 'declined', 'cancelled'].includes(currentStatus);
     const tooltip = !request.can_update_status
       ? (isFinished ? `This request is already ${currentStatusDisplay.toLowerCase()}` : 'Another request for this item is already accepted')
       : isActive && buttonConfig.action === 'accept'
@@ -224,7 +225,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
     if (request.message_thread_writable) return null;
     // Cancelled comes first: a cancelled wish has no owner either, but its requester won't hear
     // about offers until they reopen it.
-    if (currentStatusDisplay === 'Cancelled') {
+    if (currentStatus === 'cancelled') {
       if (isOwner) return 'The requester cancelled this request, so the conversation is read-only.';
       return itemData?.owner
         ? 'You cancelled this request. Reopen it to send messages again.'
@@ -304,7 +305,7 @@ const ItemRequestDetail = ({ itemRequestId, setCurrentPage, currentUser }) => {
           <div>
             <p className="font-medium text-gray-500">Requested at</p>
             <p>{createdAt}</p>
-            {isOwner && currentStatusDisplay === 'Cancelled' && request.updated_at && (
+            {isOwner && currentStatus === 'cancelled' && request.updated_at && (
               <p className="mt-2 text-gray-600 bold">
                 <strong>User canceled request at {updatedAt}</strong>
               </p>
