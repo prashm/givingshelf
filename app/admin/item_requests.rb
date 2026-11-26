@@ -23,7 +23,7 @@ ActiveAdmin.register ItemRequest do
       link_to request.owner.email_address, admin_user_path(request.owner)
     end
     column :status do |request|
-      ItemRequestService.new.display_status(request.status)
+      request.status_label
     end
     column :message, &:initial_message
     column :created_at
@@ -33,13 +33,7 @@ ActiveAdmin.register ItemRequest do
   filter :item
   filter :requester
   filter :owner
-  filter :status, as: :select, collection: {
-    "Pending" => ItemRequest::PENDING_STATUS,
-    "Accepted" => ItemRequest::ACCEPTED_STATUS,
-    "Declined" => ItemRequest::DECLINED_STATUS,
-    "In Review" => ItemRequest::IN_REVIEW_STATUS,
-    "Completed" => ItemRequest::COMPLETED_STATUS
-  }
+  filter :status, as: :select, collection: ItemRequest.status_options.excluding([ "Cancelled", "cancelled" ])
   filter :created_at
 
   show do |item_request|
@@ -64,7 +58,7 @@ ActiveAdmin.register ItemRequest do
         link_to item_request.owner.email_address, admin_user_path(item_request.owner)
       end
       row :status do
-        ItemRequestService.new.display_status(item_request.status)
+        item_request.status_label
       end
       row :message, &:initial_message
       row :created_at
@@ -91,13 +85,7 @@ ActiveAdmin.register ItemRequest do
       f.input :item, collection: Item.all.map { |i| [ "#{i.type}: #{i.title}", i.id ] }
       f.input :requester, collection: User.all.map { |u| [ u.email_address, u.id ] }
       f.input :owner, collection: User.all.map { |u| [ u.email_address, u.id ] }
-      f.input :status, as: :select, collection: {
-        "Pending" => ItemRequest::PENDING_STATUS,
-        "Accepted" => ItemRequest::ACCEPTED_STATUS,
-        "Declined" => ItemRequest::DECLINED_STATUS,
-        "In Review" => ItemRequest::IN_REVIEW_STATUS,
-        "Completed" => ItemRequest::COMPLETED_STATUS
-      }
+      f.input :status, as: :select, collection: ItemRequest.status_options.excluding([ "Cancelled", "cancelled" ])
     end
     f.actions
   end

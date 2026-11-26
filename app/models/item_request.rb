@@ -4,48 +4,40 @@ class ItemRequest < ApplicationRecord
   # dropped in a later deploy; ignore it now so this code never reads or writes it.
   self.ignored_columns += [ "message" ]
 
-  # Status constants
-  PENDING_STATUS = 0
-  ACCEPTED_STATUS = 1
-  DECLINED_STATUS = 2
-  IN_REVIEW_STATUS = 3
-  COMPLETED_STATUS = 4
-  CANCELLED_STATUS = 5
+  enum :status, {
+    pending: 0,
+    accepted: 1,
+    declined: 2,
+    in_review: 3,
+    completed: 4,
+    cancelled: 5
+  }, validate: true
 
   # Requests still waiting for the owner's decision.
-  OPEN_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
-
-  STATUS_LABELS = {
-    PENDING_STATUS => "Pending",
-    ACCEPTED_STATUS => "Accepted",
-    DECLINED_STATUS => "Declined",
-    IN_REVIEW_STATUS => "In Review",
-    COMPLETED_STATUS => "Completed",
-    CANCELLED_STATUS => "Cancelled"
-  }.freeze
+  OPEN_STATUSES = %w[pending in_review].freeze
 
   # Allowed status moves. DECLINED and COMPLETED are final; a CANCELLED request can only be
   # reopened (uncancel), and ItemRequestService also checks the item can still be given to it.
   TRANSITIONS = {
-    PENDING_STATUS => [ IN_REVIEW_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
-    IN_REVIEW_STATUS => [ ACCEPTED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
-    ACCEPTED_STATUS => [ COMPLETED_STATUS, DECLINED_STATUS, CANCELLED_STATUS ],
-    CANCELLED_STATUS => [ PENDING_STATUS ],
-    DECLINED_STATUS => [],
-    COMPLETED_STATUS => []
+    "pending" => %w[in_review accepted declined cancelled],
+    "in_review" => %w[accepted declined cancelled],
+    "accepted" => %w[completed declined cancelled],
+    "cancelled" => %w[pending],
+    "declined" => [],
+    "completed" => []
   }.freeze
 
   TRANSITION_VERBS = {
-    IN_REVIEW_STATUS => "review",
-    ACCEPTED_STATUS => "accept",
-    DECLINED_STATUS => "decline",
-    COMPLETED_STATUS => "complete",
-    CANCELLED_STATUS => "cancel",
-    PENDING_STATUS => "uncancel"
+    "in_review" => "review",
+    "accepted" => "accept",
+    "declined" => "decline",
+    "completed" => "complete",
+    "cancelled" => "cancel",
+    "pending" => "uncancel"
   }.freeze
 
   # Statuses where the requester is still waiting on a wishlist item.
-  ACTIVE_WISH_STATUSES = [ PENDING_STATUS, IN_REVIEW_STATUS ].freeze
+  ACTIVE_WISH_STATUSES = %w[pending in_review].freeze
 
   belongs_to :requester, class_name: "User"
   # Loads the item even when its owner deleted it, so the request and its thread still work.
@@ -57,21 +49,20 @@ class ItemRequest < ApplicationRecord
 
   # The request message (the initial event's note); checked where requests are created.
   INITIAL_MESSAGE_LENGTH = (10..500).freeze
-  validates :status, inclusion: { in: [ PENDING_STATUS, ACCEPTED_STATUS, DECLINED_STATUS, IN_REVIEW_STATUS, COMPLETED_STATUS, CANCELLED_STATUS ] }
   validates :requester_id, uniqueness: { scope: :item_id, message: "has already requested this item" }
   validate :requester_cannot_request_own_item
   validate :item_must_be_available, on: :create
 
-  scope :pending, -> { where(status: PENDING_STATUS) }
-  scope :accepted, -> { where(status: ACCEPTED_STATUS) }
-  scope :completed, -> { where(status: COMPLETED_STATUS) }
-  scope :in_review, -> { where(status: IN_REVIEW_STATUS) }
-  scope :cancelled, -> { where(status: CANCELLED_STATUS) }
   scope :awaiting_decision, -> { where(status: OPEN_STATUSES) }
   scope :active_wish, -> { where(status: ACTIVE_WISH_STATUSES) }
   scope :for_user, ->(user) { where(requester: user) }
   scope :for_item_owner, ->(user) { where(owner: user) }
   scope :recent, -> { order(created_at: :desc) }
+
+  # Lets ActiveAdmin filter by status name; the enum type maps it to the stored value.
+  ransacker :status, type: :string do |parent|
+    parent.table[:status]
+  end
 
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
@@ -88,32 +79,19 @@ class ItemRequest < ApplicationRecord
   before_validation :set_default_status, on: :create
   before_validation :set_owner, on: :create
 
-  def pending?
-    status == PENDING_STATUS
-  end
-
-  def accepted?
-    status == ACCEPTED_STATUS
-  end
-
-  def declined?
-    status == DECLINED_STATUS
-  end
-
-  def in_review?
-    status == IN_REVIEW_STATUS
-  end
-
-  def completed?
-    status == COMPLETED_STATUS
-  end
-
-  def cancelled?
-    status == CANCELLED_STATUS
-  end
-
+  # Display label for a status name, e.g. "In Review". Unknown statuses read as Pending.
   def self.status_label(status)
-    STATUS_LABELS.fetch(status, STATUS_LABELS[PENDING_STATUS])
+    status = status.to_s
+    (statuses.key?(status) ? status : "pending").titleize
+  end
+
+  # [label, name] pairs for select inputs.
+  def self.status_options
+    statuses.keys.map { |name| [ status_label(name), name ] }
+  end
+
+  def status_label
+    self.class.status_label(status)
   end
 
   # Whether the owner may still accept/decline/complete this request. Finished requests are locked.
@@ -126,7 +104,7 @@ class ItemRequest < ApplicationRecord
   # Memoized: the first event never changes once written.
   def initial_message
     return @initial_message if defined?(@initial_message)
-    @initial_message = messages.transitions.where(request_transition_status: PENDING_STATUS).order(:created_at, :id).first
+    @initial_message = messages.transitions.where(request_transition_status: :pending).order(:created_at, :id).first
   end
 
   def reload(*)
@@ -146,21 +124,21 @@ class ItemRequest < ApplicationRecord
   end
 
   def can_transition_to?(new_status)
-    TRANSITIONS.fetch(status, []).include?(new_status)
+    TRANSITIONS.fetch(status, []).include?(new_status.to_s)
   end
 
   # Raises unless the move from the current status to new_status is allowed.
   def guard_transition!(new_status)
     return if can_transition_to?(new_status)
-    label = self.class.status_label(status).downcase
+    label = status_label.downcase
     article = label.match?(/\A[aeiou]/) ? "an" : "a"
-    raise "Cannot #{TRANSITION_VERBS.fetch(new_status)} #{article} #{label} request"
+    raise "Cannot #{TRANSITION_VERBS.fetch(new_status.to_s)} #{article} #{label} request"
   end
 
   private
 
   def set_default_status
-    self.status ||= PENDING_STATUS
+    self.status ||= :pending
   end
 
   def set_owner

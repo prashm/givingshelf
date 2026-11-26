@@ -14,7 +14,7 @@ class Api::ItemsController < ApplicationController
   def my_items
     @items = Current.user.items.includes(:item_requests).recent
     render json: {
-      statuses: ShareableItemStatus.data,
+      statuses: Item.status_options.map { |label, name| { value: name, label: label } },
       items: @items.map { |item| item_service.my_item_map(item) }
     }
   end

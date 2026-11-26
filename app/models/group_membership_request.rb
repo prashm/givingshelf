@@ -4,17 +4,18 @@ class GroupMembershipRequest < ApplicationRecord
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 
-  validates :status, inclusion: { in: GroupMemberStatus.values }
+  enum :status, { requested: 0, invited: 1, accepted: 2, rejected: 3 }, validate: true
+
   validates :requester_type, inclusion: { in: %w[Admin User] }
   validate :request_shape
 
-  scope :requested, -> { where(status: GroupMemberStatus::REQUESTED) }
-  scope :invited, -> { where(status: GroupMemberStatus::INVITED) }
-  scope :accepted, -> { where(status: GroupMemberStatus::ACCEPTED) }
-  scope :rejected, -> { where(status: GroupMemberStatus::REJECTED) }
-
   USER_REQUESTER_TYPE = "User"
   ADMIN_REQUESTER_TYPE = "Admin"
+
+  # Lets ActiveAdmin filter by status name; the enum type maps it to the stored value.
+  ransacker :status, type: :string do |parent|
+    parent.table[:status]
+  end
 
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
@@ -28,35 +29,29 @@ class GroupMembershipRequest < ApplicationRecord
     ["community_group", "requester"]
   end
 
-  def invited?
-    status == GroupMemberStatus::INVITED
+  # Display label for a status name, e.g. "Invited".
+  def self.status_label(status)
+    statuses.key?(status.to_s) ? status.to_s.titleize : "Unknown"
   end
 
-  def requested?
-    status == GroupMemberStatus::REQUESTED
-  end
-
-  def accepted?
-    status == GroupMemberStatus::ACCEPTED
-  end
-
-  def rejected?
-    status == GroupMemberStatus::REJECTED
+  # [label, name] pairs for select inputs.
+  def self.status_options
+    statuses.keys.map { |name| [ status_label(name), name ] }
   end
 
   def display_status
-    GroupMemberStatus.display_status(status)
+    self.class.status_label(status)
   end
 
   def accept
-    update!(status: GroupMemberStatus::ACCEPTED, accepted_at: Time.current, responded_at: Time.current)
+    update!(status: :accepted, accepted_at: Time.current, responded_at: Time.current)
   rescue => e
     errors.add(:base, e.message)
     false
   end
 
   def reject
-    update!(status: GroupMemberStatus::REJECTED, responded_at: Time.current)
+    update!(status: :rejected, responded_at: Time.current)
   rescue => e
     errors.add(:base, e.message)
     false
@@ -66,9 +61,9 @@ class GroupMembershipRequest < ApplicationRecord
 
   def request_shape
     case status
-    when GroupMemberStatus::REQUESTED
+    when "requested"
       errors.add(:requester_type, "must be User for join requests") unless requester_type == "User"
-    when GroupMemberStatus::INVITED
+    when "invited"
       errors.add(:requester_type, "must be Admin for invites") unless requester_type == "Admin"
       errors.add(:email_address, "can't be blank for invites") if email_address.blank?
     end

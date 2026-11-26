@@ -14,7 +14,7 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
     ItemRequest.where(item: @book).destroy_all
     GroupItemAvailability.where(item: @book).delete_all
     GroupItemAvailability.create!(item: @book, community_group: @group)
-    @book.update!(status: ShareableItemStatus::AVAILABLE)
+    @book.update!(status: "available")
     CommunityGroupMembership.find_or_create_by!(user: @owner, community_group: @group)
   end
 
@@ -111,7 +111,7 @@ class RequestEventNotificationJobTest < ActiveJob::TestCase
   describe "wishes" do
     def wish
       book = Book.create!(user_id: nil, title: "Emailed Wish", author: "Author", genre: "Fiction", published_year: 2020,
-        summary: "Summary text long enough for validations on the book model here.", status: ShareableItemStatus::WISHLIST)
+        summary: "Summary text long enough for validations on the book model here.", status: "wishlist")
       GroupItemAvailability.create!(item: book, community_group: @group)
       book
     end

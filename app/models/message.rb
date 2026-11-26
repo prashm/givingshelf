@@ -6,7 +6,12 @@ class Message < ApplicationRecord
   # status change, and its content is an optional note.
   validates :content, presence: true, unless: :transition?
   validates :content, length: { maximum: 1000 }
-  validates :request_transition_status, inclusion: { in: ItemRequest::STATUS_LABELS.keys }, allow_nil: true
+  # The ItemRequest status the request moved to, read and written by name ("accepted"). It's
+  # stored with ItemRequest's status enum mapping, so the two can't drift apart.
+  attribute :request_transition_status, ActiveRecord::Enum::EnumType.new(
+    :request_transition_status, ItemRequest.statuses, ActiveRecord::Type::Integer.new, raise_on_invalid_values: false
+  )
+  validates :request_transition_status, inclusion: { in: ItemRequest.statuses.keys }, allow_nil: true
 
   scope :recent, -> { order(created_at: :desc) }
   scope :transitions, -> { where.not(request_transition_status: nil) }

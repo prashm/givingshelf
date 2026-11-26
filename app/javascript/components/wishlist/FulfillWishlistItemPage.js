@@ -6,7 +6,7 @@ import FulfillWishlistItemForm from './FulfillWishlistItemForm';
 import FormErrorBanner from '../common/FormErrorBanner';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
-const WISHLIST_STATUS = 3;
+const WISHLIST_STATUS = 'wishlist';
 
 const FulfillWishlistItemPage = ({
   itemId,

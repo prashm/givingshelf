@@ -9,11 +9,12 @@ class Item < ApplicationRecord
   has_one_attached :cover_image
   has_many_attached :user_images
 
+  enum :status, { available: 0, requested: 1, donated: 2, wishlist: 3 }, default: :available, validate: true
+
   # Shared validations
   validates :title, presence: true, length: { minimum: 1, maximum: 255 }
   validates :condition, presence: true, inclusion: { in: %w[excellent good fair poor], message: "must be excellent, good, fair, or poor" }, if: -> { user_id.present? }
   validates :summary, presence: true, length: { minimum: 10, maximum: 1000 }
-  validates :status, inclusion: { in: ShareableItemStatus.values, default: ShareableItemStatus::AVAILABLE }
   validate :user_id_consistency_with_wishlist_status
 
   # wishlist_item marks an item that started as a wish. It is set once, on create, and never changes.
@@ -23,8 +24,6 @@ class Item < ApplicationRecord
   before_create { self.wishlist_item = true if wishlist? }
 
   # Shared scopes
-  scope :available, -> { where(status: ShareableItemStatus::AVAILABLE) }
-  scope :wishlist, -> { where(status: ShareableItemStatus::WISHLIST) }
   scope :by_condition, ->(condition) { where(condition: condition) }
   scope :recent, -> { order(created_at: :desc) }
   # An item its owner deleted while it had requests is kept, hidden, so those requests and their
@@ -49,6 +48,11 @@ class Item < ApplicationRecord
     )
   }
 
+  # Lets ActiveAdmin filter by status name; the enum type maps it to the stored value.
+  ransacker :status, type: :string do |parent|
+    parent.table[:status]
+  end
+
   # Ransack allowlist for ActiveAdmin search/filter
   def self.ransackable_attributes(auth_object = nil)
     %w[
@@ -62,16 +66,26 @@ class Item < ApplicationRecord
     [ "item_requests", "user", "user_images" ]
   end
 
+  # Display label for a status name, e.g. "Wishlist".
+  def self.status_label(status)
+    statuses.key?(status.to_s) ? status.to_s.titleize : "Unknown"
+  end
+
+  # [label, name] pairs for select inputs.
+  def self.status_options
+    statuses.keys.map { |name| [ status_label(name), name ] }
+  end
+
   def self.valid_type?(type)
     [ Book.name, Toy.name ].include?(type)
   end
 
-  def cover_image_url
-    cover_image.attached? ? cover_image : nil
+  def status_label
+    self.class.status_label(status)
   end
 
-  def wishlist?
-    status == ShareableItemStatus::WISHLIST
+  def cover_image_url
+    cover_image.attached? ? cover_image : nil
   end
 
   def distance_from(zip_code)
@@ -79,18 +93,6 @@ class Item < ApplicationRecord
     return 0 if user.zip_code == zip_code
     # Simple distance calculation - in a real app, you'd use a geocoding service
     zip_code.to_s[0..1] == user.zip_code[0..1] ? 1 : 2
-  end
-
-  def available?
-    status == ShareableItemStatus::AVAILABLE
-  end
-
-  def requested?
-    status == ShareableItemStatus::REQUESTED
-  end
-
-  def donated?
-    status == ShareableItemStatus::DONATED
   end
 
   # Whether a new request can be made. A fulfilled wish takes more wishers while its donor has
@@ -111,7 +113,7 @@ class Item < ApplicationRecord
   # Users with a non-cancelled request on this item, oldest request first.
   def requesters
     User.joins(:item_requests)
-      .merge(item_requests.where.not(status: ItemRequest::CANCELLED_STATUS))
+      .merge(item_requests.not_cancelled)
       .order("item_requests.created_at", "item_requests.id")
   end
 

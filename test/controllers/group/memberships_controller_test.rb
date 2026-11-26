@@ -62,7 +62,7 @@ module Group
         community_group: @group,
         requester: new_user,
         requester_type: "User",
-        status: GroupMemberStatus::REQUESTED
+        status: "requested"
       )
 
       delivery = Minitest::Mock.new
@@ -87,13 +87,13 @@ module Group
         community_group: @group,
         requester: user,
         requester_type: "User",
-        status: GroupMemberStatus::REQUESTED
+        status: "requested"
       )
 
       post reject_group_admin_membership_request_path(@group, request_id: request.id)
       assert_redirected_to group_admin_memberships_path(@group, tab: "requested")
       assert_equal "Request rejected.", flash[:notice]
-      assert_equal GroupMemberStatus::REJECTED, request.reload.status
+      assert_equal "rejected", request.reload.status
     end
 
     test "POST create_invite creates invite request and sends email" do
@@ -120,14 +120,14 @@ module Group
         community_group: @group,
         requester: users(:one),
         requester_type: "Admin",
-        status: GroupMemberStatus::INVITED,
+        status: "invited",
         email_address: "revoke_me_#{SecureRandom.hex(6)}@example.com"
       )
 
       post revoke_invite_group_admin_membership_request_path(@group, request_id: request.id)
       assert_redirected_to group_admin_memberships_path(@group, tab: "invites")
       assert_equal "Invite revoked.", flash[:notice]
-      assert_equal GroupMemberStatus::REJECTED, request.reload.status
+      assert_equal "rejected", request.reload.status
     end
 
     test "GET index with invites tab excludes accepted invitations" do
@@ -139,7 +139,7 @@ module Group
         community_group: @group,
         requester: @group_admin_user,
         requester_type: "Admin",
-        status: GroupMemberStatus::INVITED,
+        status: "invited",
         email_address: pending_email
       )
 
@@ -154,7 +154,7 @@ module Group
         community_group: @group,
         requester: @group_admin_user,
         requester_type: "Admin",
-        status: GroupMemberStatus::INVITED,
+        status: "invited",
         email_address: accepted_email
       )
 
@@ -166,7 +166,7 @@ module Group
       end
       delivery.verify
 
-      assert_equal GroupMemberStatus::ACCEPTED, accepted_request.reload.status
+      assert_equal "accepted", accepted_request.reload.status
 
       # View the invites tab
       get group_admin_memberships_path(@group, tab: "invites")

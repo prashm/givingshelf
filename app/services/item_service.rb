@@ -5,9 +5,9 @@ class ItemService
   attr_reader :errors, :item_cannot_be_requested_by_reason, :item_request, :joined_existing
 
   # A wish can be joined while it's open, or fulfilled and not yet donated.
-  JOINABLE_WISH_STATUSES = [ ShareableItemStatus::WISHLIST, ShareableItemStatus::AVAILABLE, ShareableItemStatus::REQUESTED ].freeze
+  JOINABLE_WISH_STATUSES = %w[wishlist available requested].freeze
   # Requests whose requester is still waiting on a wish, open or fulfilled.
-  WAITING_REQUEST_STATUSES = [ ItemRequest::PENDING_STATUS, ItemRequest::IN_REVIEW_STATUS, ItemRequest::ACCEPTED_STATUS ].freeze
+  WAITING_REQUEST_STATUSES = %w[pending in_review accepted].freeze
   # The owner's note when deleting an item follows a fixed text in one message (max 1000 characters).
   REMOVAL_NOTE_MAX = 900
   ACCEPTED_REQUEST_BLOCKS_REMOVAL = "You have an accepted request for this item. Decline or complete it first.".freeze
@@ -203,7 +203,7 @@ class ItemService
       .joins(:group_item_availabilities)
       .where(group_item_availabilities: { community_group_id: community_group_id })
       # Someone is still waiting on it.
-      .where("EXISTS (SELECT 1 FROM item_requests waiting WHERE waiting.item_id = items.id AND waiting.status IN (?))", WAITING_REQUEST_STATUSES)
+      .where(waiting_requests.arel.exists)
     candidates = wish_identity_scope(candidates, attrs)
     candidates = wish_location_scope(candidates, requester, community_group_id, sub_group_id)
     candidates.order(:created_at, :id).first
@@ -212,7 +212,7 @@ class ItemService
   # Assigns donor to wishlist book and sets item to available. Each matched request gets a
   # donor_found event, which emails its requester after commit (see RequestEventNotificationJob).
   def fulfill_wishlist_item(donor_user, item_params)
-    data = item_params.to_h.merge(user_id: donor_user.id, status: ShareableItemStatus::AVAILABLE).with_indifferent_access
+    data = item_params.to_h.merge(user_id: donor_user.id, status: "available").with_indifferent_access
     # update_item rescues its own errors, so roll back explicitly when it fails; otherwise a
     # failure while matching requests would leave the item AVAILABLE with requests still pending.
     updated = false
@@ -248,7 +248,7 @@ class ItemService
   def relist_as_wish!
     raise "Item did not start as a wish" unless item.wishlist_item?
 
-    wish = Item.create!(item.attributes.slice(*WISH_COPY_ATTRIBUTES).merge("status" => ShareableItemStatus::WISHLIST))
+    wish = Item.create!(item.attributes.slice(*WISH_COPY_ATTRIBUTES).merge("status" => "wishlist"))
     wish.cover_image.attach(item.cover_image.blob) if item.cover_image.attached?
     now = Time.current
     rows = item.group_item_availabilities.pluck(:community_group_id, :sub_group_id).map do |group_id, sub_group_id|
@@ -337,8 +337,8 @@ class ItemService
     base_requests = ItemRequest.joins(:item).merge(base_items)
 
     {
-      items_shared: base_items.where.not(status: [ ShareableItemStatus::DONATED, ShareableItemStatus::WISHLIST ]).distinct.count(:id),
-      items_donated: base_items.where(status: ShareableItemStatus::DONATED).distinct.count(:id),
+      items_shared: base_items.where.not(status: %w[donated wishlist]).distinct.count(:id),
+      items_donated: base_items.donated.distinct.count(:id),
       items_requested: base_requests.distinct.count(:id),
       happy_users: base_requests.completed.distinct.count(:requester_id),
       items_wishlisted: wishlisted_items.distinct.count(:id)
@@ -405,7 +405,7 @@ class ItemService
       condition: item.condition,
       summary: item.summary,
       status: item.status,
-      status_display: ShareableItemStatus.display_status(item.status),
+      status_display: item.status_label,
       wishlist_item: item.wishlist_item,
       deleted: item.deleted?,
       # Whether its owner may still edit it: not once it's donated (see #update_item).
@@ -425,7 +425,7 @@ class ItemService
         verified: item.user.verified?,
         trust_score: item.user.trust_score || 0
       } : nil,
-      request_count: item.item_requests.where.not(status: ItemRequest::CANCELLED_STATUS).count,
+      request_count: item.item_requests.not_cancelled.count,
       created_at: item.created_at,
       updated_at: item.updated_at,
       can_request: item_can_be_requested_by?(requester)
@@ -433,7 +433,8 @@ class ItemService
     if @user_request
       result[:user_request_id] = @user_request.id
       result[:user_request_dt] = @user_request.created_at
-      result[:user_request_status] = ItemRequestService.new.display_status(@user_request.status)
+      result[:user_request_status] = @user_request.status
+      result[:user_request_status_display] = @user_request.status_label
       result[:user_request_updated_at] = @user_request.updated_at
       actions = ItemRequestService.new.requester_actions(@user_request)
       result[:user_request_can_cancel] = actions[:can_cancel]
@@ -469,7 +470,7 @@ class ItemService
       summary: item.summary,
       condition: item.condition,
       status: item.status,
-      status_display: ShareableItemStatus.display_status(item.status),
+      status_display: item.status_label,
       wishlist_item: item.wishlist_item,
       cover_image_url: cover_image_url_for(item),
       created_at: item.created_at
@@ -477,6 +478,11 @@ class ItemService
   end
 
   private
+
+  # Requests on the outer query's item whose requester is still waiting on it, for EXISTS checks.
+  def waiting_requests
+    ItemRequest.where(status: WAITING_REQUEST_STATUSES).where("item_requests.item_id = items.id")
+  end
 
   # Type-specific JSON fields; BookService and ToyService override this.
   def type_fields(_item, detail:)
@@ -508,7 +514,7 @@ class ItemService
 
   # A new ownerless wish in the requester's group, with their pending request.
   def create_wish!(requester, item_params, community_group_ids, cover_image_url, message)
-    @item = Item.create!(item_params.merge(type: type_class.name, status: ShareableItemStatus::WISHLIST))
+    @item = Item.create!(item_params.merge(type: type_class.name, status: "wishlist"))
     sync_group_item_availabilities!(requester, community_group_ids)
     handle_api_cover_image(cover_image_url)
     @item_request = ItemRequestService.new.start_request!(requester, @item, message)
@@ -554,21 +560,14 @@ class ItemService
   # sub-group, or someone waiting on it must belong to that sub-group.
   def wish_location_scope(scope, requester, community_group_id, sub_group_id)
     if community_group_id.to_i == CommunityGroup.zipcode_group&.id
-      return scope.where(<<~SQL.squish, WAITING_REQUEST_STATUSES, requester.zip_code)
-        EXISTS (SELECT 1 FROM item_requests waiting
-                JOIN users waiting_users ON waiting_users.id = waiting.requester_id
-                WHERE waiting.item_id = items.id AND waiting.status IN (?) AND waiting_users.zip_code = ?)
-      SQL
+      return scope.where(waiting_requests.joins(:requester).where(users: { zip_code: requester.zip_code }).arel.exists)
     end
     return scope.where(group_item_availabilities: { sub_group_id: nil }) if sub_group_id.blank?
 
-    scope.where(<<~SQL.squish, sub_group_id: sub_group_id, statuses: WAITING_REQUEST_STATUSES, group_id: community_group_id)
-      group_item_availabilities.sub_group_id = :sub_group_id
-      OR EXISTS (SELECT 1 FROM item_requests waiting
-                 JOIN community_group_memberships waiting_members ON waiting_members.user_id = waiting.requester_id
-                 WHERE waiting.item_id = items.id AND waiting.status IN (:statuses)
-                   AND waiting_members.community_group_id = :group_id AND waiting_members.sub_group_id = :sub_group_id)
-    SQL
+    waiting_in_sub_group = waiting_requests
+      .joins(requester: :community_group_memberships)
+      .where(community_group_memberships: { community_group_id: community_group_id, sub_group_id: sub_group_id })
+    scope.where(GroupItemAvailability.arel_table[:sub_group_id].eq(sub_group_id).or(waiting_in_sub_group.arel.exists))
   end
 
   # Raises if the update would change a wishlist item's title, author or set of groups.
@@ -648,11 +647,7 @@ class ItemService
     when :requester
       # Only requesters still waiting count: a wish whose requests are all cancelled is hidden,
       # and a cancelled requester's location doesn't match the zip/radius filter.
-      active_requests_join = ActiveRecord::Base.sanitize_sql_array([
-        "INNER JOIN item_requests ON item_requests.item_id = items.id AND item_requests.status IN (?)",
-        ItemRequest::ACTIVE_WISH_STATUSES
-      ])
-      items.joins(active_requests_join)
+      items.joins(:item_requests).merge(ItemRequest.active_wish)
            .joins("INNER JOIN users requesters ON requesters.id = item_requests.requester_id")
     when :owner
       items.left_outer_joins(:user)
