@@ -21,7 +21,7 @@ ActiveAdmin.register Book do
       book.status_label
     end
     column :user do |book|
-      link_to book.user.email_address, admin_user_path(book.user)
+      link_to book.user.email_address, admin_user_path(book.user) if book.user
     end
     column :view_count
     column :deleted_at
@@ -52,7 +52,7 @@ ActiveAdmin.register Book do
         book.status_label
       end
       row :user do |book|
-        link_to book.user.email_address, admin_user_path(book.user)
+        link_to book.user.email_address, admin_user_path(book.user) if book.user
       end
       row :view_count
       row :personal_note
