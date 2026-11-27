@@ -2352,11 +2352,6 @@
     }
   }
   @media (min-width: 48rem) {
-    .md\:px-0 {
-      padding-inline: calc(var(--spacing) * 0);
-    }
-  }
-  @media (min-width: 48rem) {
     .md\:py-16 {
       padding-block: calc(var(--spacing) * 16);
     }
