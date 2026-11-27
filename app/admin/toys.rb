@@ -21,7 +21,7 @@ ActiveAdmin.register Toy do
       toy.status_label
     end
     column :user do |toy|
-      link_to toy.user.email_address, admin_user_path(toy.user)
+      link_to toy.user.email_address, admin_user_path(toy.user) if toy.user
     end
     column :view_count
     column :deleted_at
@@ -52,7 +52,7 @@ ActiveAdmin.register Toy do
         toy.status_label
       end
       row :user do |toy|
-        link_to toy.user.email_address, admin_user_path(toy.user)
+        link_to toy.user.email_address, admin_user_path(toy.user) if toy.user
       end
       row :view_count
       row :personal_note
